@@ -84,7 +84,7 @@ as that of the covered work.  */
 # define PATH_SEPARATOR '/'
 #endif
 
-#ifndef ENABLE_IRI
+#ifndef HAVE_ICONV
 struct iri dummy_iri;
 #endif
 
@@ -1791,7 +1791,7 @@ for details.\n\n"));
           }
     }
 
-#ifdef ENABLE_IRI
+#ifdef HAVE_ICONV
   if (opt.enable_iri)
     {
       if (opt.locale && !check_encoding_name (opt.locale))

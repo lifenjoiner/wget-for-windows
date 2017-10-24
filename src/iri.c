@@ -38,9 +38,12 @@ as that of the covered work.  */
 #ifdef HAVE_ICONV
 # include <iconv.h>
 #endif
+
+#ifdef ENABLE_IRI
 #include <idn2.h>
 #include <unicase.h>
 #include <unistr.h>
+#endif
 
 #include "utils.h"
 #include "url.h"
@@ -49,6 +52,8 @@ as that of the covered work.  */
 #include "xstrndup.h"
 
 /* Note: locale encoding is kept in options struct (opt.locale) */
+
+#ifdef HAVE_ICONV
 
 /* Given a string containing "charset=XXX", return the encoding if found,
    or NULL otherwise */
@@ -235,6 +240,119 @@ locale_to_utf8 (const char *str)
   return str;
 }
 
+/* Try to transcode string str from remote encoding to UTF-8. On success, *new
+   contains the transcoded string. *new content is unspecified otherwise. */
+bool
+remote_to_utf8 (const struct iri *iri, const char *str, char **new)
+{
+  bool ret = false;
+
+  if (!iri->uri_encoding)
+    return false;
+
+  /* When `i->uri_encoding' == "UTF-8" there is nothing to convert.  But we must
+     test for non-ASCII symbols for correct hostname processing in `idn_encode'
+     function. */
+  if (!c_strcasecmp (iri->uri_encoding, "UTF-8"))
+    {
+      const unsigned char *p;
+      for (p = (unsigned char *) str; *p; p++)
+        if (*p > 127)
+          {
+            *new = strdup (str);
+            return true;
+          }
+      return false;
+    }
+
+  if (do_conversion ("UTF-8", iri->uri_encoding, str, strlen (str), new))
+    ret = true;
+
+  /* Test if something was converted */
+  if (*new && !strcmp (str, *new))
+    {
+      xfree (*new);
+      return false;
+    }
+
+  return ret;
+}
+
+/* Set uri_encoding of struct iri i. If a remote encoding was specified, use
+   it unless force is true. */
+void
+set_uri_encoding (struct iri *i, const char *charset, bool force)
+{
+  DEBUGP (("URI encoding = %s\n", charset ? quote (charset) : "None"));
+  if (!force && opt.encoding_remote)
+    return;
+  if (i->uri_encoding)
+    {
+      if (charset && !c_strcasecmp (i->uri_encoding, charset))
+        return;
+      xfree (i->uri_encoding);
+    }
+
+  i->uri_encoding = charset ? xstrdup (charset) : NULL;
+}
+
+/* Set content_encoding of struct iri i. */
+void
+set_content_encoding (struct iri *i, const char *charset)
+{
+  DEBUGP (("URI content encoding = %s\n", charset ? quote (charset) : "None"));
+  if (opt.encoding_remote)
+    return;
+  if (i->content_encoding)
+    {
+      if (charset && !c_strcasecmp (i->content_encoding, charset))
+        return;
+      xfree (i->content_encoding);
+    }
+
+  i->content_encoding = charset ? xstrdup (charset) : NULL;
+}
+
+/* Allocate a new iri structure and return a pointer to it. */
+struct iri *
+iri_new (void)
+{
+  struct iri *i = xmalloc (sizeof *i);
+  i->uri_encoding = opt.encoding_remote ? xstrdup (opt.encoding_remote) : NULL;
+  i->content_encoding = NULL;
+  i->orig_url = NULL;
+  i->utf8_encode = opt.enable_iri;
+  return i;
+}
+
+struct iri *iri_dup (const struct iri *src)
+{
+  struct iri *i = xmalloc (sizeof *i);
+  i->uri_encoding = src->uri_encoding ? xstrdup (src->uri_encoding) : NULL;
+  i->content_encoding = (src->content_encoding ?
+                         xstrdup (src->content_encoding) : NULL);
+  i->orig_url = src->orig_url ? xstrdup (src->orig_url) : NULL;
+  i->utf8_encode = src->utf8_encode;
+  return i;
+}
+
+/* Completely free an iri structure. */
+void
+iri_free (struct iri *i)
+{
+  if (i)
+    {
+      xfree (i->uri_encoding);
+      xfree (i->content_encoding);
+      xfree (i->orig_url);
+      xfree (i);
+    }
+}
+
+#endif
+
+#ifdef ENABLE_IRI
+
 /* Try to "ASCII encode" UTF-8 host. Return the new domain on success or NULL
    on error. */
 char *
@@ -316,111 +434,4 @@ idn_decode (const char *host)
   return xstrdup(host);
 }
 
-/* Try to transcode string str from remote encoding to UTF-8. On success, *new
-   contains the transcoded string. *new content is unspecified otherwise. */
-bool
-remote_to_utf8 (const struct iri *iri, const char *str, char **new)
-{
-  bool ret = false;
-
-  if (!iri->uri_encoding)
-    return false;
-
-  /* When `i->uri_encoding' == "UTF-8" there is nothing to convert.  But we must
-     test for non-ASCII symbols for correct hostname processing in `idn_encode'
-     function. */
-  if (!c_strcasecmp (iri->uri_encoding, "UTF-8"))
-    {
-      const unsigned char *p;
-      for (p = (unsigned char *) str; *p; p++)
-        if (*p > 127)
-          {
-            *new = strdup (str);
-            return true;
-          }
-      return false;
-    }
-
-  if (do_conversion ("UTF-8", iri->uri_encoding, str, strlen (str), new))
-    ret = true;
-
-  /* Test if something was converted */
-  if (*new && !strcmp (str, *new))
-    {
-      xfree (*new);
-      return false;
-    }
-
-  return ret;
-}
-
-/* Allocate a new iri structure and return a pointer to it. */
-struct iri *
-iri_new (void)
-{
-  struct iri *i = xmalloc (sizeof *i);
-  i->uri_encoding = opt.encoding_remote ? xstrdup (opt.encoding_remote) : NULL;
-  i->content_encoding = NULL;
-  i->orig_url = NULL;
-  i->utf8_encode = opt.enable_iri;
-  return i;
-}
-
-struct iri *iri_dup (const struct iri *src)
-{
-  struct iri *i = xmalloc (sizeof *i);
-  i->uri_encoding = src->uri_encoding ? xstrdup (src->uri_encoding) : NULL;
-  i->content_encoding = (src->content_encoding ?
-                         xstrdup (src->content_encoding) : NULL);
-  i->orig_url = src->orig_url ? xstrdup (src->orig_url) : NULL;
-  i->utf8_encode = src->utf8_encode;
-  return i;
-}
-
-/* Completely free an iri structure. */
-void
-iri_free (struct iri *i)
-{
-  if (i)
-    {
-      xfree (i->uri_encoding);
-      xfree (i->content_encoding);
-      xfree (i->orig_url);
-      xfree (i);
-    }
-}
-
-/* Set uri_encoding of struct iri i. If a remote encoding was specified, use
-   it unless force is true. */
-void
-set_uri_encoding (struct iri *i, const char *charset, bool force)
-{
-  DEBUGP (("URI encoding = %s\n", charset ? quote (charset) : "None"));
-  if (!force && opt.encoding_remote)
-    return;
-  if (i->uri_encoding)
-    {
-      if (charset && !c_strcasecmp (i->uri_encoding, charset))
-        return;
-      xfree (i->uri_encoding);
-    }
-
-  i->uri_encoding = charset ? xstrdup (charset) : NULL;
-}
-
-/* Set content_encoding of struct iri i. */
-void
-set_content_encoding (struct iri *i, const char *charset)
-{
-  DEBUGP (("URI content encoding = %s\n", charset ? quote (charset) : "None"));
-  if (opt.encoding_remote)
-    return;
-  if (i->content_encoding)
-    {
-      if (charset && !c_strcasecmp (i->content_encoding, charset))
-        return;
-      xfree (i->content_encoding);
-    }
-
-  i->content_encoding = charset ? xstrdup (charset) : NULL;
-}
+#endif

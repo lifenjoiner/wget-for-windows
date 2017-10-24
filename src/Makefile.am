@@ -31,9 +31,7 @@
 # Version: @VERSION@
 #
 
-if IRI_IS_ENABLED
 IRI_OBJ = iri.c
-endif
 
 if METALINK_IS_ENABLED
 METALINK_OBJ = metalink.c

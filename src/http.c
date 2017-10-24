@@ -3616,7 +3616,7 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
       char *tmp = strchr (type, ';');
       if (tmp)
         {
-#ifdef ENABLE_IRI
+#ifdef HAVE_ICONV
           /* sXXXav: only needed if IRI support is enabled */
           char *tmp2 = tmp + 1;
 #endif
@@ -3625,7 +3625,7 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
             --tmp;
           *tmp = '\0';
 
-#ifdef ENABLE_IRI
+#ifdef HAVE_ICONV
           /* Try to get remote encoding if needed */
           if (opt.enable_iri && !opt.encoding_remote)
             {

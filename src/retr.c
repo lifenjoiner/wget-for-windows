@@ -873,7 +873,7 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
       xfree (mynewloc);
       mynewloc = construced_newloc;
 
-#ifdef ENABLE_IRI
+#ifdef HAVE_ICONV
       /* Reset UTF-8 encoding state, set the URI encoding and reset
          the content encoding. */
       iri->utf8_encode = opt.enable_iri;
@@ -1069,7 +1069,7 @@ retrieve_from_file (const char *file, bool html, int *count)
       if (dt & TEXTHTML)
         html = true;
 
-#ifdef ENABLE_IRI
+#ifdef HAVE_ICONV
       /* If we have a found a content encoding, use it.
        * ( == is okay, because we're checking for identical object) */
       if (iri->content_encoding != opt.locale)
