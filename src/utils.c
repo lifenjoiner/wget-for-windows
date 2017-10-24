@@ -45,6 +45,7 @@ as that of the covered work.  */
 #include <assert.h>
 #include <stdarg.h>
 #include <locale.h>
+#include <errno.h>
 
 #if HAVE_UTIME
 # include <sys/types.h>
@@ -586,21 +587,42 @@ remove_link (const char *file)
   return err;
 }
 
-/* Does FILENAME exist?  This is quite a lousy implementation, since
-   it supplies no error codes -- only a yes-or-no answer.  Thus it
-   will return that a file does not exist if, e.g., the directory is
-   unreadable.  I don't mind it too much currently, though.  The
-   proper way should, of course, be to have a third, error state,
-   other than true/false, but that would introduce uncalled-for
-   additional complexity to the callers.  */
+/* Does FILENAME exist? */
 bool
-file_exists_p (const char *filename)
+file_exists_p (const char *filename, file_stats_t *fstats)
 {
-#ifdef HAVE_ACCESS
-  return access (filename, F_OK) >= 0;
-#else
   struct stat buf;
-  return stat (filename, &buf) >= 0;
+
+#if defined(WINDOWS) || defined(__VMS)
+    int ret = stat (filename, &buf);
+    if (ret >= 0)
+    {
+      if (fstats != NULL)
+        fstats->access_err = errno;
+    }
+    return ret >= 0;
+#else
+  errno = 0;
+  if (stat (filename, &buf) == 0 && S_ISREG(buf.st_mode) &&
+              (((S_IRUSR & buf.st_mode) && (getuid() == buf.st_uid))  ||
+               ((S_IRGRP & buf.st_mode) && group_member(buf.st_gid))  ||
+                (S_IROTH & buf.st_mode))) {
+    if (fstats != NULL)
+    {
+      fstats->access_err = 0;
+      fstats->st_ino = buf.st_ino;
+      fstats->st_dev = buf.st_dev;
+    }
+    return true;
+  }
+  else
+  {
+    if (fstats != NULL)
+      fstats->access_err = (errno == 0 ? EACCES : errno);
+    errno = 0;
+    return false;
+  }
+  /* NOTREACHED */
 #endif
 }
 
@@ -668,7 +690,7 @@ unique_name_1 (const char *prefix)
 
   do
     number_to_string (template_tail, count++);
-  while (file_exists_p (template));
+  while (file_exists_p (template, NULL));
 
   return xstrdup (template);
 }
@@ -696,7 +718,7 @@ unique_name (const char *file, bool allow_passthrough)
 {
   /* If the FILE itself doesn't exist, return it without
      modification. */
-  if (!file_exists_p (file))
+  if (!file_exists_p (file, NULL))
     return allow_passthrough ? (char *)file : xstrdup (file);
 
   /* Otherwise, find a numeric suffix that results in unused file name
@@ -825,13 +847,120 @@ fopen_excl (const char *fname, int binary)
   /* Manually check whether the file exists.  This is prone to race
      conditions, but systems without O_EXCL haven't deserved
      better.  */
-  if (file_exists_p (fname))
+  if (file_exists_p (fname, NULL))
     {
       errno = EEXIST;
       return NULL;
     }
   return fopen (fname, binary ? "wb" : "w");
 #endif /* not O_EXCL */
+}
+
+/* fopen_stat() assumes that file_exists_p() was called earlier.
+   file_stats_t passed to this function was returned from file_exists_p()
+   This is to prevent TOCTTOU race condition.
+   Details : FIO45-C from https://www.securecoding.cert.org/
+   Note that for creating a new file, this check is not useful
+
+   Input:
+     fname  => Name of file to open
+     mode   => File open mode
+     fstats => Saved file_stats_t about file that was checked for existence
+
+   Returns:
+     NULL if there was an error
+     FILE * of opened file stream
+*/
+FILE *
+fopen_stat(const char *fname, const char *mode, file_stats_t *fstats)
+{
+  int fd;
+  FILE *fp;
+  struct stat fdstats;
+
+  fp = fopen (fname, mode);
+  if (fp == NULL)
+  {
+    logprintf (LOG_NOTQUIET, _("Failed to Fopen file %s\n"), fname);
+    return NULL;
+  }
+  fd = fileno (fp);
+  if (fd < 0)
+  {
+    logprintf (LOG_NOTQUIET, _("Failed to get FD for file %s\n"), fname);
+    fclose (fp);
+    return NULL;
+  }
+  memset(&fdstats, 0, sizeof(fdstats));
+  if (fstat (fd, &fdstats) == -1)
+  {
+    logprintf (LOG_NOTQUIET, _("Failed to stat file %s, (check permissions)\n"), fname);
+    fclose (fp);
+    return NULL;
+  }
+#if !(defined(WINDOWS) || defined(__VMS))
+  if (fstats != NULL &&
+      (fdstats.st_dev != fstats->st_dev ||
+       fdstats.st_ino != fstats->st_ino))
+  {
+    /* File changed since file_exists_p() : NOT SAFE */
+    logprintf (LOG_NOTQUIET, _("File %s changed since the last check. Security check failed."), fname);
+    fclose (fp);
+    return NULL;
+  }
+#endif
+
+  return fp;
+}
+
+/* open_stat assumes that file_exists_p() was called earlier to save file_stats
+   file_stats_t passed to this function was returned from file_exists_p()
+   This is to prevent TOCTTOU race condition.
+   Details : FIO45-C from https://www.securecoding.cert.org/
+   Note that for creating a new file, this check is not useful
+
+
+   Input:
+     fname  => Name of file to open
+     flags  => File open flags
+     mode   => File open mode
+     fstats => Saved file_stats_t about file that was checked for existence
+
+   Returns:
+     -1 if there was an error
+     file descriptor of opened file stream
+*/
+int
+open_stat(const char *fname, int flags, mode_t mode, file_stats_t *fstats)
+{
+  int fd;
+  struct stat fdstats;
+
+  fd = open (fname, flags, mode);
+  if (fd < 0)
+  {
+    logprintf (LOG_NOTQUIET, _("Failed to open file %s, reason :%s\n"), fname, strerror(errno));
+    return -1;
+  }
+  memset(&fdstats, 0, sizeof(fdstats));
+  if (fstat (fd, &fdstats) == -1)
+  {
+    logprintf (LOG_NOTQUIET, _("Failed to stat file %s, error: %s\n"), fname, strerror(errno));
+    return -1;
+  }
+#if !(defined(WINDOWS) || defined(__VMS))
+  if (fstats != NULL &&
+      (fdstats.st_dev != fstats->st_dev ||
+       fdstats.st_ino != fstats->st_ino))
+  {
+    /* File changed since file_exists_p() : NOT SAFE */
+    logprintf (LOG_NOTQUIET, _("Trying to open file %s but it changed since last check. Security check failed."), fname);
+    close (fd);
+    return -1;
+  }
+#endif
+
+  return fd;
 }
 
 /* Create DIRECTORY.  If some of the pathname components of DIRECTORY
@@ -862,7 +991,7 @@ make_directory (const char *directory)
       /* Check whether the directory already exists.  Allow creation of
          of intermediate directories to fail, as the initial path components
          are not necessarily directories!  */
-      if (!file_exists_p (dir))
+      if (!file_exists_p (dir, NULL))
         ret = mkdir (dir, 0777);
       else
         ret = 0;
@@ -1606,7 +1735,7 @@ numdigit (wgint number)
 {
   int cnt = 1;
   if (number < 0)
-    ++cnt;                      /* accomodate '-' */
+    ++cnt;                      /* accommodate '-' */
   while ((number /= 10) != 0)
     ++cnt;
   return cnt;
@@ -2206,7 +2335,7 @@ wget_base64_encode (const void *data, size_t length, char *dest)
 
 /* Decode data from BASE64 (a null-terminated string) into memory
    pointed to by DEST.  DEST is assumed to be large enough to
-   accomodate the decoded data, which is guaranteed to be no more than
+   accommodate the decoded data, which is guaranteed to be no more than
    3/4*strlen(base64).
 
    Since DEST is assumed to contain binary data, it is not
@@ -2217,7 +2346,7 @@ wget_base64_encode (const void *data, size_t length, char *dest)
    This function originates from Free Recode.  */
 
 ssize_t
-wget_base64_decode (const char *base64, void *dest)
+wget_base64_decode (const char *base64, void *dest, size_t size)
 {
   /* Table of base64 values for first 128 characters.  Note that this
      assumes ASCII (but so does Wget in other places).  */
@@ -2241,7 +2370,8 @@ wget_base64_decode (const char *base64, void *dest)
 #define IS_BASE64(c) ((IS_ASCII (c) && BASE64_CHAR_TO_VALUE (c) >= 0) || c == '=')
 
   const char *p = base64;
-  char *q = dest;
+  unsigned char *q = dest;
+  ssize_t n = 0;
 
   while (1)
     {
@@ -2263,7 +2393,12 @@ wget_base64_decode (const char *base64, void *dest)
       if (c == '=' || !IS_BASE64 (c))
         return -1;              /* illegal char while decoding base64 */
       value |= BASE64_CHAR_TO_VALUE (c) << 12;
-      *q++ = value >> 16;
+      if (size)
+        {
+          *q++ = value >> 16;
+          size--;
+        }
+      n++;
 
       /* Process third byte of a quadruplet.  */
       NEXT_CHAR (c, p);
@@ -2283,7 +2418,12 @@ wget_base64_decode (const char *base64, void *dest)
         }
 
       value |= BASE64_CHAR_TO_VALUE (c) << 6;
-      *q++ = 0xff & value >> 8;
+      if (size)
+        {
+          *q++ = 0xff & value >> 8;
+          size--;
+        }
+      n++;
 
       /* Process fourth byte of a quadruplet.  */
       NEXT_CHAR (c, p);
@@ -2295,12 +2435,17 @@ wget_base64_decode (const char *base64, void *dest)
         return -1;              /* illegal char while decoding base64 */
 
       value |= BASE64_CHAR_TO_VALUE (c);
-      *q++ = 0xff & value;
+      if (size)
+        {
+          *q++ = 0xff & value;
+          size--;
+        }
+      n++;
     }
 #undef IS_BASE64
 #undef BASE64_CHAR_TO_VALUE
 
-  return q - (char *) dest;
+  return n;
 }
 
 #ifdef HAVE_LIBPCRE
@@ -2597,7 +2742,7 @@ wg_pubkey_pem_to_der (const char *pem, unsigned char **der, size_t *der_len)
 
   base64data = xmalloc (BASE64_LENGTH(stripped_pem_count));
 
-  size = wget_base64_decode (stripped_pem, base64data);
+  size = wget_base64_decode (stripped_pem, base64data, BASE64_LENGTH(stripped_pem_count));
 
   if (size < 0) {
     xfree (base64data);           /* malformed base64 from server */
@@ -2636,54 +2781,65 @@ wg_pin_peer_pubkey (const char *pinnedpubkey, const char *pubkey, size_t pubkeyl
     return result;
 
   /* only do this if pinnedpubkey starts with "sha256//", length 8 */
-  if (strncmp (pinnedpubkey, "sha256//", 8) == 0) {
-    /* compute sha256sum of public key */
-    sha256sumdigest = xmalloc (SHA256_DIGEST_SIZE);
-    sha256_buffer (pubkey, pubkeylen, sha256sumdigest);
-    expectedsha256sumdigest = xmalloc (SHA256_DIGEST_SIZE + 1);
+  if (strncmp (pinnedpubkey, "sha256//", 8) == 0)
+    {
+      /* compute sha256sum of public key */
+      sha256sumdigest = xmalloc (SHA256_DIGEST_SIZE);
+      sha256_buffer (pubkey, pubkeylen, sha256sumdigest);
+      expectedsha256sumdigest = xmalloc (SHA256_DIGEST_SIZE);
 
-    /* it starts with sha256//, copy so we can modify it */
-    pinkeylen = strlen (pinnedpubkey) + 1;
-    pinkeycopy = xmalloc (pinkeylen);
-    memcpy (pinkeycopy, pinnedpubkey, pinkeylen);
+      /* it starts with sha256//, copy so we can modify it */
+      pinkeylen = strlen (pinnedpubkey) + 1;
+      pinkeycopy = xmalloc (pinkeylen);
+      memcpy (pinkeycopy, pinnedpubkey, pinkeylen);
 
-    /* point begin_pos to the copy, and start extracting keys */
-    begin_pos = pinkeycopy;
-    do
-      {
-        end_pos = strstr (begin_pos, ";sha256//");
-        /*
-         * if there is an end_pos, null terminate,
-         * otherwise it'll go to the end of the original string
-         */
-        if (end_pos)
-          end_pos[0] = '\0';
+      /* point begin_pos to the copy, and start extracting keys */
+      begin_pos = pinkeycopy;
+      do
+        {
+          end_pos = strstr (begin_pos, ";sha256//");
+          /*
+           * if there is an end_pos, null terminate,
+           * otherwise it'll go to the end of the original string
+           */
+          if (end_pos)
+            end_pos[0] = '\0';
 
-        /* decode base64 pinnedpubkey, 8 is length of "sha256//" */
-        decoded_hash_length = wget_base64_decode (begin_pos + 8, expectedsha256sumdigest);
-        /* if valid base64, compare sha256 digests directly */
-        if (SHA256_DIGEST_SIZE == decoded_hash_length &&
-           !memcmp (sha256sumdigest, expectedsha256sumdigest, SHA256_DIGEST_SIZE)) {
-          result = true;
-          break;
+          /* decode base64 pinnedpubkey, 8 is length of "sha256//" */
+          decoded_hash_length = wget_base64_decode (begin_pos + 8, expectedsha256sumdigest, SHA256_DIGEST_SIZE);
+
+          /* if valid base64, compare sha256 digests directly */
+          if (SHA256_DIGEST_SIZE == decoded_hash_length)
+            {
+              if (!memcmp (sha256sumdigest, expectedsha256sumdigest, SHA256_DIGEST_SIZE))
+                {
+                  result = true;
+                  break;
+                }
+            }
+          else
+            logprintf (LOG_VERBOSE, _ ("Skipping key with wrong size (%d/%d): %s\n"),
+                       (strlen (begin_pos + 8) * 3) / 4, SHA256_DIGEST_SIZE,
+                       quote (begin_pos + 8));
+
+          /*
+           * change back the null-terminator we changed earlier,
+           * and look for next begin
+           */
+          if (end_pos)
+            {
+              end_pos[0] = ';';
+              begin_pos = strstr (end_pos, "sha256//");
+            }
         }
+      while (end_pos && begin_pos);
 
-        /*
-         * change back the null-terminator we changed earlier,
-         * and look for next begin
-         */
-        if (end_pos) {
-          end_pos[0] = ';';
-          begin_pos = strstr (end_pos, "sha256//");
-        }
-      } while (end_pos && begin_pos);
+      xfree (sha256sumdigest);
+      xfree (expectedsha256sumdigest);
+      xfree (pinkeycopy);
 
-    xfree (sha256sumdigest);
-    xfree (expectedsha256sumdigest);
-    xfree (pinkeycopy);
-
-    return result;
-  }
+      return result;
+    }
 
   /* fall back to assuming this is a file path */
   fm = wget_read_file (pinnedpubkey);
@@ -2703,11 +2859,12 @@ wg_pin_peer_pubkey (const char *pinnedpubkey, const char *pubkey, size_t pubkeyl
     goto cleanup;
 
   /* If the sizes are the same, it can't be base64 encoded, must be der */
-  if (pubkeylen == size) {
-    if (!memcmp (pubkey, fm->content, pubkeylen))
-      result = true;
-    goto cleanup;
-  }
+  if (pubkeylen == size)
+    {
+      if (!memcmp (pubkey, fm->content, pubkeylen))
+        result = true;
+      goto cleanup;
+    }
 
   /*
    * Otherwise we will assume it's PEM and try to decode it
@@ -2729,7 +2886,7 @@ wg_pin_peer_pubkey (const char *pinnedpubkey, const char *pubkey, size_t pubkeyl
   if (pubkeylen == pem_len && !memcmp (pubkey, pem_ptr, pubkeylen))
     result = true;
 
- cleanup:
+cleanup:
   xfree (buf);
   xfree (pem_ptr);
   wget_read_file_free (fm);

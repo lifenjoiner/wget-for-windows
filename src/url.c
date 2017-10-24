@@ -459,7 +459,7 @@ url_scheme (const char *url)
   int i;
 
   for (i = 0; supported_schemes[i].leading_string; i++)
-    if (0 == strncasecmp (url, supported_schemes[i].leading_string,
+    if (0 == c_strncasecmp (url, supported_schemes[i].leading_string,
                           strlen (supported_schemes[i].leading_string)))
       {
         if (!(supported_schemes[i].flags & scm_disabled))
@@ -925,6 +925,17 @@ url_parse (const char *url, int *error, struct iri *iri, bool percent_encode)
       url_unescape (u->host);
       host_modified = true;
 
+      /* check for invalid control characters in host name */
+      for (p = u->host; *p; p++)
+        {
+          if (c_iscntrl(*p))
+            {
+              url_free(u);
+              error_code = PE_INVALID_HOST_NAME;
+              goto error;
+            }
+        }
+
       /* Apply IDNA regardless of iri->utf8_encode status */
       if (opt.enable_iri && iri)
         {
@@ -933,7 +944,6 @@ url_parse (const char *url, int *error, struct iri *iri, bool percent_encode)
             {
               xfree (u->host);
               u->host = new;
-              u->idn_allocated = true;
               host_modified = true;
             }
         }
@@ -1212,12 +1222,7 @@ url_free (struct url *url)
 {
   if (url)
     {
-      if (url->idn_allocated) {
-        idn2_free (url->host);      /* A dummy if !defined(ENABLE_IRI) */
-        url->host = NULL;
-      }
-      else
-        xfree (url->host);
+      xfree (url->host);
 
       xfree (url->path);
       xfree (url->url);
@@ -1544,6 +1549,7 @@ append_uri_pathel (const char *b, const char *e, bool escaped,
   append_null (dest);
 }
 
+#ifdef HAVE_ICONV
 static char *
 convert_fname (char *fname)
 {
@@ -1562,9 +1568,9 @@ convert_fname (char *fname)
     to_encoding = nl_langinfo (CODESET);
 
   cd = iconv_open (to_encoding, from_encoding);
-  if (cd == (iconv_t)(-1))
-    logprintf (LOG_VERBOSE, _("Conversion from %s to %s isn't supported\n"),
-	       quote (from_encoding), quote (to_encoding));
+  if (cd == (iconv_t) (-1))
+    logprintf (LOG_VERBOSE, _ ("Conversion from %s to %s isn't supported\n"),
+               quote (from_encoding), quote (to_encoding));
   else
     {
       inlen = strlen (fname);
@@ -1573,50 +1579,62 @@ convert_fname (char *fname)
       done = 0;
 
       for (;;)
-	{
-	  if (iconv (cd, (ICONV_CONST char **) &fname, &inlen, &s, &outlen) != (size_t)(-1)
-	      && iconv (cd, NULL, NULL, &s, &outlen) != (size_t)(-1))
-	    {
-	      *(converted_fname + len - outlen - done) = '\0';
-	      iconv_close(cd);
-	      DEBUGP (("Converted file name '%s' (%s) -> '%s' (%s)\n",
-		       orig_fname, from_encoding, converted_fname, to_encoding));
-	      xfree (orig_fname);
-	      return converted_fname;
-	    }
+        {
+          errno = 0;
+          if (iconv (cd, (ICONV_CONST char **) &fname, &inlen, &s, &outlen) == 0
+              && iconv (cd, NULL, NULL, &s, &outlen) == 0)
+            {
+              *(converted_fname + len - outlen - done) = '\0';
+              iconv_close (cd);
+              DEBUGP (("Converted file name '%s' (%s) -> '%s' (%s)\n",
+                       orig_fname, from_encoding, converted_fname, to_encoding));
+              xfree (orig_fname);
+              return converted_fname;
+            }
 
-	  /* Incomplete or invalid multibyte sequence */
-	  if (errno == EINVAL || errno == EILSEQ)
-	    {
-	      logprintf (LOG_VERBOSE,
-			 _("Incomplete or invalid multibyte sequence encountered\n"));
-	      xfree (converted_fname);
-	      converted_fname = (char *)orig_fname;
-	      break;
-	    }
-	  else if (errno == E2BIG) /* Output buffer full */
-	    {
-	      done = len;
-	      len = outlen = done + inlen * 2;
-	      converted_fname = xrealloc (converted_fname, outlen + 1);
-	      s = converted_fname + done;
-	    }
-	  else /* Weird, we got an unspecified error */
-	    {
-	      logprintf (LOG_VERBOSE, _("Unhandled errno %d\n"), errno);
-	      xfree (converted_fname);
-	      converted_fname = (char *)orig_fname;
-	      break;
-	    }
-	}
+          /* Incomplete or invalid multibyte sequence */
+          if (errno == EINVAL || errno == EILSEQ || errno == 0)
+            {
+              if (errno)
+                logprintf (LOG_VERBOSE,
+                           _ ("Incomplete or invalid multibyte sequence encountered\n"));
+              else
+                logprintf (LOG_VERBOSE,
+                           _ ("Unconvertable multibyte sequence encountered\n"));
+              xfree (converted_fname);
+              converted_fname = (char *) orig_fname;
+              break;
+            }
+          else if (errno == E2BIG) /* Output buffer full */
+            {
+              done = len;
+              len = outlen = done + inlen * 2;
+              converted_fname = xrealloc (converted_fname, outlen + 1);
+              s = converted_fname + done;
+            }
+          else /* Weird, we got an unspecified error */
+            {
+              logprintf (LOG_VERBOSE, _ ("Unhandled errno %d\n"), errno);
+              xfree (converted_fname);
+              converted_fname = (char *) orig_fname;
+              break;
+            }
+        }
       DEBUGP (("Failed to convert file name '%s' (%s) -> '?' (%s)\n",
-	       orig_fname, from_encoding, to_encoding));
+               orig_fname, from_encoding, to_encoding));
     }
 
     iconv_close(cd);
 
   return converted_fname;
 }
+#else
+static char *
+convert_fname (char *fname)
+{
+  return fname;
+}
+#endif
 
 /* Append to DEST the directory structure that corresponds the
    directory part of URL's path.  For example, if the URL is
@@ -1807,7 +1825,7 @@ url_file_name (const struct url *u, char *replaced_filename)
      directory (see `mkalldirs' for explanation).  */
 
   if (ALLOW_CLOBBER
-      && !(file_exists_p (fname) && !file_non_directory_p (fname)))
+      && !(file_exists_p (fname, NULL) && !file_non_directory_p (fname)))
     {
       unique = fname;
     }

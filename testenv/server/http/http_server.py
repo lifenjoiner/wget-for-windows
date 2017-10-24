@@ -63,7 +63,7 @@ class _Handler(BaseHTTPRequestHandler):
     request. For each HTTP Request Command that the server should be capable of
     responding to, there must exist a do_REQUESTNAME() method which details the
     steps in which such requests should be processed. The rest of the methods
-    in this class are auxilliary methods created to help in processing certain
+    in this class are auxiliary methods created to help in processing certain
     requests. """
 
     def get_rule_list(self, name):
@@ -98,7 +98,7 @@ class _Handler(BaseHTTPRequestHandler):
         resource. Hence, we call the handle for processing PUT requests if the
         resource requested does not already exist.
 
-        Currently, when the server recieves a POST request for a resource, we
+        Currently, when the server receives a POST request for a resource, we
         simply append the body data to the existing file and return the new
         file to the client. If the file does not exist, a new file is created
         using the contents of the request body. """
@@ -204,7 +204,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def Response(self, resp_obj):
         self.send_response(resp_obj.response_code)
-        self.finish_headers()
         if resp_obj.response_code == 304:
             raise NoBodyServerError("Conditional get falling to head")
         raise ServerError("Custom Response code sent.")
@@ -329,7 +328,6 @@ class _Handler(BaseHTTPRequestHandler):
         except AuthError as se:
             self.send_response(401, "Authorization Required")
             self.send_challenge(auth_rule.auth_type, auth_rule.auth_parm)
-            self.finish_headers()
             raise se
 
     def handle_auth(self, auth_rule):
@@ -362,7 +360,6 @@ class _Handler(BaseHTTPRequestHandler):
             if header_recd is None or header_recd != exp_headers[header_line]:
                 self.send_error(400, "Expected Header %s not found" %
                                 header_line)
-                self.finish_headers()
                 raise ServerError("Header " + header_line + " not found")
 
     def RejectHeader(self, header_obj):
@@ -372,7 +369,6 @@ class _Handler(BaseHTTPRequestHandler):
             if header_recd and header_recd == rej_headers[header_line]:
                 self.send_error(400, 'Blacklisted Header %s received' %
                                 header_line)
-                self.finish_headers()
                 raise ServerError("Header " + header_line + ' received')
 
     def __log_request(self, method):
@@ -381,7 +377,7 @@ class _Handler(BaseHTTPRequestHandler):
 
     def send_head(self, method):
         """ Common code for GET and HEAD Commands.
-        This method is overriden to use the fileSys dict.
+        This method is overridden to use the fileSys dict.
 
         The method variable contains whether this was a HEAD or a GET Request.
         According to RFC 2616, the server should not differentiate between
@@ -400,6 +396,7 @@ class _Handler(BaseHTTPRequestHandler):
 
             content = self.server.fileSys.get(path)
             content_length = len(content)
+
             for rule_name in self.rules:
                 try:
                     assert hasattr(self, rule_name)
@@ -410,12 +407,16 @@ class _Handler(BaseHTTPRequestHandler):
                     return(None, None)
                 except AuthError as ae:
                     print(ae.__str__())
+                    self.finish_headers()
                     return(None, None)
                 except NoBodyServerError as nbse:
                     print(nbse.__str__())
+                    self.finish_headers()
                     return(None, None)
                 except ServerError as se:
                     print(se.__str__())
+                    self.add_header("Content-Length", content_length)
+                    self.finish_headers()
                     return(content, None)
 
             try:

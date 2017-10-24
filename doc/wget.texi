@@ -193,6 +193,8 @@ options, or via the initialization file @file{.wgetrc} (@pxref{Startup
 File}).  Wget allows you to define @dfn{global} startup files
 (@file{/usr/local/etc/wgetrc} by default) for site settings. You can also
 specify the location of a startup file with the --config option.
+To disable the reading of config files, use --no-config.
+If both --config and --no-config are given, --no-config is ignored.
  
 
 @ignore
@@ -566,7 +568,10 @@ would be resolved to @samp{http://foo/baz/b.html}.
 
 @cindex specify config 
 @item --config=@var{FILE}
-Specify the location of a startup file you wish to use.
+Specify the location of a startup file you wish to use instead of the
+default one(s). Use --no-config to disable reading of config files.
+If both --config and --no-config are given, --no-config is ignored.
+
 
 @item --rejected-log=@var{logfile}
 Logs all URL rejections to @var{logfile} as comma separated values.  The values
@@ -702,6 +707,12 @@ Before (over)writing a file, back up an existing file by adding a
 @samp{.1} suffix (@samp{_1} on VMS) to the file name.  Such backup
 files are rotated to @samp{.2}, @samp{.3}, and so on, up to
 @var{backups} (and lost beyond that).
+
+@cindex authentication credentials
+@item --no-netrc
+Do not try to obtain credentials from @file{.netrc} file. By default
+@file{.netrc} file is searched for credentials in case none have been
+passed on command line and authentication is required.
 
 @cindex continue retrieval
 @cindex incomplete downloads
@@ -1335,6 +1346,11 @@ renamed from @samp{--html-extension}, to better reflect its new
 behavior. The old option name is still acceptable, but should now be
 considered deprecated.
 
+As of version 1.20, Wget will also ensure that any downloaded files with
+a @code{Content-Encoding} of @samp{br}, @samp{compress}, @samp{deflate}
+or @samp{gzip} end in the suffix @samp{.br}, @samp{.Z}, @samp{.zlib}
+and @samp{.gz} respectively.
+
 At some point in the future, this option may well be expanded to
 include suffixes for other types of content, including content types
 that are not parsed by Wget.
@@ -1518,6 +1534,20 @@ wget --header="Host: foo.bar" http://localhost/
 
 In versions of Wget prior to 1.10 such use of @samp{--header} caused
 sending of duplicate headers.
+
+@cindex Content-Encoding, choose
+@item --compression=@var{type}
+Choose the type of compression to be used.  Legal values are
+@samp{auto}, @samp{gzip} and @samp{none}.
+
+If @samp{auto} or @samp{gzip} are specified, Wget asks the server to
+compress the file using the gzip compression format. If the server
+compresses the file and responds with the @code{Content-Encoding}
+header field set appropriately, the file will be decompressed
+automatically. This is the default.
+
+If @samp{none} is specified, wget will not ask the server to compress
+the file and will not decompress any server responses.
 
 @cindex redirect
 @item --max-redirect=@var{number}
@@ -3352,10 +3382,16 @@ Turn globbing on/off---the same as @samp{--glob} and @samp{--no-glob}.
 Define a header for HTTP downloads, like using
 @samp{--header=@var{string}}.
 
+@item compression = @var{string}
+Choose the compression type to be used.  Legal values are @samp{auto}
+(the default), @samp{gzip}, and @samp{none}.  The same as
+@samp{--compression=@var{string}}.
+
 @item adjust_extension = on/off
 Add a @samp{.html} extension to @samp{text/html} or
-@samp{application/xhtml+xml} files that lack one, or a @samp{.css}
-extension to @samp{text/css} files that lack one, like
+@samp{application/xhtml+xml} files that lack one, a @samp{.css}
+extension to @samp{text/css} files that lack one, and a @samp{.br},
+@samp{.Z}, @samp{.zlib} or @samp{.gz} to compressed files like
 @samp{-E}. Previously named @samp{html_extension} (still acceptable,
 but deprecated).
 
@@ -4266,7 +4302,7 @@ server.
 
 Until version 1.8, Wget supported the first version of the standard,
 written by Martijn Koster in 1994 and available at
-@url{http://www.robotstxt.org/robotstxt.html}.  As of version 1.8,
+@url{http://www.robotstxt.org/orig.html}.  As of version 1.8,
 Wget has supported the additional directives specified in the internet
 draft @samp{<draft-koster-robots-00.txt>} titled ``A Method for Web
 Robots Control''.  The draft, which has as far as I know never made to
@@ -4285,7 +4321,7 @@ this:
 @end example
 
 This is explained in some detail at
-@url{http://www.robotstxt.org/wc/meta-user.html}.  Wget supports this
+@url{http://www.robotstxt.org/meta.html}.  Wget supports this
 method of robot exclusion in addition to the usual @file{/robots.txt}
 exclusion.
 

@@ -32,9 +32,9 @@ as that of the covered work.  */
 
 #ifdef HAVE_HSTS
 #include "hsts.h"
+#include "utils.h"
 #include "host.h" /* for is_valid_ip_address() */
 #include "init.h" /* for home_dir() */
-#include "utils.h"
 #include "hash.h"
 #include "c-ctype.h"
 #ifdef TESTING
@@ -443,7 +443,6 @@ hsts_store_entry (hsts_store_t store,
   enum hsts_kh_match match = NO_MATCH;
   struct hsts_kh *kh = xnew(struct hsts_kh);
   struct hsts_kh_info *entry = NULL;
-  time_t t = 0;
 
   if (hsts_is_host_eligible (scheme, host))
     {
@@ -458,17 +457,18 @@ hsts_store_entry (hsts_store_t store,
             }
           else if (max_age > 0)
             {
-              if (entry->max_age != max_age ||
-                  entry->include_subdomains != include_subdomains)
+              /* RFC 6797 states that 'max_age' is a TTL relative to the
+               * reception of the STS header so we have to update the
+               * 'created' field too. The RFC also states that we have to
+               * update the entry each time we see HSTS header.
+               * See also Section 11.2. */
+              time_t t = time (NULL);
+
+              if (t != -1 && t != entry->created)
                 {
-                  /* RFC 6797 states that 'max_age' is a TTL relative to the reception of the STS header
-                     so we have to update the 'created' field too */
-                  t = time (NULL);
-                  if (t != -1)
-                    entry->created = t;
+                  entry->created = t;
                   entry->max_age = max_age;
                   entry->include_subdomains = include_subdomains;
-
                   store->changed = true;
                 }
             }
@@ -500,18 +500,19 @@ hsts_store_t
 hsts_store_open (const char *filename)
 {
   hsts_store_t store = NULL;
+  file_stats_t fstats;
 
   store = xnew0 (struct hsts_store);
   store->table = hash_table_new (0, hsts_hash_func, hsts_cmp_func);
   store->last_mtime = 0;
   store->changed = false;
 
-  if (file_exists_p (filename))
+  if (file_exists_p (filename, &fstats))
     {
       if (hsts_file_access_valid (filename))
         {
           struct stat st;
-          FILE *fp = fopen (filename, "r");
+          FILE *fp = fopen_stat (filename, "r", &fstats);
 
           if (!fp || !hsts_read_database (store, fp, false))
             {

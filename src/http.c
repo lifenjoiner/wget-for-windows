@@ -1539,6 +1539,16 @@ persistent_available_p (const char *host, int port, bool ssl,
   fd = -1;                                      \
 } while (0)
 
+typedef enum
+{
+  ENC_INVALID = -1,             /* invalid encoding */
+  ENC_NONE = 0,                 /* no special encoding */
+  ENC_GZIP,                     /* gzip compression */
+  ENC_DEFLATE,                  /* deflate compression */
+  ENC_COMPRESS,                 /* compress compression */
+  ENC_BROTLI                    /* brotli compression */
+} encoding_t;
+
 struct http_stat
 {
   wgint len;                    /* received length */
@@ -1569,6 +1579,10 @@ struct http_stat
 #ifdef HAVE_METALINK
   metalink_t *metalink;
 #endif
+
+  encoding_t local_encoding;    /* the encoding of the local file */
+  encoding_t remote_encoding;   /* the encoding of the remote file */
+
   bool temporary;               /* downloading a temporary file */
 };
 
@@ -1679,6 +1693,9 @@ read_response_body (struct http_stat *hs, int sock, FILE *fp, wgint contlen,
     flags |= rb_skip_startpos;
   if (chunked_transfer_encoding)
     flags |= rb_chunked_transfer_encoding;
+
+  if (hs->remote_encoding == ENC_GZIP)
+    flags |= rb_compressed_gzip;
 
   hs->len = hs->restval;
   hs->rd_size = 0;
@@ -1873,7 +1890,12 @@ initialize_request (const struct url *u, struct http_stat *hs, int *dt, struct u
                         rel_value);
   SET_USER_AGENT (req);
   request_set_header (req, "Accept", "*/*", rel_none);
-  request_set_header (req, "Accept-Encoding", "identity", rel_none);
+#ifdef HAVE_LIBZ
+  if (opt.compression != compression_none)
+    request_set_header (req, "Accept-Encoding", "gzip", rel_none);
+  else
+#endif
+    request_set_header (req, "Accept-Encoding", "identity", rel_none);
 
   /* Find the username with priority */
   if (u->user)
@@ -1900,7 +1922,7 @@ initialize_request (const struct url *u, struct http_stat *hs, int *dt, struct u
     *passwd = NULL;
 
   /* Check for ~/.netrc if none of the above match */
-  if (opt.netrc && (!user || (!passwd || !*passwd)))
+  if (opt.netrc && (!*user || !*passwd))
     search_netrc (u->host, (const char **) user, (const char **) passwd, 0);
 
   /* We only do "site-wide" authentication with "global" user/password
@@ -2290,7 +2312,7 @@ check_file_output (const struct url *u, struct http_stat *hs,
     }
 
   /* TODO: perform this check only once. */
-  if (!hs->existence_checked && file_exists_p (hs->local_file))
+  if (!hs->existence_checked && file_exists_p (hs->local_file, NULL))
     {
       if (opt.noclobber && !opt.output_document)
         {
@@ -2486,7 +2508,7 @@ open_output_stream (struct http_stat *hs, int count, FILE **fp)
         }
       else if (ALLOW_CLOBBER || count > 0)
         {
-          if (opt.unlink_requested && file_exists_p (hs->local_file))
+          if (opt.unlink_requested && file_exists_p (hs->local_file, NULL))
             {
               if (unlink (hs->local_file) < 0)
                 {
@@ -2552,14 +2574,14 @@ set_content_type (int *dt, const char *type)
      of the multitude of broken CGI's that "forget" to generate the
      content-type.  */
   if (!type ||
-      0 == strncasecmp (type, TEXTHTML_S, strlen (TEXTHTML_S)) ||
-      0 == strncasecmp (type, TEXTXHTML_S, strlen (TEXTXHTML_S)))
+      0 == c_strcasecmp (type, TEXTHTML_S) ||
+      0 == c_strcasecmp (type, TEXTXHTML_S))
     *dt |= TEXTHTML;
   else
     *dt &= ~TEXTHTML;
 
   if (type &&
-      0 == strncasecmp (type, TEXTCSS_S, strlen (TEXTCSS_S)))
+      0 == c_strcasecmp (type, TEXTCSS_S))
     *dt |= TEXTCSS;
   else
     *dt &= ~TEXTCSS;
@@ -2998,7 +3020,7 @@ skip_content_type:
           char *bin_hash = alloca (dig_hash_str_len * 3 / 4 + 1);
           ssize_t hash_bin_len;
 
-          hash_bin_len = wget_base64_decode (dig_hash, bin_hash);
+          hash_bin_len = wget_base64_decode (dig_hash, bin_hash, dig_hash_str_len * 3 / 4 + 1);
 
           /* Detect malformed base64 input.  */
           if (hash_bin_len < 0)
@@ -3189,6 +3211,8 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
   xfree (hs->remote_time);
   hs->error = NULL;
   hs->message = NULL;
+  hs->local_encoding = ENC_NONE;
+  hs->remote_encoding = ENC_NONE;
 
   conn = u;
 
@@ -3476,7 +3500,7 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
 
 #ifdef HAVE_METALINK
   /* We need to check for the Metalink data in the very first response
-     we get from the server (before redirectionrs, authorization, etc.).  */
+     we get from the server (before redirections, authorization, etc.).  */
   if (metalink)
     {
       hs->metalink = metalink_from_http (resp, hs, u);
@@ -3496,7 +3520,7 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
       uerr_t auth_err = RETROK;
       bool retry;
       /* Normally we are not interested in the response body.
-         But if we are writing a WARC file we are: we like to keep everyting.  */
+         But if we are writing a WARC file we are: we like to keep everything.  */
       if (warc_enabled)
         {
           int _err;
@@ -3555,20 +3579,6 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
       if (ntlm_seen)
         pconn.authorized = true;
     }
-
-  if (statcode == HTTP_STATUS_GATEWAY_TIMEOUT)
-    {
-      hs->len = 0;
-      hs->res = 0;
-      hs->restval = 0;
-
-      CLOSE_FINISH (sock);
-      xfree (hs->message);
-
-      retval = GATEWAYTIMEOUT;
-      goto cleanup;
-    }
-
 
   {
     uerr_t ret = check_file_output (u, hs, resp, hdrval, sizeof hdrval);
@@ -3639,6 +3649,8 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
     }
   hs->newloc = resp_header_strdup (resp, "Location");
   hs->remote_time = resp_header_strdup (resp, "Last-Modified");
+  if (!hs->remote_time) // now look for the Wayback Machine's timestamp
+    hs->remote_time = resp_header_strdup (resp, "X-Archive-Orig-last-modified");
 
   if (resp_header_copy (resp, "Content-Range", hdrval, sizeof (hdrval)))
     {
@@ -3649,6 +3661,73 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
           contrange = first_byte_pos;
           contlen = last_byte_pos - first_byte_pos + 1;
         }
+    }
+
+  if (resp_header_copy (resp, "Content-Encoding", hdrval, sizeof (hdrval)))
+    {
+      hs->local_encoding = ENC_INVALID;
+
+      switch (hdrval[0])
+        {
+        case 'b': case 'B':
+          if (0 == c_strcasecmp(hdrval, "br"))
+            hs->local_encoding = ENC_BROTLI;
+          break;
+        case 'c': case 'C':
+          if (0 == c_strcasecmp(hdrval, "compress"))
+            hs->local_encoding = ENC_COMPRESS;
+          break;
+        case 'd': case 'D':
+          if (0 == c_strcasecmp(hdrval, "deflate"))
+            hs->local_encoding = ENC_DEFLATE;
+          break;
+        case 'g': case 'G':
+          if (0 == c_strcasecmp(hdrval, "gzip"))
+            hs->local_encoding = ENC_GZIP;
+          break;
+        case 'i': case 'I':
+          if (0 == c_strcasecmp(hdrval, "identity"))
+            hs->local_encoding = ENC_NONE;
+          break;
+        case 'x': case 'X':
+          if (0 == c_strcasecmp(hdrval, "x-compress"))
+            hs->local_encoding = ENC_COMPRESS;
+          else if (0 == c_strcasecmp(hdrval, "x-gzip"))
+            hs->local_encoding = ENC_GZIP;
+          break;
+        case '\0':
+          hs->local_encoding = ENC_NONE;
+        }
+
+      if (hs->local_encoding == ENC_INVALID)
+        {
+          DEBUGP (("Unrecognized Content-Encoding: %s\n", hdrval));
+          hs->local_encoding = ENC_NONE;
+        }
+#ifdef HAVE_LIBZ
+      else if (hs->local_encoding == ENC_GZIP
+               && opt.compression != compression_none)
+        {
+          /* Make sure the Content-Type is not gzip before decompressing */
+          const char * p = strchr (type, '/');
+          if (p == NULL)
+            {
+              hs->remote_encoding = ENC_GZIP;
+              hs->local_encoding = ENC_NONE;
+            }
+          else
+            {
+              p++;
+              if (c_tolower(p[0]) == 'x' && p[1] == '-')
+                p += 2;
+              if (0 != c_strcasecmp (p, "gzip"))
+                {
+                  hs->remote_encoding = ENC_GZIP;
+                  hs->local_encoding = ENC_NONE;
+                }
+            }
+        }
+#endif
     }
 
   /* 20x responses are counted among successful by default.  */
@@ -3763,8 +3842,51 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
 
   set_content_type (dt, type);
 
+  if (cond_get)
+    {
+      if (statcode == HTTP_STATUS_NOT_MODIFIED)
+        {
+          logprintf (LOG_VERBOSE,
+                     _ ("File %s not modified on server. Omitting download.\n\n"),
+                     quote (hs->local_file));
+          *dt |= RETROKF;
+          CLOSE_FINISH (sock);
+          retval = RETRUNNEEDED;
+          goto cleanup;
+        }
+    }
+
   if (opt.adjust_extension)
     {
+      const char *encoding_ext = NULL;
+      switch (hs->local_encoding)
+        {
+        case ENC_INVALID:
+        case ENC_NONE:
+          break;
+        case ENC_BROTLI:
+          encoding_ext = ".br";
+          break;
+        case ENC_COMPRESS:
+          encoding_ext = ".Z";
+          break;
+        case ENC_DEFLATE:
+          encoding_ext = ".zlib";
+          break;
+        case ENC_GZIP:
+          encoding_ext = ".gz";
+          break;
+        default:
+          DEBUGP (("No extension found for encoding %d\n",
+                   hs->local_encoding));
+      }
+      if (encoding_ext != NULL)
+        {
+          char *file_ext = strrchr (hs->local_file, '.');
+          /* strip Content-Encoding extension (it will be re-added later) */
+          if (file_ext != NULL && 0 == strcasecmp (file_ext, encoding_ext))
+            *file_ext = '\0';
+        }
       if (*dt & TEXTHTML)
         /* -E / --adjust-extension / adjust_extension = on was specified,
            and this is a text/html file.  If some case-insensitive
@@ -3777,22 +3899,16 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
         {
           ensure_extension (hs, ".css", dt);
         }
+      if (encoding_ext != NULL)
+        {
+          ensure_extension (hs, encoding_ext, dt);
+        }
     }
 
   if (cond_get)
     {
-      if (statcode == HTTP_STATUS_NOT_MODIFIED)
-        {
-          logprintf (LOG_VERBOSE,
-                     _("File %s not modified on server. Omitting download.\n\n"),
-                     quote (hs->local_file));
-          *dt |= RETROKF;
-          CLOSE_FINISH (sock);
-          retval = RETRUNNEEDED;
-          goto cleanup;
-        }
       /* Handle the case when server ignores If-Modified-Since header.  */
-      else if (statcode == HTTP_STATUS_OK && hs->remote_time)
+      if (statcode == HTTP_STATUS_OK && hs->remote_time)
         {
           time_t tmr = http_atotm (hs->remote_time);
 
@@ -3814,6 +3930,16 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
         }
     }
 
+  if (statcode == HTTP_STATUS_RANGE_NOT_SATISFIABLE
+      && hs->restval < (contlen + contrange))
+    {
+      /* The file was not completely downloaded,
+         yet the server claims the range is invalid.
+         Bail out.  */
+      CLOSE_INVALIDATE (sock);
+      retval = RANGEERR;
+      goto cleanup;
+    }
   if (statcode == HTTP_STATUS_RANGE_NOT_SATISFIABLE
       || (!opt.timestamping && hs->restval > 0 && statcode == HTTP_STATUS_OK
           && contrange == 0 && contlen >= 0 && hs->restval >= contlen))
@@ -3847,6 +3973,9 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
       goto cleanup;
     }
   if (contlen == -1)
+    hs->contlen = -1;
+  /* If the response is gzipped, the uncompressed size is unknown. */
+  else if (hs->remote_encoding == ENC_GZIP)
     hs->contlen = -1;
   else
     hs->contlen = contlen + contrange;
@@ -3910,8 +4039,8 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
               retval = _err;
               goto cleanup;
             }
-          else
-            CLOSE_FINISH (sock);
+
+          CLOSE_FINISH (sock);
         }
       else
         {
@@ -3934,7 +4063,11 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
             CLOSE_INVALIDATE (sock);
         }
 
-      retval = RETRFINISHED;
+      if (statcode == HTTP_STATUS_GATEWAY_TIMEOUT)
+        retval = GATEWAYTIMEOUT;
+      else
+        retval = RETRFINISHED;
+
       goto cleanup;
     }
 
@@ -4060,7 +4193,7 @@ http_loop (const struct url *u, struct url *original_url, char **newloc,
       got_name = true;
     }
 
-  if (got_name && file_exists_p (hstat.local_file) && opt.noclobber && !opt.output_document)
+  if (got_name && file_exists_p (hstat.local_file, NULL) && opt.noclobber && !opt.output_document)
     {
       /* If opt.noclobber is turned on and file already exists, do not
          retrieve the file. But if the output_document was given, then this
@@ -4097,7 +4230,7 @@ http_loop (const struct url *u, struct url *original_url, char **newloc,
     {
       /* Use conditional get request if requested
        * and if timestamp is known at this moment.  */
-      if (opt.if_modified_since && !send_head_first && got_name && file_exists_p (hstat.local_file))
+      if (opt.if_modified_since && !send_head_first && got_name && file_exists_p (hstat.local_file, NULL))
         {
           *dt |= IF_MODIFIED_SINCE;
           {
@@ -4108,7 +4241,7 @@ http_loop (const struct url *u, struct url *original_url, char **newloc,
         }
         /* Send preliminary HEAD request if -N is given and we have existing
          * destination file or content disposition is enabled.  */
-      else if (opt.content_disposition || file_exists_p (hstat.local_file))
+      else if (opt.content_disposition || file_exists_p (hstat.local_file, NULL))
         send_head_first = true;
     }
 
@@ -4208,6 +4341,8 @@ http_loop (const struct url *u, struct url *original_url, char **newloc,
              bring them to "while" statement at the end, to judge
              whether the number of tries was exceeded.  */
           printwhat (count, opt.ntry);
+          xfree (hstat.message);
+          xfree (hstat.error);
           continue;
         case FWRITEERR: case FOPENERR:
           /* Another fatal error.  */
@@ -5111,13 +5246,13 @@ ensure_extension (struct http_stat *hs, const char *ext, int *dt)
       strcpy (hs->local_file + local_filename_len, ext);
       /* If clobbering is not allowed and the file, as named,
          exists, tack on ".NUMBER.html" instead. */
-      if (!ALLOW_CLOBBER && file_exists_p (hs->local_file))
+      if (!ALLOW_CLOBBER && file_exists_p (hs->local_file, NULL))
         {
           int ext_num = 1;
           do
             sprintf (hs->local_file + local_filename_len,
                      ".%d%s", ext_num++, ext);
-          while (file_exists_p (hs->local_file));
+          while (file_exists_p (hs->local_file, NULL));
         }
       *dt |= ADDED_HTML_EXTENSION;
     }
