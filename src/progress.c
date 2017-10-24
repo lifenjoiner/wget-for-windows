@@ -845,8 +845,9 @@ static int count_cols (const char *mbs) { return (int) strlen(mbs); }
 static int
 cols_to_bytes (const char *mbs _GL_UNUSED, const int cols, int *ncols)
 {
-  *ncols = cols;
-  return cols;
+  int n = count_cols (mbs);
+  *ncols = n < cols ? n : cols;
+  return *ncols;
 }
 #endif
 
