@@ -37,7 +37,7 @@ as that of the covered work.  */
 #include <string.h>
 #include <signal.h>
 #include <spawn.h>
-#ifdef ENABLE_NLS
+#if defined(ENABLE_NLS) || defined(WINDOWS)
 # include <locale.h>
 #endif
 #include <assert.h>
@@ -74,6 +74,9 @@ as that of the covered work.  */
 #ifdef WINDOWS
 # include <io.h>
 # include <fcntl.h>
+#ifndef ENABLE_NLS
+# include <mbctype.h>
+#endif
 #endif
 
 #ifdef __VMS
@@ -141,6 +144,11 @@ redirect_output_signal (int sig)
 static void
 i18n_initialize (void)
 {
+#if defined(WINDOWS) && !defined(ENABLE_NLS)
+  char MBCP[8] = "";
+  int CP;
+#endif
+
   /* ENABLE_NLS implies existence of functions invoked here.  */
 #ifdef ENABLE_NLS
   /* Set the current locale.  */
@@ -149,6 +157,13 @@ i18n_initialize (void)
   bindtextdomain ("wget", LOCALEDIR);
   textdomain ("wget");
 #endif /* ENABLE_NLS */
+
+#if defined(WINDOWS) && !defined(ENABLE_NLS)
+  CP = _getmbcp(); /* Consider it's different from default. */
+  if (CP > 0)
+    sprintf(MBCP, ".%d", CP);
+  setlocale(LC_ALL, MBCP);
+#endif
 }
 
 #ifdef HAVE_HSTS
@@ -1519,6 +1534,9 @@ main (int argc, char **argv)
 
   nurl = argc - optind;
 
+  /* Initialize logging ASAP.  */
+  log_init (opt.lfilename, append_to_log);
+
   /* If we do not have Debug support compiled in AND Wget is invoked with the
    * --debug switch, instead of failing, we silently turn it into a no-op. For
    *  this no-op, we explicitly set opt.debug to false and hence none of the
@@ -1624,8 +1642,8 @@ for details.\n\n"));
            {
               /* Check if output file exists; if it does, exit. */
               logprintf (LOG_VERBOSE,
-                         _("File `%s' already there; not retrieving.\n"),
-                         opt.output_document);
+                         _("File %s already there; not retrieving.\n"),
+                         quote (opt.output_document));
               exit (WGET_EXIT_GENERIC_ERROR);
            }
     }
@@ -1861,9 +1879,6 @@ for details.\n\n"));
         url[i] = xstrdup (argv[optind]);
     }
   url[i] = NULL;
-
-  /* Initialize logging.  */
-  log_init (opt.lfilename, append_to_log);
 
   /* Open WARC file. */
   if (opt.warc_filename != 0)
