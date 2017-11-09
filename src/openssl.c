@@ -54,6 +54,30 @@ as that of the covered work.  */
 
 #ifdef WINDOWS
 # include <w32sock.h>
+//# include <wincrypt.h> // X509_NAME conflicts!
+#define PKCS_7_ASN_ENCODING     0x00010000
+
+typedef void *HCERTSTORE;
+typedef ULONG_PTR HCRYPTPROV_LEGACY;
+
+typedef struct _CERT_CONTEXT
+{
+    unsigned int dwCertEncodingType;
+    unsigned char *pbCertEncoded;
+    unsigned int cbCertEncoded;
+    void* pCertInfo;
+    void* hCertStore;
+} CERT_CONTEXT, *PCERT_CONTEXT;
+typedef CERT_CONTEXT *PCCERT_CONTEXT;
+
+HCERTSTORE WINAPI CertOpenSystemStoreA(
+    HCRYPTPROV_LEGACY hProv,
+    LPCSTR szSubsystemProtocol
+);
+PCCERT_CONTEXT WINAPI CertEnumCertificatesInStore(
+    HCERTSTORE hCertStore,
+    PCCERT_CONTEXT pPrevCertContext
+);
 #endif
 
 /* Application-wide SSL context.  This is common to all SSL
@@ -169,71 +193,6 @@ static int ssl_true_initialized = 0;
 
    Returns true on success, false otherwise.  */
 
-/* Start: Windows SSL Cert Changes */
-#ifdef WINDOWS
-/* Local version of CERT_CONTEXT, to prevent from bringing in a specific
-   version of the Windows SDK */
-typedef struct _CERT_CONTEXT
-{
-    unsigned int dwCertEncodingType;
-    unsigned char *pbCertEncoded;
-    unsigned int cbCertEncoded;
-    void* pCertInfo;
-    void* hCertStore;
-} CERT_CONTEXT, *PCERT_CONTEXT;typedef const CERT_CONTEXT *PCCERT_CONTEXT;
-
-/* Load crypt32.dll manually to prevent bringing it in unless used */
-HMODULE Local_Crypt32()
-{
-    static HMODULE ret = NULL;
-    if (!ret)
-    {
-        ret = LoadLibraryA("Crypt32.dll");
-    }
-    return ret;
-}
-
-/* Bounce these APIs to our loaded version of crypt32.dll */
-void* Local_CertOpenSystemStoreA(void* hprov, char* szSubsystemProtocol)
-{
-    if (Local_Crypt32())
-    {
-        static FARPROC ret = NULL;
-        if (!ret)
-        {
-            ret = GetProcAddress(Local_Crypt32(), "CertOpenSystemStoreA");
-        }
-        if (ret)
-        {
-            typedef void* (WINAPI * PFN_Func)(void*, char*);
-            return ((PFN_Func) ret)(hprov, szSubsystemProtocol);
-        }
-    }
-    return NULL;
-}
-
-void* Local_CertEnumCertificatesInStore(void* hCertStore, void* pPrevCertContext)
-{
-    if (Local_Crypt32())
-    {
-        static FARPROC ret = NULL;
-        if (!ret)
-        {
-            ret = GetProcAddress(Local_Crypt32(), "CertEnumCertificatesInStore");
-        }
-        if (ret)
-        {
-            typedef void* (WINAPI * PFN_Func)(void*, void*);
-            return ((PFN_Func) ret)(hCertStore, pPrevCertContext);
-        }
-    }
-    return NULL;
-}
-
-#define PKCS_7_ASN_ENCODING         0x00010000
-#endif
-/* End: Windows SSL Cert Changes */
-
 bool
 ssl_init (void)
 {
@@ -344,21 +303,23 @@ ssl_init (void)
   if (!opt.ca_cert)
   {
     /* Open the default Windows cert store */
-    void* hStore = Local_CertOpenSystemStoreA(NULL, "ROOT");
+    void* hStore = CertOpenSystemStoreA(NULL, "ROOT");
     if (hStore)
     {
       /* And then open the OpenSSL store */
       X509_STORE * store = SSL_CTX_get_cert_store(ssl_ctx);
       CERT_CONTEXT * pCertCtx = NULL;
       /* Loop through all the certs in the Windows cert store */
-      for ( pCertCtx = Local_CertEnumCertificatesInStore(hStore, NULL);
+      for ( pCertCtx = CertEnumCertificatesInStore(hStore, NULL);
           pCertCtx != NULL;
-          pCertCtx = Local_CertEnumCertificatesInStore(hStore, pCertCtx) )
+          pCertCtx = CertEnumCertificatesInStore(hStore, pCertCtx) )
       {
-        if (!((pCertCtx->dwCertEncodingType & PKCS_7_ASN_ENCODING) == PKCS_7_ASN_ENCODING))
+        if ((pCertCtx->dwCertEncodingType & PKCS_7_ASN_ENCODING) != PKCS_7_ASN_ENCODING)
         {
           /* Add all certs we find to OpenSSL's store */
-          X509 *cert = d2i_X509(NULL, (const unsigned char**)&pCertCtx->pbCertEncoded, pCertCtx->cbCertEncoded);
+          X509 *cert = d2i_X509(NULL,
+                            (const unsigned char**)&pCertCtx->pbCertEncoded,
+                            pCertCtx->cbCertEncoded);
           X509_STORE_add_cert(store, cert);
           X509_free(cert);
         }
