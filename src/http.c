@@ -104,7 +104,8 @@ static struct cookie_jar *wget_cookie_jar;
 #define H_REDIRECTED(x) ((x) == HTTP_STATUS_MOVED_PERMANENTLY          \
                          || (x) == HTTP_STATUS_MOVED_TEMPORARILY       \
                          || (x) == HTTP_STATUS_SEE_OTHER               \
-                         || (x) == HTTP_STATUS_TEMPORARY_REDIRECT)
+                         || (x) == HTTP_STATUS_TEMPORARY_REDIRECT      \
+                         || (x) == HTTP_STATUS_PERMANENT_REDIRECT)
 
 /* HTTP/1.0 status codes from RFC1945, provided for reference.  */
 /* Successful 2xx.  */
@@ -121,6 +122,7 @@ static struct cookie_jar *wget_cookie_jar;
 #define HTTP_STATUS_SEE_OTHER             303 /* from HTTP/1.1 */
 #define HTTP_STATUS_NOT_MODIFIED          304
 #define HTTP_STATUS_TEMPORARY_REDIRECT    307 /* from HTTP/1.1 */
+#define HTTP_STATUS_PERMANENT_REDIRECT    308 /* from HTTP/1.1 */
 
 /* Client error 4xx.  */
 #define HTTP_STATUS_BAD_REQUEST           400
@@ -1867,7 +1869,7 @@ initialize_request (const struct url *u, struct http_stat *hs, int *dt, struct u
   if (*dt & SEND_NOCACHE)
     {
       /* Cache-Control MUST be obeyed by all HTTP/1.1 caching mechanisms...  */
-      request_set_header (req, "Cache-Control", "no-cache, must-revalidate", rel_none);
+      request_set_header (req, "Cache-Control", "no-cache", rel_none);
 
       /* ... but some HTTP/1.0 caches doesn't implement Cache-Control.  */
       request_set_header (req, "Pragma", "no-cache", rel_none);
@@ -3712,22 +3714,30 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
                && opt.compression != compression_none)
         {
           /* Make sure the Content-Type is not gzip before decompressing */
-          const char * p = strchr (type, '/');
-          if (p == NULL)
+          if (type)
             {
-              hs->remote_encoding = ENC_GZIP;
-              hs->local_encoding = ENC_NONE;
-            }
-          else
-            {
-              p++;
-              if (c_tolower(p[0]) == 'x' && p[1] == '-')
-                p += 2;
-              if (0 != c_strcasecmp (p, "gzip"))
+              const char * p = strchr (type, '/');
+              if (p == NULL)
                 {
                   hs->remote_encoding = ENC_GZIP;
                   hs->local_encoding = ENC_NONE;
                 }
+              else
+                {
+                  p++;
+                  if (c_tolower(p[0]) == 'x' && p[1] == '-')
+                    p += 2;
+                  if (0 != c_strcasecmp (p, "gzip"))
+                    {
+                      hs->remote_encoding = ENC_GZIP;
+                      hs->local_encoding = ENC_NONE;
+                    }
+                }
+            }
+          else
+            {
+               hs->remote_encoding = ENC_GZIP;
+               hs->local_encoding = ENC_NONE;
             }
         }
 #endif
@@ -3821,6 +3831,7 @@ gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
           switch (statcode)
             {
             case HTTP_STATUS_TEMPORARY_REDIRECT:
+            case HTTP_STATUS_PERMANENT_REDIRECT:
               retval = NEWLOCATION_KEEP_POST;
               goto cleanup;
             case HTTP_STATUS_MOVED_PERMANENTLY:
