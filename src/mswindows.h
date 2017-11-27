@@ -96,6 +96,7 @@ const char *inet_ntop (int, const void *, char *, socklen_t);
 /* Public functions.  */
 
 void ws_startup (void);
+void ws_cleanup (void);
 void ws_changetitle (const char *);
 void ws_percenttitle (double);
 char *ws_mypath (void);

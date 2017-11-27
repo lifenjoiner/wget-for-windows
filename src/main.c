@@ -2220,6 +2220,10 @@ only if outputting to a regular file.\n"));
   if ((opt.convert_links || opt.convert_file_only) && !opt.delete_after)
     convert_all_links ();
 
+#ifdef WINDOWS
+  ws_cleanup ();
+#endif
+
   cleanup ();
 
   exit (get_exit_status ());

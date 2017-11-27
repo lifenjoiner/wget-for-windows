@@ -83,7 +83,7 @@ windows_main (char **exec_name)
     *p = '\0';
 }
 
-static void
+void
 ws_cleanup (void)
 {
   xfree (exec_name);
