@@ -1644,7 +1644,7 @@ for details.\n\n"));
               logprintf (LOG_VERBOSE,
                          _("File %s already there; not retrieving.\n"),
                          quote (opt.output_document));
-              exit (WGET_EXIT_GENERIC_ERROR);
+              exit (WGET_EXIT_SUCCESS);
            }
     }
 
