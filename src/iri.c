@@ -38,10 +38,13 @@ as that of the covered work.  */
 #ifdef HAVE_ICONV
 # include <iconv.h>
 #endif
+
+#ifdef ENABLE_IRI
 #include <idn2.h>
 #if IDN2_VERSION_NUMBER < 0x00140000
 # include <unicase.h>
 # include <unistr.h>
+#endif
 #endif
 
 #include "utils.h"
@@ -248,6 +251,8 @@ locale_to_utf8 (const char *str)
   return str;
 }
 
+#ifdef ENABLE_IRI
+
 /* Try to "ASCII encode" UTF-8 host. Return the new domain on success or NULL
    on error. */
 char *
@@ -338,6 +343,8 @@ idn_decode (const char *host)
    * To keep at least the debug output format, return a cloned host. */
   return xstrdup(host);
 }
+
+#endif
 
 /* Try to transcode string str from remote encoding to UTF-8. On success, *new
    contains the transcoded string. *new content is unspecified otherwise. */

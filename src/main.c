@@ -91,7 +91,7 @@ as that of the covered work.  */
 # define PATH_SEPARATOR '/'
 #endif
 
-#ifndef ENABLE_IRI
+#ifndef HAVE_ICONV
 struct iri dummy_iri;
 #endif
 
@@ -1681,7 +1681,7 @@ for details.\n\n"));
               logprintf (LOG_VERBOSE,
                          _("File %s already there; not retrieving.\n"),
                          quote (opt.output_document));
-              exit (WGET_EXIT_GENERIC_ERROR);
+              exit (WGET_EXIT_SUCCESS);
            }
     }
 
@@ -1874,7 +1874,7 @@ for details.\n\n"));
           }
     }
 
-#ifdef ENABLE_IRI
+#ifdef HAVE_ICONV
   if (opt.enable_iri)
     {
       if (opt.locale && !check_encoding_name (opt.locale))
@@ -2289,6 +2289,10 @@ only if outputting to a regular file.\n"));
 
   if ((opt.convert_links || opt.convert_file_only) && !opt.delete_after)
     convert_all_links ();
+
+#ifdef WINDOWS
+  ws_cleanup ();
+#endif
 
   cleanup ();
 

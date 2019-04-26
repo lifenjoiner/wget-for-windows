@@ -242,7 +242,7 @@ retrieve_tree (struct url *start_url_parsed, struct iri *pi)
       i->utf8_encode = pi->utf8_encode;
 #undef COPYSTR
     }
-#ifdef ENABLE_IRI
+#ifdef HAVE_ICONV
   else
     set_uri_encoding (i, opt.locale, true);
 #endif

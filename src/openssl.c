@@ -56,6 +56,30 @@ as that of the covered work.  */
 
 #ifdef WINDOWS
 # include <w32sock.h>
+//# include <wincrypt.h> // X509_NAME conflicts!
+#define PKCS_7_ASN_ENCODING     0x00010000
+
+typedef void *HCERTSTORE;
+typedef ULONG_PTR HCRYPTPROV_LEGACY;
+
+typedef struct _CERT_CONTEXT
+{
+    unsigned int dwCertEncodingType;
+    unsigned char *pbCertEncoded;
+    unsigned int cbCertEncoded;
+    void* pCertInfo;
+    void* hCertStore;
+} CERT_CONTEXT, *PCERT_CONTEXT;
+typedef CERT_CONTEXT *PCCERT_CONTEXT;
+
+HCERTSTORE WINAPI CertOpenSystemStoreA(
+    HCRYPTPROV_LEGACY hProv,
+    LPCSTR szSubsystemProtocol
+);
+PCCERT_CONTEXT WINAPI CertEnumCertificatesInStore(
+    HCERTSTORE hCertStore,
+    PCCERT_CONTEXT pPrevCertContext
+);
 #endif
 
 /* Application-wide SSL context.  This is common to all SSL
@@ -326,6 +350,39 @@ ssl_init (void)
     }
 
   SSL_CTX_set_default_verify_paths (ssl_ctx);
+
+  /* Start: Windows SSL Cert Changes */
+#ifdef WINDOWS
+  /* Only attempt to use the Windows store if one is not specified */
+  if (!opt.ca_cert)
+  {
+    /* Open the default Windows cert store */
+    void* hStore = CertOpenSystemStoreA(NULL, "ROOT");
+    if (hStore)
+    {
+      /* And then open the OpenSSL store */
+      X509_STORE * store = SSL_CTX_get_cert_store(ssl_ctx);
+      CERT_CONTEXT * pCertCtx = NULL;
+      /* Loop through all the certs in the Windows cert store */
+      for ( pCertCtx = CertEnumCertificatesInStore(hStore, NULL);
+          pCertCtx != NULL;
+          pCertCtx = CertEnumCertificatesInStore(hStore, pCertCtx) )
+      {
+        if ((pCertCtx->dwCertEncodingType & PKCS_7_ASN_ENCODING) != PKCS_7_ASN_ENCODING)
+        {
+          /* Add all certs we find to OpenSSL's store */
+          X509 *cert = d2i_X509(NULL,
+                            (const unsigned char**)&pCertCtx->pbCertEncoded,
+                            pCertCtx->cbCertEncoded);
+          X509_STORE_add_cert(store, cert);
+          X509_free(cert);
+        }
+      }
+    }
+  }
+#endif
+  /* End: Windows SSL Cert Changes */
+
   SSL_CTX_load_verify_locations (ssl_ctx, opt.ca_cert, opt.ca_directory);
 
 #ifdef X509_V_FLAG_PARTIAL_CHAIN
