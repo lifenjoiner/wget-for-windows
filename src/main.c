@@ -1,7 +1,5 @@
 /* Command line parsing.
-   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-   2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014, 2015 Free
-   Software Foundation, Inc.
+   Copyright (C) 1996-2015, 2018-2019 Free Software Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -66,6 +64,12 @@ as that of the covered work.  */
 #include <getpass.h>
 #include <quote.h>
 
+#ifdef TESTING
+/* Rename the main function so we can have a main() in fuzzing code
+   and call the original main. */
+# define main main_wget
+#endif
+
 #ifdef HAVE_METALINK
 # include <metalink/metalink_parser.h>
 # include "metalink.h"
@@ -111,7 +115,6 @@ const char *exec_name;
 /* Number of successfully downloaded URLs */
 int numurls = 0;
 
-#ifndef TESTING
 /* Initialize I18N/L10N.  That amounts to invoking setlocale, and
    setting up gettext's message catalog using bindtextdomain and
    textdomain.  Does nothing if NLS is disabled or missing.  */
@@ -144,11 +147,6 @@ redirect_output_signal (int sig)
 static void
 i18n_initialize (void)
 {
-#if defined(WINDOWS) && !defined(ENABLE_NLS)
-  char MBCP[8] = "";
-  int CP;
-#endif
-
   /* ENABLE_NLS implies existence of functions invoked here.  */
 #ifdef ENABLE_NLS
   /* Set the current locale.  */
@@ -156,14 +154,15 @@ i18n_initialize (void)
   /* Set the text message domain.  */
   bindtextdomain ("wget", LOCALEDIR);
   textdomain ("wget");
-#endif /* ENABLE_NLS */
+#elif defined WINDOWS
+  char MBCP[16] = "";
+  int CP;
 
-#if defined(WINDOWS) && !defined(ENABLE_NLS)
   CP = _getmbcp(); /* Consider it's different from default. */
   if (CP > 0)
-    sprintf(MBCP, ".%d", CP);
+    snprintf(MBCP, sizeof(MBCP), ".%d", CP);
   setlocale(LC_ALL, MBCP);
-#endif
+#endif /* ENABLE_NLS */
 }
 
 #ifdef HAVE_HSTS
@@ -173,16 +172,12 @@ hsts_store_t hsts_store;
 static char*
 get_hsts_database (void)
 {
-  char *home;
-
   if (opt.hsts_file)
     return xstrdup (opt.hsts_file);
 
-  home = home_dir ();
-  if (home)
+  if (opt.homedir)
     {
-      char *dir = aprintf ("%s/.wget-hsts", home);
-      xfree(home);
+      char *dir = aprintf ("%s/.wget-hsts", opt.homedir);
       return dir;
     }
 
@@ -228,6 +223,7 @@ save_hsts (void)
         }
 
       hsts_store_close (hsts_store);
+      xfree (hsts_store);
 
       xfree (filename);
     }
@@ -290,6 +286,9 @@ static struct cmdline_option option_data[] =
     { IF_SSL ("certificate-type"), 0, OPT_VALUE, "certificatetype", -1 },
     { IF_SSL ("check-certificate"), 0, OPT_BOOLEAN, "checkcertificate", -1 },
     { "clobber", 0, OPT__CLOBBER, NULL, optional_argument },
+#ifdef HAVE_LIBZ
+    { "compression", 0, OPT_VALUE, "compression", -1 },
+#endif
     { "config", 0, OPT_VALUE, "chooseconfig", -1 },
     { "connect-timeout", 0, OPT_VALUE, "connecttimeout", -1 },
     { "continue", 'c', OPT_BOOLEAN, "continue", -1 },
@@ -374,6 +373,7 @@ static struct cmdline_option option_data[] =
 #endif
     { "method", 0, OPT_VALUE, "method", -1 },
     { "mirror", 'm', OPT_BOOLEAN, "mirror", -1 },
+    { "netrc", 0, OPT_BOOLEAN, "netrc", -1 },
     { "no", 'n', OPT__NO, NULL, required_argument },
     { "no-clobber", 0, OPT_BOOLEAN, "noclobber", -1 },
     { "no-config", 0, OPT_BOOLEAN, "noconfig", -1},
@@ -392,6 +392,7 @@ static struct cmdline_option option_data[] =
     { "preferred-location", 0, OPT_VALUE, "preferredlocation", -1 },
 #endif
     { "preserve-permissions", 0, OPT_BOOLEAN, "preservepermissions", -1 },
+    { IF_SSL ("ciphers"), 0, OPT_VALUE, "ciphers", -1 },
     { IF_SSL ("private-key"), 0, OPT_VALUE, "privatekey", -1 },
     { IF_SSL ("private-key-type"), 0, OPT_VALUE, "privatekeytype", -1 },
     { "progress", 0, OPT_VALUE, "progress", -1 },
@@ -419,6 +420,7 @@ static struct cmdline_option option_data[] =
     { "restrict-file-names", 0, OPT_BOOLEAN, "restrictfilenames", -1 },
     { "retr-symlinks", 0, OPT_BOOLEAN, "retrsymlinks", -1 },
     { "retry-connrefused", 0, OPT_BOOLEAN, "retryconnrefused", -1 },
+    { "retry-on-host-error", 0, OPT_BOOLEAN, "retryonhosterror", -1 },
     { "retry-on-http-error", 0, OPT_VALUE, "retryonhttperror", -1 },
     { "save-cookies", 0, OPT_VALUE, "savecookies", -1 },
     { "save-headers", 0, OPT_BOOLEAN, "saveheaders", -1 },
@@ -499,8 +501,14 @@ static unsigned char optmap[96];
 static void
 init_switches (void)
 {
+  static bool initialized;
   char *p = short_options;
   size_t i, o = 0;
+
+  if (initialized)
+    return;
+  initialized = 1;
+
   for (i = 0; i < countof (option_data); i++)
     {
       struct cmdline_option *cmdopt = &option_data[i];
@@ -562,10 +570,14 @@ init_switches (void)
 
 /* Print the usage message.  */
 static int
-print_usage (int error)
+print_usage (_GL_UNUSED int error)
 {
+#ifndef TESTING
   return fprintf (error ? stderr : stdout,
                   _("Usage: %s [OPTION]... [URL]...\n"), exec_name);
+#else
+  return 0;
+#endif
 }
 
 /* Print the help message, describing all the available options.  If
@@ -573,6 +585,7 @@ print_usage (int error)
 _Noreturn static void
 print_help (void)
 {
+#ifndef TESTING
   /* We split the help text this way to ease translation of individual
      entries.  */
   static const char *help[] = {
@@ -639,10 +652,14 @@ Download:\n"),
     N_("\
        --retry-connrefused         retry even if connection is refused\n"),
     N_("\
+       --retry-on-http-error=ERRORS    comma-separated list of HTTP errors to retry\n"),
+    N_("\
   -O,  --output-document=FILE      write documents to FILE\n"),
     N_("\
   -nc, --no-clobber                skip downloads that would download to\n\
                                      existing files (overwriting them)\n"),
+    N_("\
+       --no-netrc                  don't try to obtain credentials from .netrc\n"),
     N_("\
   -c,  --continue                  resume getting a partially-downloaded file\n"),
     N_("\
@@ -738,7 +755,7 @@ Download:\n"),
 #endif
 #ifdef ENABLE_XATTR
     N_("\
-       --no-xattr                  turn off storage of metadata in extended file attributes\n"),
+       --xattr                     turn on storage of metadata in extended file attributes\n"),
 #endif
     "\n",
 
@@ -775,6 +792,10 @@ HTTP options:\n"),
        --ignore-length             ignore 'Content-Length' header field\n"),
     N_("\
        --header=STRING             insert STRING among the headers\n"),
+#ifdef HAVE_LIBZ
+    N_("\
+       --compression=TYPE          choose compression, one of auto, gzip and none. (default: none)\n"),
+#endif
     N_("\
        --max-redirect              maximum redirections allowed per page\n"),
     N_("\
@@ -823,7 +844,7 @@ HTTP options:\n"),
 HTTPS (SSL/TLS) options:\n"),
     N_("\
        --secure-protocol=PR        choose secure protocol, one of auto, SSLv2,\n\
-                                     SSLv3, TLSv1 and PFS\n"),
+                                     SSLv3, TLSv1, TLSv1_1, TLSv1_2 and PFS\n"),
     N_("\
        --https-only                only follow secure HTTPS links\n"),
     N_("\
@@ -856,6 +877,10 @@ HTTPS (SSL/TLS) options:\n"),
        --egd-file=FILE             file naming the EGD socket with random data\n"),
 #endif
     "\n",
+    N_("\
+       --ciphers=STR           Set the priority string (GnuTLS) or cipher list string (OpenSSL) directly.\n\
+                                   Use with care. This option overrides --secure-protocol.\n\
+                                   The format and syntax of this string depend on the specific SSL/TLS engine.\n"),
 #endif /* HAVE_SSL */
 
 #ifdef HAVE_HSTS
@@ -970,7 +995,7 @@ Recursive accept/reject:\n"),
        --accept-regex=REGEX        regex matching accepted URLs\n"),
     N_("\
        --reject-regex=REGEX        regex matching rejected URLs\n"),
-#ifdef HAVE_LIBPCRE
+#if defined HAVE_LIBPCRE || defined HAVE_LIBPCRE2
     N_("\
        --regex-type=TYPE           regex type (posix|pcre)\n"),
 #else
@@ -1001,7 +1026,8 @@ Recursive accept/reject:\n"),
     N_("\
   -np, --no-parent                 don't ascend to the parent directory\n"),
     "\n",
-    N_("Mail bug reports and suggestions to <bug-wget@gnu.org>\n")
+    N_("Email bug reports, questions, discussions to <bug-wget@gnu.org>\n"),
+    N_("and/or open issues at https://savannah.gnu.org/bugs/?func=additem&group=wget.\n")
   };
 
   size_t i;
@@ -1015,7 +1041,7 @@ Recursive accept/reject:\n"),
   for (i = 0; i < countof (help); i++)
     if (fputs (_(help[i]), stdout) < 0)
       exit (WGET_EXIT_IO_FAIL);
-
+#endif /* TESTING */
   exit (WGET_EXIT_SUCCESS);
 }
 
@@ -1052,7 +1078,12 @@ prompt_for_password (void)
     fprintf (stderr, _("Password for user %s: "), quote (opt.user));
   else
     fprintf (stderr, _("Password: "));
+#ifndef TESTING
+  /* gnulib's getpass() uses static variables internally, bad for fuzing */
   return getpass("");
+#else
+  return xstrdup("");
+#endif
 }
 
 
@@ -1233,7 +1264,7 @@ print_version (void)
         {
           if (printf ("%s ", compiled_features[i]) < 0)
             exit (WGET_EXIT_IO_FAIL);
-          line_length -= strlen (compiled_features[i]) + 2;
+          line_length -= (int) strlen (compiled_features[i]) + 2;
           i++;
         }
       if (printf ("\n") < 0)
@@ -1313,6 +1344,8 @@ There is NO WARRANTY, to the extent permitted by law.\n"), stdout) < 0)
 
 const char *program_name; /* Needed by lib/error.c. */
 const char *program_argstring; /* Needed by wget_warc.c. */
+struct ptimer *timer;
+int cleaned_up;
 
 int
 main (int argc, char **argv)
@@ -1326,7 +1359,9 @@ main (int argc, char **argv)
   bool noconfig = false;
   bool append_to_log = false;
 
-  struct ptimer *timer = ptimer_new ();
+  cleaned_up = 0; /* do cleanup later */
+
+  timer = ptimer_new ();
   double start_time = ptimer_measure (timer);
 
   total_downloaded_bytes = 0;
@@ -1371,6 +1406,7 @@ main (int argc, char **argv)
 
   /* Load the hard-coded defaults.  */
   defaults ();
+  opt.homedir = home_dir();
 
   init_switches ();
 
@@ -1396,10 +1432,10 @@ main (int argc, char **argv)
             }
           else if (strcmp (config_opt->long_name, "config") == 0)
             {
-              bool userrc_ret = true;
-              userrc_ret &= run_wgetrc (optarg);
+              file_stats_t flstats;
               use_userconfig = true;
-              if (userrc_ret)
+              memset(&flstats, 0, sizeof(flstats));
+              if (file_exists_p(optarg, &flstats) && run_wgetrc (optarg, &flstats))
                 break;
               else
                 {
@@ -1412,7 +1448,8 @@ main (int argc, char **argv)
 
   /* If the user did not specify a config, read the system wgetrc and ~/.wgetrc. */
   if (noconfig == false && use_userconfig == false)
-    initialize ();
+    if ((ret = initialize ()))
+      return ret;
 
   opterr = 0;
   optind = 0;
@@ -1638,7 +1675,7 @@ WARNING: timestamping does nothing in combination with -O. See the manual\n\
 for details.\n\n"));
           opt.timestamping = false;
         }
-      if (opt.noclobber && file_exists_p(opt.output_document))
+      if (opt.noclobber && file_exists_p(opt.output_document, NULL))
            {
               /* Check if output file exists; if it does, exit. */
               logprintf (LOG_VERBOSE,
@@ -1690,6 +1727,26 @@ for details.\n\n"));
         }
     }
 
+#ifdef HAVE_LIBZ
+  if (opt.always_rest || opt.start_pos >= 0)
+    {
+      if (opt.compression == compression_auto)
+        {
+          /* Compression does not work with --continue or --start-pos.
+             Since compression was not explicitly set, it will be disabled. */
+          opt.compression = compression_none;
+        }
+      else if (opt.compression != compression_none)
+        {
+          fprintf (stderr,
+                   _("Compression does not work with --continue or"
+                     " --start-pos, they will be disabled.\n"));
+          opt.always_rest = false;
+          opt.start_pos = -1;
+        }
+    }
+#endif
+
   if (opt.ask_passwd && opt.passwd)
     {
       fprintf (stderr,
@@ -1713,18 +1770,26 @@ for details.\n\n"));
       )
     {
       /* No URL specified.  */
+#ifndef TESTING
       fprintf (stderr, _("%s: missing URL\n"), exec_name);
       print_usage (1);
       fprintf (stderr, "\n");
       /* #### Something nicer should be printed here -- similar to the
          pre-1.5 `--help' page.  */
       fprintf (stderr, _("Try `%s --help' for more options.\n"), exec_name);
+#endif
       exit (WGET_EXIT_GENERIC_ERROR);
     }
 
   /* Compile the regular expressions.  */
   switch (opt.regex_type)
     {
+#ifdef HAVE_LIBPCRE2
+      case regex_type_pcre:
+        opt.regex_compile_fun = compile_pcre2_regex;
+        opt.regex_match_fun = match_pcre2_regex;
+        break;
+#endif
 #ifdef HAVE_LIBPCRE
       case regex_type_pcre:
         opt.regex_compile_fun = compile_pcre_regex;
@@ -1813,13 +1878,13 @@ for details.\n\n"));
   if (opt.enable_iri)
     {
       if (opt.locale && !check_encoding_name (opt.locale))
-        opt.locale = NULL;
+        xfree (opt.locale);
 
       if (!opt.locale)
         opt.locale = find_locale ();
 
       if (opt.encoding_remote && !check_encoding_name (opt.encoding_remote))
-        opt.encoding_remote = NULL;
+        xfree (opt.encoding_remote);
     }
 #else
   memset (&dummy_iri, 0, sizeof (dummy_iri));
@@ -1853,9 +1918,14 @@ for details.\n\n"));
   if (opt.wdebug)
      dbug_init();
   sock_init();
-#else
+#elif ! defined TESTING
   if (opt.background)
-    fork_to_background ();
+    {
+      bool logfile_changed = fork_to_background ();
+
+      if (logfile_changed)
+        log_init (opt.lfilename, append_to_log);
+    }
 #endif
 
   /* Initialize progress.  Have to do this after the options are
@@ -2096,7 +2166,7 @@ only if outputting to a regular file.\n"));
                             &dt, opt.recursive, iri, true);
             }
 
-          if (opt.delete_after && filename != NULL && file_exists_p (filename))
+          if (opt.delete_after && filename != NULL && file_exists_p (filename, NULL))
             {
               DEBUGP (("Removing file due to --delete-after in main():\n"));
               logprintf (LOG_VERBOSE, _("Removing %s.\n"), filename);
@@ -2188,7 +2258,7 @@ only if outputting to a regular file.\n"));
       char *wall_time = xstrdup (secs_to_human_time (end_time - start_time));
       char *download_time = xstrdup (secs_to_human_time (total_download_time));
 
-      ptimer_destroy (timer);
+      ptimer_destroy (timer); timer = NULL;
 
       logprintf (LOG_NOTQUIET,
                  _("FINISHED --%s--\nTotal wall clock time: %s\n"
@@ -2228,8 +2298,6 @@ only if outputting to a regular file.\n"));
 
   exit (get_exit_status ());
 }
-
-#endif /* TESTING */
 
 /*
  * vim: et ts=2 sw=2

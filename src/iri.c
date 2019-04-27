@@ -1,5 +1,5 @@
 /* IRI related functions.
-   Copyright (C) 2008, 2009, 2010, 2011, 2015 Free Software Foundation,
+   Copyright (C) 2008-2011, 2015, 2018-2019 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -55,8 +55,6 @@ as that of the covered work.  */
 
 /* Note: locale encoding is kept in options struct (opt.locale) */
 
-#ifdef HAVE_ICONV
-
 /* Given a string containing "charset=XXX", return the encoding if found,
    or NULL otherwise */
 char *
@@ -101,9 +99,9 @@ find_locale (void)
 	const char *encoding = nl_langinfo(CODESET);
 
 	if (!encoding || !*encoding)
-		return "ASCII";
+		return xstrdup("ASCII");
 
-   return encoding;
+   return xstrdup(encoding);
 }
 
 /* Basic check of an encoding name. */
@@ -126,6 +124,7 @@ check_encoding_name (const char *encoding)
   return true;
 }
 
+#ifdef HAVE_ICONV
 /* Do the conversion according to the passed conversion descriptor cd. *out
    will contain the transcoded string on success. *out content is
    unspecified otherwise. */
@@ -194,9 +193,10 @@ do_conversion (const char *tocode, const char *fromcode, char const *in_org, siz
         {
           tooshort++;
           done = len;
-          len = outlen = done + inlen * 2;
-          s = xrealloc (s, outlen + 1);
-          *out = s + done;
+          len = done + inlen * 2;
+          s = xrealloc (s, len + 1);
+          *out = s + done - outlen;
+          outlen += inlen * 2;
         }
       else /* Weird, we got an unspecified error */
         {
@@ -217,6 +217,15 @@ do_conversion (const char *tocode, const char *fromcode, char const *in_org, siz
     }
     return false;
 }
+#else
+static bool
+do_conversion (const char *tocode _GL_UNUSED, const char *fromcode _GL_UNUSED,
+               char const *in_org _GL_UNUSED, size_t inlen _GL_UNUSED, char **out)
+{
+  *out = NULL;
+  return false;
+}
+#endif
 
 /* Try converting string str from locale to UTF-8. Return a new string
    on success, or str on error or if conversion isn't needed. */
@@ -241,125 +250,6 @@ locale_to_utf8 (const char *str)
   xfree (new);
   return str;
 }
-
-/* Try to transcode string str from remote encoding to UTF-8. On success, *new
-   contains the transcoded string. *new content is unspecified otherwise. */
-bool
-remote_to_utf8 (const struct iri *iri, const char *str, char **new)
-{
-  bool ret = false;
-
-  if (!iri->uri_encoding)
-    return false;
-
-  /* When `i->uri_encoding' == "UTF-8" there is nothing to convert.  But we must
-     test for non-ASCII symbols for correct hostname processing in `idn_encode'
-     function. */
-  if (!c_strcasecmp (iri->uri_encoding, "UTF-8"))
-    {
-      const unsigned char *p;
-      for (p = (unsigned char *) str; *p; p++)
-        if (*p > 127)
-          {
-            *new = strdup (str);
-            return true;
-          }
-      return false;
-    }
-
-  if (do_conversion ("UTF-8", iri->uri_encoding, str, strlen (str), new))
-    ret = true;
-
-  /* Test if something was converted */
-  if (*new && !strcmp (str, *new))
-    {
-      xfree (*new);
-      return false;
-    }
-
-  return ret;
-}
-
-/* Set uri_encoding of struct iri i. If a remote encoding was specified, use
-   it unless force is true. */
-void
-set_uri_encoding (struct iri *i, const char *charset, bool force)
-{
-  DEBUGP (("URI encoding = %s\n", charset ? quote (charset) : "None"));
-  if (!force && opt.encoding_remote)
-    return;
-  if (i->uri_encoding)
-    {
-      if (charset && !c_strcasecmp (i->uri_encoding, charset))
-        return;
-      xfree (i->uri_encoding);
-    }
-
-  i->uri_encoding = charset ? xstrdup (charset) : NULL;
-}
-
-/* Set content_encoding of struct iri i. */
-void
-set_content_encoding (struct iri *i, const char *charset)
-{
-  DEBUGP (("URI content encoding = %s\n", charset ? quote (charset) : "None"));
-  if (opt.encoding_remote)
-    return;
-  if (i->content_encoding)
-    {
-      if (charset && !c_strcasecmp (i->content_encoding, charset))
-        return;
-      xfree (i->content_encoding);
-    }
-
-  i->content_encoding = charset ? xstrdup (charset) : NULL;
-}
-
-/* Allocate a new iri structure and return a pointer to it. */
-struct iri *
-iri_new (void)
-{
-  struct iri *i = xmalloc (sizeof *i);
-  i->uri_encoding = opt.encoding_remote ? xstrdup (opt.encoding_remote) : NULL;
-  i->content_encoding = NULL;
-  i->orig_url = NULL;
-  i->utf8_encode = opt.enable_iri;
-  return i;
-}
-
-struct iri *iri_dup (const struct iri *src)
-{
-  struct iri *i = xmalloc (sizeof *i);
-  i->uri_encoding = src->uri_encoding ? xstrdup (src->uri_encoding) : NULL;
-  i->content_encoding = (src->content_encoding ?
-                         xstrdup (src->content_encoding) : NULL);
-  i->orig_url = src->orig_url ? xstrdup (src->orig_url) : NULL;
-  i->utf8_encode = src->utf8_encode;
-  return i;
-}
-
-/* Completely free an iri structure. */
-void
-iri_free (struct iri *i)
-{
-  if (i)
-    {
-      xfree (i->uri_encoding);
-      xfree (i->content_encoding);
-      xfree (i->orig_url);
-      xfree (i);
-    }
-}
-
-#else
-static bool
-do_conversion (const char *tocode _GL_UNUSED, const char *fromcode _GL_UNUSED,
-               char const *in_org _GL_UNUSED, size_t inlen _GL_UNUSED, char **out)
-{
-  *out = NULL;
-  return false;
-}
-#endif
 
 #ifdef ENABLE_IRI
 
@@ -455,3 +345,112 @@ idn_decode (const char *host)
 }
 
 #endif
+
+/* Try to transcode string str from remote encoding to UTF-8. On success, *new
+   contains the transcoded string. *new content is unspecified otherwise. */
+bool
+remote_to_utf8 (const struct iri *iri, const char *str, char **new)
+{
+  bool ret = false;
+
+  if (!iri->uri_encoding)
+    return false;
+
+  /* When `i->uri_encoding' == "UTF-8" there is nothing to convert.  But we must
+     test for non-ASCII symbols for correct hostname processing in `idn_encode'
+     function. */
+  if (!c_strcasecmp (iri->uri_encoding, "UTF-8"))
+    {
+      const unsigned char *p;
+      for (p = (unsigned char *) str; *p; p++)
+        if (*p > 127)
+          {
+            *new = strdup (str);
+            return true;
+          }
+      return false;
+    }
+
+  if (do_conversion ("UTF-8", iri->uri_encoding, str, strlen (str), new))
+    ret = true;
+
+  /* Test if something was converted */
+  if (*new && !strcmp (str, *new))
+    {
+      xfree (*new);
+      return false;
+    }
+
+  return ret;
+}
+
+/* Allocate a new iri structure and return a pointer to it. */
+struct iri *
+iri_new (void)
+{
+  struct iri *i = xmalloc (sizeof *i);
+  i->uri_encoding = opt.encoding_remote ? xstrdup (opt.encoding_remote) : NULL;
+  i->content_encoding = NULL;
+  i->orig_url = NULL;
+  i->utf8_encode = opt.enable_iri;
+  return i;
+}
+
+struct iri *iri_dup (const struct iri *src)
+{
+  struct iri *i = xmalloc (sizeof *i);
+  i->uri_encoding = src->uri_encoding ? xstrdup (src->uri_encoding) : NULL;
+  i->content_encoding = (src->content_encoding ?
+                         xstrdup (src->content_encoding) : NULL);
+  i->orig_url = src->orig_url ? xstrdup (src->orig_url) : NULL;
+  i->utf8_encode = src->utf8_encode;
+  return i;
+}
+
+/* Completely free an iri structure. */
+void
+iri_free (struct iri *i)
+{
+  if (i)
+    {
+      xfree (i->uri_encoding);
+      xfree (i->content_encoding);
+      xfree (i->orig_url);
+      xfree (i);
+    }
+}
+
+/* Set uri_encoding of struct iri i. If a remote encoding was specified, use
+   it unless force is true. */
+void
+set_uri_encoding (struct iri *i, const char *charset, bool force)
+{
+  DEBUGP (("URI encoding = %s\n", charset ? quote (charset) : "None"));
+  if (!force && opt.encoding_remote)
+    return;
+  if (i->uri_encoding)
+    {
+      if (charset && !c_strcasecmp (i->uri_encoding, charset))
+        return;
+      xfree (i->uri_encoding);
+    }
+
+  i->uri_encoding = charset ? xstrdup (charset) : NULL;
+}
+
+/* Set content_encoding of struct iri i. */
+void
+set_content_encoding (struct iri *i, const char *charset)
+{
+  DEBUGP (("URI content encoding = %s\n", charset ? quote (charset) : "None"));
+  if (opt.encoding_remote)
+    return;
+  if (i->content_encoding)
+    {
+      if (charset && !c_strcasecmp (i->content_encoding, charset))
+        return;
+      xfree (i->content_encoding);
+    }
+
+  i->content_encoding = charset ? xstrdup (charset) : NULL;
+}

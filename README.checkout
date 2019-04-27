@@ -161,7 +161,8 @@ Testing and development
  that bug, which might be tedious. Tests should only be run through GDB for that purpose.
 
 
- Copyright (C) 2008,2010,2014,2015 Free Software Foundation, Inc.
+ Copyright (C) 2008, 2010, 2014-2015, 2018-2019 Free Software
+ Foundation, Inc.
  License GPLv3+: GNU GPL version 3 or later
  <https://www.gnu.org/licenses/gpl.html>.
  This is free software: you are free to change and redistribute it.
@@ -202,7 +203,7 @@ References
   32. https://www.gnu.org/software/libiconv/
   33. https://git-scm.com/
   34. https://github.com/rockdaboot/libpsl
-  35. http://www.pcre.org
+  35. https://www.pcre.org
   36. http://wget.addictivecode.org/CompilingRepoSources?action=edit&editor=text
   37. http://wget.addictivecode.org/CompilingRepoSources
   38. http://wget.addictivecode.org/CompilingRepoSources?action=info

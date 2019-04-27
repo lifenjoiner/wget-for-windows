@@ -1,5 +1,6 @@
 /* Utility functions for writing WARC files.
-   Copyright (C) 2011, 2012, 2015 Free Software Foundation, Inc.
+   Copyright (C) 2011-2012, 2015, 2018-2019 Free Software Foundation,
+   Inc.
 
 This file is part of GNU Wget.
 
@@ -203,6 +204,7 @@ warc_write_start_record (void)
   /* Start a GZIP stream, if required. */
   if (opt.warc_compression_enabled)
     {
+      int dup_fd;
       /* Record the starting offset of the new record. */
       warc_current_gzfile_offset = ftello (warc_current_file);
 
@@ -214,13 +216,23 @@ warc_write_start_record (void)
       fflush (warc_current_file);
 
       /* Start a new GZIP stream. */
-      warc_current_gzfile = gzdopen (dup (fileno (warc_current_file)), "wb9");
+      dup_fd = dup (fileno (warc_current_file));
+      if (dup_fd < 0)
+        {
+          logprintf (LOG_NOTQUIET,
+_("Error duplicating WARC file file descriptor.\n"));
+          warc_write_ok = false;
+          return false;
+        }
+
+      warc_current_gzfile = gzdopen (dup_fd, "wb9");
       warc_current_gzfile_uncompressed_size = 0;
 
       if (warc_current_gzfile == NULL)
         {
           logprintf (LOG_NOTQUIET,
 _("Error opening GZIP stream to WARC file.\n"));
+          close (dup_fd);
           warc_write_ok = false;
           return false;
         }
@@ -479,7 +491,7 @@ warc_sha1_stream_with_payload (FILE *stream, void *res_block, void *res_payload,
 
           if (n == 0)
             {
-              /* Check for the error flag IFF N == 0, so that we don't
+              /* Check for the error flag IF N == 0, so that we don't
                  exit the loop after a partial read due to e.g., EAGAIN
                  or EWOULDBLOCK.  */
               if (ferror (stream))
@@ -1240,9 +1252,15 @@ warc_close (void)
       warc_write_metadata ();
       *warc_current_warcinfo_uuid_str = 0;
       fclose (warc_current_file);
+      warc_current_file = NULL;
     }
+
   if (warc_current_cdx_file != NULL)
-    fclose (warc_current_cdx_file);
+    {
+      fclose (warc_current_cdx_file);
+      warc_current_cdx_file = NULL;
+    }
+
   if (warc_log_fp != NULL)
     {
       fclose (warc_log_fp);
@@ -1347,6 +1365,7 @@ warc_write_cdx_record (const char *url, const char *timestamp_str,
   char timestamp_str_cdx[15];
   char offset_string[MAX_INT_TO_STRING_LEN(off_t)];
   const char *checksum;
+  char *tmp_location = NULL;
 
   memcpy (timestamp_str_cdx     , timestamp_str     , 4); /* "YYYY" "-" */
   memcpy (timestamp_str_cdx +  4, timestamp_str +  5, 2); /* "mm"   "-" */
@@ -1365,18 +1384,19 @@ warc_write_cdx_record (const char *url, const char *timestamp_str,
   if (mime_type == NULL || strlen(mime_type) == 0)
     mime_type = "-";
   if (redirect_location == NULL || strlen(redirect_location) == 0)
-    redirect_location = "-";
+    tmp_location = strdup ("-");
   else
-    redirect_location = url_escape(redirect_location);
+    tmp_location = url_escape(redirect_location);
 
   number_to_string (offset_string, offset);
 
   /* Print the CDX line. */
   fprintf (warc_current_cdx_file, "%s %s %s %s %d %s %s - %s %s %s\n", url,
            timestamp_str_cdx, url, mime_type, response_code, checksum,
-           redirect_location, offset_string, warc_current_filename,
+           tmp_location, offset_string, warc_current_filename,
            response_uuid);
   fflush (warc_current_cdx_file);
+  free (tmp_location);
 
   return true;
 }

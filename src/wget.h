@@ -1,7 +1,6 @@
 /* Miscellaneous declarations.
-   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-   2005, 2006, 2007, 2008, 2009, 2010, 2011, 2015 Free Software
-   Foundation, Inc.
+   Copyright (C) 1996-2011, 2015, 2018-2019 Free Software Foundation,
+   Inc.
 
 This file is part of GNU Wget.
 
@@ -211,6 +210,9 @@ typedef double SUM_SIZE_INT;
 
 /* Everything uses this, so include them here directly.  */
 #include <alloca.h>
+#ifdef __cplusplus
+#  undef _Noreturn
+#endif
 #include "xalloc.h"
 
 /* Likewise for logging functions.  */
@@ -331,7 +333,7 @@ enum
                                            or application/xhtml+xml */
   RETROKF              = 0x0002,        /* retrieval was OK */
   HEAD_ONLY            = 0x0004,        /* only send the HEAD request */
-  SEND_NOCACHE         = 0x0008,        /* send Pragma: no-cache directive */
+  SEND_NOCACHE         = 0x0008,        /* send Cache-Control: no-cache and Pragma: no-cache directive */
   ACCEPTRANGES         = 0x0010,        /* Accept-ranges header was found */
   ADDED_HTML_EXTENSION = 0x0020,        /* added ".html" extension due to -E */
   TEXTCSS              = 0x0040,        /* document is of type text/css */
@@ -394,5 +396,21 @@ typedef enum
 # ifndef __VMS
 #  define UNIQ_SEP '.'
 # endif /* ndef __VMS */
+
+#if defined FUZZING && defined TESTING
+/* Rename fopen so we can have our own version in fuzz/main.c to
+   not create random files. */
+#  define fopen(fp, mode) fopen_wget(fp, mode)
+#  define exit(status) exit_wget(status)
+
+/* In run_wgetrc() we call fopen_wgetrc() instead of fopen, so we can catch
+   the call in our fuzzers. */
+FILE *fopen_wget(const char *pathname, const char *mode);
+FILE *fopen_wgetrc(const char *pathname, const char *mode);
+void exit_wget(int status);
+#else
+/* When not fuzzing, we want to call fopen() instead of fopen_wgetrc() */
+#  define fopen_wgetrc(fp, mode) fopen(fp, mode)
+#endif /* FUZZING && TESTING */
 
 #endif /* WGET_H */

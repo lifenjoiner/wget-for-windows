@@ -1,6 +1,5 @@
 /* File Transfer Protocol support.
-   Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-   2005, 2006, 2007, 2008, 2009, 2010, 2011, 2014, 2015 Free Software
+   Copyright (C) 1996-2011, 2014-2015, 2018-2019 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -385,7 +384,7 @@ getftp (struct url *u, struct url *original_url,
 
   /* Check for ~/.netrc if none of the above match */
   if (opt.netrc && (!user || !passwd))
-    search_netrc (u->host, (const char **) &user, (const char **) &passwd, 1);
+    search_netrc (u->host, (const char **) &user, (const char **) &passwd, 1, NULL);
 
   if (!user) user = "anonymous";
   if (!passwd) passwd = "-wget@";
@@ -1581,7 +1580,7 @@ Error in server response, closing control connection.\n"));
 
 #ifdef ENABLE_XATTR
   if (opt.enable_xattr)
-    set_file_metadata (u->url, NULL, fp);
+    set_file_metadata (u, NULL, fp);
 #endif
 
   fd_close (local_sock);
@@ -1807,7 +1806,7 @@ Error in server response, closing control connection.\n"));
 exit_error:
 
   /* If fp is a regular file, close and try to remove it */
-  if (fp && !output_stream)
+  if (fp && (!output_stream || con->cmd & DO_LIST))
     fclose (fp);
   return err;
 }
@@ -1983,7 +1982,10 @@ ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
 #endif
           /* Fatal errors, give up.  */
           if (warc_tmp != NULL)
+            {
               fclose (warc_tmp);
+              warc_tmp = NULL;
+            }
           return err;
         case CONSOCKERR: case CONERROR: case FTPSRVERR: case FTPRERR:
         case WRITEFAILED: case FTPUNKNOWNTYPE: case FTPSYSERR:
@@ -2111,7 +2113,10 @@ Removing file due to --delete-after in ftp_loop_internal():\n"));
         *local_file = xstrdup (locf);
 
       if (warc_tmp != NULL)
-        fclose (warc_tmp);
+        {
+          fclose (warc_tmp);
+          warc_tmp = NULL;
+        }
 
       return RETROK;
     } while (!opt.ntry || (count < opt.ntry));
@@ -2180,7 +2185,6 @@ static uerr_t ftp_retrieve_dirs (struct url *, struct url *,
                                  struct fileinfo *, ccon *);
 static uerr_t ftp_retrieve_glob (struct url *, struct url *, ccon *, int);
 static struct fileinfo *delelement (struct fileinfo *, struct fileinfo **);
-static void freefileinfo (struct fileinfo *f);
 
 /* Retrieve a list of files given in struct fileinfo linked list.  If
    a file is a symbolic link, do not retrieve it, but rather try to
@@ -2574,96 +2578,98 @@ ftp_retrieve_glob (struct url *u, struct url *original_url,
   res = ftp_get_listing (u, original_url, con, &start);
   if (res != RETROK)
     return res;
-  /* First: weed out that do not conform the global rules given in
-     opt.accepts and opt.rejects.  */
-  if (opt.accepts || opt.rejects)
-    {
-      f = start;
-      while (f)
-        {
-          if (f->type != FT_DIRECTORY && !acceptable (f->name))
-            {
-              logprintf (LOG_VERBOSE, _("Rejecting %s.\n"),
-                         quote (f->name));
-              f = delelement (f, &start);
-            }
-          else
-            f = f->next;
-        }
-    }
-  /* Remove all files with possible harmful names or invalid entries. */
+
+  // Set the function used for glob matching.
+  int (*matcher) (const char *, const char *, int)
+    = opt.ignore_case ? fnmatch_nocase : fnmatch;
+
+  // Set the function used to compare strings
+#ifdef __VMS
+  /* 2009-09-09 SMS.
+   * Odd-ball compiler ("HP C V7.3-009 on OpenVMS Alpha V7.3-2")
+   * bug causes spurious %CC-E-BADCONDIT complaint with this
+   * "?:" statement.  (Different linkage attributes for strcmp()
+   * and strcasecmp().)  Converting to "if" changes the
+   * complaint to %CC-W-PTRMISMATCH on "cmp = strcmp;".  Adding
+   * the senseless type cast clears the complaint, and looks
+   * harmless.
+   */
+  int (*cmp) (const char *, const char *)
+    = opt.ignore_case ? strcasecmp : (int (*)())strcmp;
+#else /* def __VMS */
+  int (*cmp) (const char *, const char *)
+    = opt.ignore_case ? strcasecmp : strcmp;
+#endif /* def __VMS [else] */
+
   f = start;
   while (f)
     {
-      if (has_insecure_name_p (f->name) || is_invalid_entry (f))
+
+      // Weed out files that do not confirm to the global rules given in
+      // opt.accepts and opt.rejects
+      if ((opt.accepts || opt.rejects) &&
+          f->type != FT_DIRECTORY && !acceptable (f->name))
         {
           logprintf (LOG_VERBOSE, _("Rejecting %s.\n"),
                      quote (f->name));
           f = delelement (f, &start);
+          continue;
         }
-      else
-        f = f->next;
-    }
-  /* Now weed out the files that do not match our globbing pattern.
-     If we are dealing with a globbing pattern, that is.  */
-  if (*u->file)
-    {
-      if (action == GLOB_GLOBALL)
-        {
-          int (*matcher) (const char *, const char *, int)
-            = opt.ignore_case ? fnmatch_nocase : fnmatch;
-          int matchres = 0;
 
-          f = start;
-          while (f)
+
+      // Identify and eliminate possibly harmful names or invalid entries.
+      if (has_insecure_name_p (f->name) || is_invalid_entry (f))
+        {
+          logprintf (LOG_VERBOSE, _("Rejecting %s (Invalid Entry).\n"),
+                     quote (f->name));
+          f = delelement (f, &start);
+          continue;
+        }
+
+      if (!accept_url (f->name))
+        {
+          logprintf (LOG_VERBOSE, _("%s is excluded/not-included through regex.\n"), f->name);
+          f = delelement (f, &start);
+          continue;
+        }
+
+      /* Now weed out the files that do not match our globbing pattern.
+         If we are dealing with a globbing pattern, that is.  */
+      if (*u->file)
+        {
+          if (action == GLOB_GLOBALL)
             {
-              matchres = matcher (u->file, f->name, 0);
+              int matchres = matcher (u->file, f->name, 0);
               if (matchres == -1)
                 {
                   logprintf (LOG_NOTQUIET, _("Error matching %s against %s: %s\n"),
                              u->file, quotearg_style (escape_quoting_style, f->name),
                              strerror (errno));
-                  break;
+                  freefileinfo (start);
+                  return RETRBADPATTERN;
                 }
               if (matchres == FNM_NOMATCH)
-                f = delelement (f, &start); /* delete the element from the list */
-              else
-                f = f->next;        /* leave the element in the list */
+                {
+                  f = delelement (f, &start); /* delete the element from the list */
+                  continue;
+                }
             }
-          if (matchres == -1)
-            {
-              freefileinfo (start);
-              return RETRBADPATTERN;
-            }
-        }
-      else if (action == GLOB_GETONE)
-        {
-#ifdef __VMS
-          /* 2009-09-09 SMS.
-           * Odd-ball compiler ("HP C V7.3-009 on OpenVMS Alpha V7.3-2")
-           * bug causes spurious %CC-E-BADCONDIT complaint with this
-           * "?:" statement.  (Different linkage attributes for strcmp()
-           * and strcasecmp().)  Converting to "if" changes the
-           * complaint to %CC-W-PTRMISMATCH on "cmp = strcmp;".  Adding
-           * the senseless type cast clears the complaint, and looks
-           * harmless.
-           */
-          int (*cmp) (const char *, const char *)
-            = opt.ignore_case ? strcasecmp : (int (*)())strcmp;
-#else /* def __VMS */
-          int (*cmp) (const char *, const char *)
-            = opt.ignore_case ? strcasecmp : strcmp;
-#endif /* def __VMS [else] */
-          f = start;
-          while (f)
+          else if (action == GLOB_GETONE)
             {
               if (0 != cmp(u->file, f->name))
-                f = delelement (f, &start);
-              else
-                f = f->next;
+                {
+                  f = delelement (f, &start);
+                  continue;
+                }
             }
         }
+      f = f->next;
     }
+
+  /*
+   * Now that preprocessing of the file listing is over, let's try to download
+   * all the remaining files in our listing.
+   */
   if (start)
     {
       /* Just get everything.  */
@@ -2823,7 +2829,7 @@ delelement (struct fileinfo *f, struct fileinfo **start)
 }
 
 /* Free the fileinfo linked list of files.  */
-static void
+void
 freefileinfo (struct fileinfo *f)
 {
   while (f)
