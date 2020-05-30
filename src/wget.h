@@ -1,5 +1,5 @@
 /* Miscellaneous declarations.
-   Copyright (C) 1996-2011, 2015, 2018-2019 Free Software Foundation,
+   Copyright (C) 1996-2011, 2015, 2018-2020 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -209,7 +209,6 @@ typedef double SUM_SIZE_INT;
 #include "options.h"
 
 /* Everything uses this, so include them here directly.  */
-#include <alloca.h>
 #ifdef __cplusplus
 #  undef _Noreturn
 #endif
@@ -239,28 +238,19 @@ typedef double SUM_SIZE_INT;
 #define xzero(x) memset (&(x), '\0', sizeof (x))
 
 /* Convert an ASCII hex digit to the corresponding number between 0
-   and 15.  H should be a hexadecimal digit that satisfies isxdigit;
+   and 15.  c should be a hexadecimal digit that satisfies c_isxdigit;
    otherwise, the result is undefined.  */
-#define XDIGIT_TO_NUM(h) ((h) < 'A' ? (h) - '0' : c_toupper (h) - 'A' + 10)
-#define X2DIGITS_TO_NUM(h1, h2) ((XDIGIT_TO_NUM (h1) << 4) + XDIGIT_TO_NUM (h2))
+static inline unsigned char _unhex(unsigned char c)
+{
+	return c <= '9' ? c - '0' : (c <= 'F' ? c - 'A' + 10 : c - 'a' + 10);
+}
+#define X2DIGITS_TO_NUM(h1, h2) ((_unhex (h1) << 4) + _unhex (h2))
 
 /* The reverse of the above: convert a number in the [0, 16) range to
    the ASCII representation of the corresponding hexadecimal digit.
    `+ 0' is there so you can't accidentally use it as an lvalue.  */
 #define XNUM_TO_DIGIT(x) ("0123456789ABCDEF"[x] + 0)
 #define XNUM_TO_digit(x) ("0123456789abcdef"[x] + 0)
-
-/* Copy the data delimited with BEG and END to alloca-allocated
-   storage, and zero-terminate it.  Arguments are evaluated only once,
-   in the order BEG, END, PLACE.  */
-#define BOUNDED_TO_ALLOCA(beg, end, place) do { \
-  const char *BTA_beg = (beg);                  \
-  int BTA_len = (end) - BTA_beg;                \
-  char **BTA_dest = &(place);                   \
-  *BTA_dest = alloca (BTA_len + 1);             \
-  memcpy (*BTA_dest, BTA_beg, BTA_len);         \
-  (*BTA_dest)[BTA_len] = '\0';                  \
-} while (0)
 
 /* Return non-zero if string bounded between BEG and END is equal to
    STRING_LITERAL.  The comparison is case-sensitive.  */
@@ -272,19 +262,6 @@ typedef double SUM_SIZE_INT;
 #define BOUNDED_EQUAL_NO_CASE(beg, end, string_literal)         \
   ((end) - (beg) == sizeof (string_literal) - 1                 \
    && !c_strncasecmp (beg, string_literal, sizeof (string_literal) - 1))
-
-/* Like ptr=strdup(str), but allocates the space for PTR on the stack.
-   This cannot be an expression because this is not portable:
-     #define STRDUP_ALLOCA(str) (strcpy (alloca (strlen (str) + 1), str))
-   The problem is that some compilers can't handle alloca() being an
-   argument to a function.  */
-
-#define STRDUP_ALLOCA(ptr, str) do {                \
-  char **SA_dest = &(ptr);                          \
-  const char *SA_src = (str);                       \
-  *SA_dest = (char *)alloca (strlen (SA_src) + 1);  \
-  strcpy (*SA_dest, SA_src);                        \
-} while (0)
 
 /* Generally useful if you want to avoid arbitrary size limits but
    don't need a full dynamic array.  Assumes that BASEVAR points to a

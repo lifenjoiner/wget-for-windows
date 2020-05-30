@@ -1,5 +1,5 @@
 /* Messages logging.
-   Copyright (C) 1998-2011, 2015, 2018-2019 Free Software Foundation,
+   Copyright (C) 1998-2011, 2015, 2018-2020 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -904,6 +904,7 @@ escnonprint_uri (const char *str)
   return escnonprint_internal (str, '%', 16);
 }
 
+#if defined DEBUG_MALLOC || defined TESTING
 void
 log_cleanup (void)
 {
@@ -911,6 +912,7 @@ log_cleanup (void)
   for (i = 0; i < countof (ring); i++)
     xfree (ring[i].buffer);
 }
+#endif
 
 /* When SIGHUP or SIGUSR1 are received, the output is redirected
    elsewhere.  Such redirection is only allowed once. */

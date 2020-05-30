@@ -111,8 +111,12 @@ class BaseTest:
 
     def gen_cmd_line(self):
         test_path = os.path.abspath(".")
-        wget_path = os.path.abspath(os.path.join(test_path,
-                                                 "..", '..', 'src', "wget"))
+        if os.getenv("WGET_PATH"):
+            wget_path = os.path.abspath(os.getenv("WGET_PATH"))
+        else:
+            wget_path = os.path.abspath(os.path.join(test_path,
+                                                     "..", '..', 'src',
+                                                     "wget"))
         wget_options = '--debug --no-config %s' % self.wget_options
 
         valgrind = os.getenv("VALGRIND_TESTS", "")
@@ -127,6 +131,7 @@ class BaseTest:
             cmd_line = 'valgrind --error-exitcode=301 ' \
                                 '--leak-check=yes ' \
                                 '--track-origins=yes ' \
+                                '--gen-suppressions=all ' \
                                 '--suppressions=../valgrind-suppression-ssl ' \
                                 '%s %s ' % (wget_path, wget_options)
         elif valgrind not in ("", "0"):

@@ -1,5 +1,5 @@
 /* Reading/parsing the initialization file.
-   Copyright (C) 1996-2012, 2014-2015, 2018-2019 Free Software
+   Copyright (C) 1996-2012, 2014-2015, 2018-2020 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -58,6 +58,8 @@ as that of the covered work.  */
 #include "host.h"
 #include "netrc.h"
 #include "progress.h"
+#include "connect.h"            /* for connect_cleanup */
+#include "ssl.h"                /* for ssl_cleanup */
 #include "recur.h"              /* for INFINITE_RECURSION */
 #include "convert.h"            /* for convert_cleanup */
 #include "res.h"                /* for res_cleanup */
@@ -827,6 +829,8 @@ parse_line (const char *line, char **com, char **val, int *comind)
   const char *end = line + strlen (line);
   const char *cmdstart, *cmdend;
   const char *valstart, *valend;
+  char buf[1024];
+  size_t len;
 
   char *cmdcopy;
   int ind;
@@ -867,9 +871,18 @@ parse_line (const char *line, char **com, char **val, int *comind)
 
   /* The line now known to be syntactically correct.  Check whether
      the command is valid.  */
-  BOUNDED_TO_ALLOCA (cmdstart, cmdend, cmdcopy);
+  len = cmdend - cmdstart;
+  if (len < sizeof (buf))
+    cmdcopy = buf;
+  else
+    cmdcopy = xmalloc (len + 1);
+  memcpy (cmdcopy, cmdstart, len);
+  cmdcopy[len] = 0;
+
   dehyphen (cmdcopy);
   ind = command_by_name (cmdcopy);
+  if (cmdcopy != buf)
+    xfree (cmdcopy);
   if (ind == -1)
     return line_unknown_command;
 
@@ -946,12 +959,13 @@ void
 setoptval (const char *com, const char *val, const char *optname)
 {
   /* Prepend "--" to OPTNAME. */
-  char *dd_optname = (char *) alloca (2 + strlen (optname) + 1);
-  dd_optname[0] = '-';
-  dd_optname[1] = '-';
-  strcpy (dd_optname + 2, optname);
+  char dd_optname[2 + MAX_LONGOPTION + 1];
+
+  if ((unsigned) snprintf(dd_optname, sizeof (dd_optname), "--%s", optname) > sizeof (dd_optname))
+    exit (WGET_EXIT_PARSE_ERROR);
 
   assert (val != NULL);
+
   if (!setval_internal (command_by_name (com), dd_optname, val))
     exit (WGET_EXIT_PARSE_ERROR);
 }
@@ -1929,6 +1943,10 @@ cleanup (void)
   host_cleanup ();
   log_cleanup ();
   netrc_cleanup ();
+#ifdef HAVE_SSL
+  ssl_cleanup ();
+#endif
+  connect_cleanup ();
 
   xfree (opt.choose_config);
   xfree (opt.lfilename);

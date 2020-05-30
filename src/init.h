@@ -1,5 +1,5 @@
 /* Declarations for init.c.
-   Copyright (C) 1996-2011, 2015, 2018-2019 Free Software Foundation,
+   Copyright (C) 1996-2011, 2015, 2018-2020 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -41,5 +41,7 @@ char *home_dir (void);
 void cleanup (void);
 void defaults (void);
 bool run_wgetrc (const char *file, file_stats_t *);
+
+#define MAX_LONGOPTION 26
 
 #endif /* INIT_H */

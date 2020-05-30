@@ -1,5 +1,5 @@
 /* SSL support via GnuTLS library.
-   Copyright (C) 2005-2012, 2015, 2018-2019 Free Software Foundation,
+   Copyright (C) 2005-2012, 2015, 2018-2020 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -124,7 +124,6 @@ ssl_init (void)
         {
           struct hash_table *inode_map = hash_table_new (196, NULL, NULL);
           struct dirent *dent;
-          size_t dirlen = strlen(ca_directory);
           int rc;
 
           ncerts = 0;
@@ -132,10 +131,11 @@ ssl_init (void)
           while ((dent = readdir (dir)) != NULL)
             {
               struct stat st;
-              size_t ca_file_length = dirlen + strlen(dent->d_name) + 2;
-              char *ca_file = alloca(ca_file_length);
+              char ca_file[1024];
 
-              snprintf (ca_file, ca_file_length, "%s/%s", ca_directory, dent->d_name);
+              if (((unsigned) snprintf (ca_file, sizeof (ca_file), "%s/%s", ca_directory, dent->d_name)) >= sizeof (ca_file))
+                continue; // overflow
+
               if (stat (ca_file, &st) != 0)
                 continue;
 
@@ -224,6 +224,15 @@ cert to be of the same type.\n"));
   ssl_initialized = true;
 
   return true;
+}
+
+void
+ssl_cleanup (void)
+{
+  if (credentials)
+    gnutls_certificate_free_credentials(credentials);
+
+  gnutls_global_deinit();
 }
 
 struct wgnutls_transport_context

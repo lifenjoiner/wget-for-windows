@@ -1,5 +1,5 @@
 /* Declarations for utils.c.
-   Copyright (C) 1996-2011, 2015, 2018-2019 Free Software Foundation,
+   Copyright (C) 1996-2011, 2015, 2018-2020 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -51,8 +51,6 @@ as that of the covered work.  */
 #define xnew_array(type, len) (xmalloc ((len) * sizeof (type)))
 #define xnew0_array(type, len) (xcalloc ((len), sizeof (type)))
 
-#define alloca_array(type, size) ((type *) alloca ((size) * sizeof (type)))
-
 #define xfree(p) do { free ((void *) (p)); p = NULL; } while (0)
 
 struct hash_table;
@@ -90,7 +88,8 @@ bool file_exists_p (const char *, file_stats_t *);
 bool file_non_directory_p (const char *);
 wgint file_size (const char *);
 int make_directory (const char *);
-char *unique_name (const char *, bool);
+char *unique_name_passthrough (const char *);
+char *unique_name (const char *);
 FILE *unique_create (const char *, bool, char **);
 FILE *fopen_excl (const char *, int);
 FILE *fopen_stat (const char *, const char *, file_stats_t *);

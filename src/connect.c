@@ -1,5 +1,5 @@
 /* Establishing and handling network connections.
-   Copyright (C) 1995-2011, 2015, 2018-2019 Free Software Foundation,
+   Copyright (C) 1995-2011, 2015, 2018-2020 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -686,6 +686,9 @@ select_fd (int fd, double maxtime, int wait_for)
   struct timeval tmout;
   int result;
 
+  if (fd < 0)
+    return -1;
+
   if (fd >= FD_SETSIZE)
     {
       logprintf (LOG_NOTQUIET, _("Too many fds open.  Cannot use select on a fd >= %d\n"), FD_SETSIZE);
@@ -1043,6 +1046,7 @@ fd_close (int fd)
     }
 }
 
+#if defined DEBUG_MALLOC || defined TESTING
 void
 connect_cleanup(void)
 {
@@ -1057,3 +1061,4 @@ connect_cleanup(void)
       transport_map = NULL;
     }
 }
+#endif

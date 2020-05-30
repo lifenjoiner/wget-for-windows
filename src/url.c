@@ -1,5 +1,5 @@
 /* URL handling.
-   Copyright (C) 1996-2011, 2015, 2018-2019 Free Software Foundation,
+   Copyright (C) 1996-2011, 2015, 2018-2020 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -175,8 +175,8 @@ static const unsigned char urlchr_table[256] =
 static void
 url_unescape_1 (char *s, unsigned char mask)
 {
-  char *t = s;                  /* t - tortoise */
-  char *h = s;                  /* h - hare     */
+  unsigned char *t = (unsigned char *) s; /* t - tortoise */
+  unsigned char *h = (unsigned char *) s; /* h - hare     */
 
   for (; *h; h++, t++)
     {
@@ -187,7 +187,7 @@ url_unescape_1 (char *s, unsigned char mask)
         }
       else
         {
-          char c;
+          unsigned char c;
           /* Do nothing if '%' is not followed by two hex digits. */
           if (!h[1] || !h[2] || !(c_isxdigit (h[1]) && c_isxdigit (h[2])))
             goto copychar;
@@ -1462,6 +1462,8 @@ append_uri_pathel (const char *b, const char *e, bool escaped,
                    struct growable *dest)
 {
   const char *p;
+  char buf[1024];
+  char *unescaped = NULL;
   int quoted, outlen;
   int mask;
 
@@ -1481,8 +1483,15 @@ append_uri_pathel (const char *b, const char *e, bool escaped,
   /* Copy [b, e) to PATHEL and URL-unescape it. */
   if (escaped)
     {
-      char *unescaped;
-      BOUNDED_TO_ALLOCA (b, e, unescaped);
+      size_t len = e - b;
+		if (len < sizeof (buf))
+        unescaped = buf;
+      else
+        unescaped = xmalloc(len + 1);
+
+		memcpy(unescaped, b, len);
+		unescaped[len] = 0;
+
       url_unescape (unescaped);
       b = unescaped;
       e = unescaped + strlen (unescaped);
@@ -1549,6 +1558,9 @@ append_uri_pathel (const char *b, const char *e, bool escaped,
 
   TAIL_INCR (dest, outlen);
   append_null (dest);
+
+  if (unescaped && unescaped != buf)
+	  free (unescaped);
 }
 
 #ifdef HAVE_ICONV
@@ -1851,7 +1863,7 @@ url_file_name (const struct url *u, char *replaced_filename)
     }
   else
     {
-      unique = unique_name (fname, true);
+      unique = unique_name_passthrough (fname);
       if (unique != fname)
         xfree (fname);
     }

@@ -1,5 +1,5 @@
 /* SSL support via OpenSSL library.
-   Copyright (C) 2000-2012, 2015, 2018-2019 Free Software Foundation,
+   Copyright (C) 2000-2012, 2015, 2018-2020 Free Software Foundation,
    Inc.
    Originally contributed by Christian Fraenkel.
 
@@ -470,6 +470,11 @@ ssl_init (void)
     SSL_CTX_free (ssl_ctx);
   print_errors ();
   return false;
+}
+
+void
+ssl_cleanup (void)
+{
 }
 
 struct openssl_transport_context

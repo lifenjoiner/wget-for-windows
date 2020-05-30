@@ -1,5 +1,5 @@
 dnl Template file for GNU Autoconf
-dnl Copyright (C) 1995-1997, 2001, 2007-2014, 2018-2019 Free Software
+dnl Copyright (C) 1995-1997, 2001, 2007-2014, 2018-2020 Free Software
 dnl Foundation, Inc.
 
 dnl This program is free software; you can redistribute it and/or modify
@@ -70,7 +70,7 @@ AC_ARG_WITH([libpsl],
 
 dnl SSL: Configure SSL backend to use
 AC_ARG_WITH([ssl],
-  [AS_HELP_STRING([--with-ssl={gnutls,openssl}], [specify SSL backend. GNU TLS is the default.])])
+  [AS_HELP_STRING([--with-ssl={gnutls,openssl,no}], [specify SSL backend. GNU TLS is the default.])])
 
 dnl Zlib: Configure use of zlib for compression
 AC_ARG_WITH([zlib],
@@ -130,7 +130,6 @@ if test "$gl_cc_sanitize_ubsan" = yes; then
   # additional clang options
   gl_WARN_ADD([-fsanitize=integer])
   gl_WARN_ADD([-fsanitize=nullability])
-  gl_WARN_ADD([-fno-sanitize-recover=integer])
   gl_WARN_ADD([-fno-sanitize-recover=nullability])
 fi
 
@@ -345,6 +344,8 @@ AC_CHECK_TYPES(sig_atomic_t, [], [], [
 AM_ICONV
 gl_INIT
 
+AX_CODE_COVERAGE
+
 dnl
 dnl Checks for library functions.
 dnl
@@ -403,12 +404,15 @@ if test -n "$WARN_CFLAGS"; then
     nw="$nw -Wcast-function-type" # gcc 8, very noisy
     nw="$nw -Wabi" # gcc 8, very noisy
     nw="$nw -Wunused-macros" # triggers in auto-generated lex css parser, #pragma doesn't work, conflicts with -Werror
+	nw="$nw -Wchkp" # Deprecated option
     if test "$cross_compiling" = yes; then
       nw="$nw -Wformat"
     fi
 
     # remove unwanted warn flags
     wget_WORD_REMOVE([WARN_CFLAGS], [$WARN_CFLAGS], [$nw])
+
+    WARN_CFLAGS="$WARN_CFLAGS -Wno-undef -Wno-float-equal"
 
     # add more flags as you like
     if test $GCC_VERSION -ge 5; then
@@ -986,6 +990,7 @@ AM_CONDITIONAL([IRI_IS_ENABLED], [test "X$iri" != "Xno"])
 AM_CONDITIONAL([WITH_SSL], [test "X$with_ssl" != "Xno"])
 AM_CONDITIONAL([METALINK_IS_ENABLED], [test "X$with_metalink" != "Xno"])
 AM_CONDITIONAL([WITH_XATTR], [test "X$ENABLE_XATTR" != "Xno"])
+AM_CONDITIONAL([WITH_NTLM], [test "X$ENABLE_NTLM" == "Xyes"])
 
 dnl
 dnl Create output
