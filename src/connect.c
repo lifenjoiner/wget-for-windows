@@ -678,8 +678,8 @@ retryable_socket_connect_error (int err)
    should be taken as such (for example, it doesn't implement Wget's
    0-timeout-means-no-timeout semantics.)  */
 
-int
-select_fd (int fd, double maxtime, int wait_for)
+static int
+select_fd_internal (int fd, double maxtime, int wait_for, bool convert_back _GL_UNUSED)
 {
   fd_set fdset;
   fd_set *rd = NULL, *wr = NULL;
@@ -710,13 +710,28 @@ select_fd (int fd, double maxtime, int wait_for)
 #ifdef WINDOWS
     /* gnulib select() converts blocking sockets to nonblocking in windows.
        wget uses blocking sockets so we must convert them back to blocking.  */
-    set_windows_fd_as_blocking_socket (fd);
+    if (convert_back)
+      set_windows_fd_as_blocking_socket (fd);
 #endif
   }
   while (result < 0 && errno == EINTR);
 
   return result;
 }
+
+int
+select_fd (int fd, double maxtime, int wait_for)
+{
+  return select_fd_internal (fd, maxtime, wait_for, true);
+}
+
+#ifdef WINDOWS
+int
+select_fd_nb (int fd, double maxtime, int wait_for)
+{
+  return select_fd_internal (fd, maxtime, wait_for, false);
+}
+#endif
 
 /* Return true if the connection to the remote site established
    through SOCK is still open.
@@ -925,12 +940,15 @@ fd_read (int fd, char *buf, int bufsize, double timeout)
 {
   struct transport_info *info;
   LAZY_RETRIEVE_INFO (info);
+
+  /* let imp->reader take care about timeout.
+     (or in worst case timeout can be 2*timeout) */
+  if (info && info->imp->reader)
+    return info->imp->reader (fd, buf, bufsize, info->ctx, timeout);
+
   if (!poll_internal (fd, info, WAIT_FOR_READ, timeout))
     return -1;
-  if (info && info->imp->reader)
-    return info->imp->reader (fd, buf, bufsize, info->ctx);
-  else
-    return sock_read (fd, buf, bufsize);
+  return sock_read (fd, buf, bufsize);
 }
 
 /* Like fd_read, except it provides a "preview" of the data that will
@@ -950,12 +968,13 @@ fd_peek (int fd, char *buf, int bufsize, double timeout)
 {
   struct transport_info *info;
   LAZY_RETRIEVE_INFO (info);
+
+  if (info && info->imp->peeker)
+    return info->imp->peeker (fd, buf, bufsize, info->ctx, timeout);
+
   if (!poll_internal (fd, info, WAIT_FOR_READ, timeout))
     return -1;
-  if (info && info->imp->peeker)
-    return info->imp->peeker (fd, buf, bufsize, info->ctx);
-  else
-    return sock_peek (fd, buf, bufsize);
+  return sock_peek (fd, buf, bufsize);
 }
 
 /* Write the entire contents of BUF to FD.  If TIMEOUT is non-zero,
@@ -1005,6 +1024,7 @@ fd_errstr (int fd)
   /* Don't bother with LAZY_RETRIEVE_INFO, as this will only be called
      in case of error, never in a tight loop.  */
   struct transport_info *info = NULL;
+
   if (transport_map)
     info = hash_table_get (transport_map, (void *)(intptr_t) fd);
 
