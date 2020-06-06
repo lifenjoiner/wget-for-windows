@@ -403,7 +403,7 @@ static struct cmdline_option option_data[] =
     { "proxy-user", 0, OPT_VALUE, "proxyuser", -1 },
     { "quiet", 'q', OPT_BOOLEAN, "quiet", -1 },
     { "quota", 'Q', OPT_VALUE, "quota", -1 },
-    { "random-file", 0, OPT_VALUE, "randomfile", -1 },
+    IF_SSL ( "random-file", 0, OPT_VALUE, "randomfile", -1 )
     { "random-wait", 0, OPT_BOOLEAN, "randomwait", -1 },
     { "read-timeout", 0, OPT_VALUE, "readtimeout", -1 },
     { "recursive", 'r', OPT_BOOLEAN, "recursive", -1 },
@@ -872,7 +872,7 @@ HTTPS (SSL/TLS) options:\n"),
 #endif
     "\n",
     N_("\
-       --ciphers=STR           Set the priority string (GnuTLS) or cipher list string (OpenSSL) directly.\n\
+       --ciphers=STR               Set the priority string (GnuTLS) or cipher list string (OpenSSL/Schannel) directly.\n\
                                    Use with care. This option overrides --secure-protocol.\n\
                                    The format and syntax of this string depend on the specific SSL/TLS engine.\n"),
 #endif /* HAVE_SSL */

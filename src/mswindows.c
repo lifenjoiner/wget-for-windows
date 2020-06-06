@@ -530,7 +530,7 @@ run_with_timeout (double seconds, void (*fun) (void *), void *arg)
   DWORD thread_id;
   bool rc;
 
-  DEBUGP (("seconds %.2f, ", seconds));
+  DEBUGP (("timeout: seconds %.2f\n", seconds));
 
   if (seconds == 0)
     {
@@ -557,7 +557,7 @@ run_with_timeout (double seconds, void (*fun) (void *), void *arg)
       /* Propagate error state (which is per-thread) to this thread,
          so the caller can inspect it.  */
       WSASetLastError (thread_arg.ws_error);
-      DEBUGP (("Winsock error: %d\n", WSAGetLastError ()));
+      DEBUGP (("timeout: Winsock error: %d\n", WSAGetLastError ()));
       rc = false;
     }
   else

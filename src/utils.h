@@ -177,7 +177,7 @@ void wg_hex_to_string (char *str_buffer, const char *hex_buffer, size_t hex_len)
 
 extern unsigned char char_prop[];
 
-#ifdef HAVE_SSL
+#if defined(HAVE_SSL) && !defined(HAVE_WINTLS)
 /* Check pinned public key. */
 bool wg_pin_peer_pubkey (const char *pinnedpubkey, const char *pubkey, size_t pubkeylen);
 #endif
