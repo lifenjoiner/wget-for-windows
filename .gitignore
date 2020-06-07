@@ -81,6 +81,9 @@ src/stamp-h1
 src/tags
 src/version.c
 src/wget
+src/wget.exe
+src/wget.ini
+src/.wget-hsts
 # testenv/
 testenv/conf/__pycache__/
 testenv/exc/__pycache__/
