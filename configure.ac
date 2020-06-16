@@ -164,8 +164,7 @@ AC_ARG_ENABLE([opie],
 
 AS_IF([test "x$ENABLE_OPIE" = xyes],
   [AC_DEFINE([ENABLE_OPIE], [1], [Define if you want Opie support for FTP compiled in.])],
-  []
-)
+  [])
 
 
 dnl Digest: Support for HTTP Digest Authentication
@@ -176,8 +175,7 @@ AC_ARG_ENABLE([digest],
 
 AS_IF([test "x$ENABLE_DIGEST" = xyes],
   [AC_DEFINE([ENABLE_DIGEST], [1], [Define if you want the HTTP Digest Authorization compiled in.])],
-  []
-)
+  [])
 
 
 dnl NTLM: Support for HTTP NTLM Authentication
@@ -196,8 +194,7 @@ AC_ARG_ENABLE([debug],
 
 AS_IF([test "x$ENABLE_DEBUG" = xyes],
   [AC_DEFINE([ENABLE_DEBUG], [1], [Define if you want the debug output support compiled in.])],
-  []
-)
+  [])
 
 dnl Valgrind-tests: Should test suite be run under valgrind?
 AC_ARG_ENABLE(valgrind-tests,
@@ -227,8 +224,7 @@ AS_IF([test "x$ENABLE_VALGRIND" != xno], [
 AC_ARG_ENABLE(assert,
   [AS_HELP_STRING([--enable-assert], [enable assertions in code base])],
   [ENABLE_ASSERTION=$enableval],
-  [ENABLE_ASSERTION=no]
-)
+  [ENABLE_ASSERTION=no])
 
 AS_IF([test "x$ENABLE_ASSERTION" != xyes], [
   CFLAGS="-DNDEBUG $CFLAGS"
@@ -373,6 +369,7 @@ case $host_os in
   *mingw32* )
     LIBS+=' -lws2_32'
     AC_LIBOBJ([mswindows])
+    IS_WINDOWS="yes"
     ;;
 esac
 
@@ -991,6 +988,7 @@ AM_CONDITIONAL([WITH_SSL], [test "X$with_ssl" != "Xno"])
 AM_CONDITIONAL([METALINK_IS_ENABLED], [test "X$with_metalink" != "Xno"])
 AM_CONDITIONAL([WITH_XATTR], [test "X$ENABLE_XATTR" != "Xno"])
 AM_CONDITIONAL([WITH_NTLM], [test "X$ENABLE_NTLM" == "Xyes"])
+AM_CONDITIONAL([IS_WINDOWS], [test "X$IS_WINDOWS" == "Xyes"])
 
 dnl
 dnl Create output
