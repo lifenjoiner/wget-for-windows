@@ -329,16 +329,15 @@ void fd_close (int);
 
 #include <windows.h>
 #include <winsock2.h>
-
-#define SECURITY_WIN32
-#include <sspi.h>
-
 #include <wincrypt.h>
 #include <schannel.h>
+
+#include "win-sspi.h"
 
 #include "connect.h"
 #include "log.h"
 #include "utils.h"
+
 
 #define SCHANNEL_BUFFER_INIT_SIZE   4096
 #define SCHANNEL_BUFFER_FREE_SIZE   2048  // max len of TCP PDU is 1460 < 1500
@@ -378,12 +377,6 @@ void fd_close (int);
 
 
 /* Part 1: common staff */
-
-extern struct options opt;
-
-/* We choose to use SSPI interface as introduced. */
-static HMODULE g_hSec_dll = NULL;
-static PSecurityFunctionTable g_pSSPI;
 
 // recv in turn
 typedef enum _CONN_STATE {
@@ -452,45 +445,6 @@ static int ez_socket_recv(SOCKET socket, EZ_BUFF *buff, int flags) {
     DEBUGP(("socket: recv buff: total/used/received %d/%d/%d\n", buff->size, buff->used, n));
 
     return n;
-}
-
-
-static void InitSecBuffer(SecBuffer *buffer, unsigned long cbBuf, void *pBuf, unsigned long BufType)
-{
-  buffer->cbBuffer = cbBuf;
-  buffer->BufferType = BufType;
-  buffer->pvBuffer = pBuf;
-}
-
-static void InitSecBufferDesc(SecBufferDesc *desc, unsigned long cBuf, SecBuffer *pBufArr)
-{
-  desc->ulVersion = SECBUFFER_VERSION;
-  desc->cBuffers = cBuf;
-  desc->pBuffers = pBufArr;
-}
-
-/* more details:
-    https://docs.microsoft.com/en-us/windows/win32/secauthn/schannel-error-codes-for-tls-and-ssl-alerts
-    https://chromium.googlesource.com/chromium/src/net/+/master/cert/cert_verify_proc_win.cc
-    https://github.com/microsoft/referencesource/blob/master/System/net/System/Net/_SecureChannel.cs
-    https://docs.microsoft.com/en-us/windows/win32/api/wincrypt/ns-wincrypt-cert_chain_policy_status
-*/
-static char *sspi_strerror(SECURITY_STATUS err) {
-#define ERR2TXT(err) case err: txt = #err; break
-    char *txt;
-    static char hex[11] = {0};
-    switch (err) {
-    ERR2TXT(CERT_E_INVALID_NAME);
-    ERR2TXT(CERT_E_REVOKED);
-    ERR2TXT(CRYPT_E_NO_REVOCATION_CHECK);
-    ERR2TXT(CRYPT_E_REVOCATION_OFFLINE);
-    ERR2TXT(SEC_E_ALGORITHM_MISMATCH);
-    ERR2TXT(SEC_E_CERT_EXPIRED);
-    ERR2TXT(SEC_E_UNTRUSTED_ROOT);
-    ERR2TXT(SEC_E_WRONG_PRINCIPAL);
-    default: sprintf(hex, "%#08X", err); txt = hex; break;
-    }
-    return txt;
 }
 
 
@@ -898,8 +852,6 @@ HANDSHAKE_LOOP:
         case SEC_E_SECPKG_NOT_FOUND:
         case SEC_E_UNKNOWN_CREDENTIALS:
             logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08X\n", Status);
-        default:
-            break;
         }
 
         // other nonfatal issues
@@ -971,52 +923,6 @@ static SECURITY_STATUS DisconnectFromServer(WINTLS_TRANSPORT_CONTEXT *ctx) {
     return Status;
 }
 
-
-static bool LoadSecurityLibrary(void)
-{
-    OSVERSIONINFO VerInfo;
-    INIT_SECURITY_INTERFACE pInitSecurityInterface;
-
-    // secur32.dll is introduced in Windows 2000
-    VerInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-    if (!GetVersionEx(&VerInfo)) {
-        return false;
-    }
-
-    if (VerInfo.dwPlatformId == VER_PLATFORM_WIN32_NT && VerInfo.dwMajorVersion == 4) {
-        g_hSec_dll = LoadLibrary("security");
-    }
-    else if (VerInfo.dwPlatformId == VER_PLATFORM_WIN32_NT || VerInfo.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
-        g_hSec_dll = LoadLibrary("secur32");
-    }
-    else {
-        return false;
-    }
-
-    if (g_hSec_dll == NULL) {
-        logprintf(LOG_NOTQUIET, "Loading security dll failed!\n");
-        return false;
-    }
-
-    // Init SSPI
-    pInitSecurityInterface = (INIT_SECURITY_INTERFACE)GetProcAddress(g_hSec_dll, "InitSecurityInterfaceA");
-    if (pInitSecurityInterface == NULL) {
-        return false;
-    }
-
-    g_pSSPI = pInitSecurityInterface();
-    if (g_pSSPI == NULL) {
-        return false;
-    }
-
-    return true;
-}
-
-static void UnloadSecurityLibrary(void)
-{
-    FreeLibrary(g_hSec_dll);
-    g_hSec_dll = NULL;
-}
 
 /* operate with timeout */
 
@@ -1348,7 +1254,6 @@ static void wintls_close(int fd, void *arg) {
     ctx->dec_buff.used = 0;
     free(ctx);
     close(fd);
-    UnloadSecurityLibrary();
 }
 
 /* wintls_transport is the singleton that describes the SSL transport

@@ -635,7 +635,6 @@ AS_IF([test x"$with_ssl" = xopenssl], [
   AC_CHECK_FUNCS(gnutls_priority_set_direct)
 ], [test x"$with_ssl" = xwintls], [
   dnl Now actually check for wintls
-  with_ssl=wintls
   AC_MSG_CHECKING([for gdi32])
   my_ac_save_LIBS=$LIBS
   LIBS="-lgdi32 $LIBS"
@@ -646,6 +645,7 @@ AS_IF([test x"$with_ssl" = xopenssl], [
        [[GdiFlush();]])],
     [dnl worked!
     ssl_found=yes
+    AC_LIBOBJ([win-sspi])
     AC_LIBOBJ([wintls])
     AC_DEFINE([HAVE_WINTLS], [1], [Define if using wintls.])
     AC_MSG_RESULT([yes])],
@@ -664,6 +664,16 @@ then
     AC_DEFINE([ENABLE_NTLM], 1,
      [Define if you want the NTLM authorization support compiled in.])
     AC_LIBOBJ([http-ntlm])
+  fi
+elif test x"$with_ssl" = xwintls && test "$ssl_found" = yes
+then
+  if test x"$ENABLE_NTLM" != xno
+  then
+    ENABLE_NTLM=yes
+    AC_LIBOBJ([win-sspi])
+    AC_LIBOBJ([http-ntlm-ms])
+    AC_DEFINE([ENABLE_NTLM], 1,
+     [Define if you want the NTLM authorization support compiled in.])
   fi
 else
   AC_CHECK_LIB(nettle, nettle_md4_init, [HAVE_NETTLE=yes], [HAVE_NETTLE=no; AC_MSG_WARN(*** libnettle was not found. You will not be able to use NTLM)])
