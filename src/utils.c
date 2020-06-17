@@ -30,7 +30,11 @@ as that of the covered work.  */
 
 #include "wget.h"
 
-#include "sha256.h"
+# ifdef HAVE_WINHASHES
+# include "win-hashes.h"
+# else
+# include "sha256.h"
+# endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

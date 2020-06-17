@@ -34,12 +34,16 @@ as that of the covered work.  */
 #include "retr.h"
 #include "exits.h"
 #include "utils.h"
-#include "md2.h"
-#include "md4.h"
-#include "md5.h"
-#include "sha1.h"
-#include "sha256.h"
-#include "sha512.h"
+# ifdef HAVE_WINHASHES
+# include "win-hashes.h"
+# else
+# include "md2.h"
+# include "md4.h"
+# include "md5.h"
+# include "sha1.h"
+# include "sha256.h"
+# include "sha512.h"
+# endif
 #include "filename.h"
 #include "xmemdup0.h"
 #include "xstrndup.h"
@@ -562,8 +566,10 @@ retrieve_from_metalink (const metalink_t* metalink)
                   char sha1[SHA1_DIGEST_SIZE];
                   char sha1_txt[2 * SHA1_DIGEST_SIZE + 1];
 
+#ifndef HAVE_WINHASHES
                   char sha224[SHA224_DIGEST_SIZE];
                   char sha224_txt[2 * SHA224_DIGEST_SIZE + 1];
+#endif
 
                   char sha256[SHA256_DIGEST_SIZE];
                   char sha256_txt[2 * SHA256_DIGEST_SIZE + 1];
@@ -583,8 +589,10 @@ retrieve_from_metalink (const metalink_t* metalink)
                       && c_strcasecmp (mchksum->type, "md5")
                       && c_strcasecmp (mchksum->type, "sha1")
                       && c_strcasecmp (mchksum->type, "sha-1")
+#ifndef HAVE_WINHASHES
                       && c_strcasecmp (mchksum->type, "sha224")
                       && c_strcasecmp (mchksum->type, "sha-224")
+#endif
                       && c_strcasecmp (mchksum->type, "sha256")
                       && c_strcasecmp (mchksum->type, "sha-256")
                       && c_strcasecmp (mchksum->type, "sha384")
@@ -635,6 +643,7 @@ retrieve_from_metalink (const metalink_t* metalink)
                       if (!strcmp (sha1_txt, mchksum->hash))
                         hash_ok = true;
                     }
+#ifndef HAVE_WINHASHES
                   else if (c_strcasecmp (mchksum->type, "sha224") == 0
                            || c_strcasecmp (mchksum->type, "sha-224") == 0)
                     {
@@ -644,6 +653,7 @@ retrieve_from_metalink (const metalink_t* metalink)
                       if (!strcmp (sha224_txt, mchksum->hash))
                         hash_ok = true;
                     }
+#endif
                   else if (c_strcasecmp (mchksum->type, "sha256") == 0
                            || c_strcasecmp (mchksum->type, "sha-256") == 0)
                     {

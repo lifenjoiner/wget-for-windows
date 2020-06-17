@@ -72,6 +72,10 @@ dnl SSL: Configure SSL backend to use
 AC_ARG_WITH([ssl],
   [AS_HELP_STRING([--with-ssl={gnutls,openssl,wintls,no}], [specify SSL backend. *nix default: GNU TLS; Windows default: wintls.])])
 
+dnl Hashes: Configure hash functions to use
+AC_ARG_WITH([winhashes],
+  [AS_HELP_STRING([--with-winhashes], [use windows native hash fucntions.])])
+
 dnl Zlib: Configure use of zlib for compression
 AC_ARG_WITH([zlib],
   [AS_HELP_STRING([--without-zlib], [disable zlib.])])
@@ -699,6 +703,15 @@ else
     fi
   fi
 fi
+
+dnl
+dnl Check for winhashes
+dnl
+AS_IF([test x"$with_winhashes" != xno], [
+  AC_LIBOBJ([win-hashes])
+  AC_DEFINE([HAVE_WINHASHES], [1], [Define if using winhashes.])
+  with_winhashes=yes
+])
 
 dnl **********************************************************************
 dnl Checks for IPv6

@@ -40,7 +40,11 @@ as that of the covered work.  */
 #include <string.h>
 #include <time.h>
 #include <tmpdir.h>
-#include <sha1.h>
+# ifdef HAVE_WINHASHES
+# include "win-hashes.h"
+# else
+# include <sha1.h>
+# endif
 #include <base32.h>
 #include <unistd.h>
 #ifdef HAVE_LIBZ

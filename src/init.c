@@ -1950,7 +1950,7 @@ cleanup (void)
   host_cleanup ();
   log_cleanup ();
   netrc_cleanup ();
-#ifdef HAVE_SSL
+#if defined HAVE_SSL && !defined HAVE_WINTLS
   ssl_cleanup ();
 #endif
   connect_cleanup ();
