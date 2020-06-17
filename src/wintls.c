@@ -422,6 +422,7 @@ static bool ez_buff_space(EZ_BUFF *buff, int len) {
 /* auto allocate enough space, AND free it manually */
 static int ez_socket_recv(SOCKET socket, EZ_BUFF *buff, int flags) {
     int n;
+    int socket_err = 0;
 
     if (!ez_buff_space(buff, SCHANNEL_BUFFER_FREE_SIZE)) {
         return 0;
@@ -434,7 +435,9 @@ static int ez_socket_recv(SOCKET socket, EZ_BUFF *buff, int flags) {
         the service provider will choose the protocol to use. -~-> use default protocol of type
        https://docs.microsoft.com/en-us/windows/win32/api/winsock2/nf-winsock2-socket
     */
+    errno = 0;
     n = recv(socket, buff->data + buff->used, buff->size - buff->used, flags);
+    socket_err = errno;
 
     if (n == SOCKET_ERROR || n < 0) {
         logprintf(LOG_NOTQUIET, "socket: recv failed!\n");
@@ -444,6 +447,7 @@ static int ez_socket_recv(SOCKET socket, EZ_BUFF *buff, int flags) {
     }
     DEBUGP(("socket: recv buff: total/used/received %d/%d/%d\n", buff->size, buff->used, n));
 
+    errno = socket_err;
     return n;
 }
 
@@ -461,6 +465,7 @@ typedef struct _WINTLS_TRANSPORT_CONTEXT {
     HSK_NEGO_STAGE  stage;
     bool            can_recv;
     SecPkgContext_StreamSizes stream_sizes;
+    int         err_no;
 } WINTLS_TRANSPORT_CONTEXT, *P_WINTLS_TRANSPORT_CONTEXT;
 
 
@@ -702,6 +707,8 @@ static SECURITY_STATUS PerformHandshake(WINTLS_TRANSPORT_CONTEXT *ctx) {
     //
     INT             i;
 
+    errno = 0;
+
     // Initiate a client Hello message and generate a token
     ctx->dwSSPIFlags = ISC_REQ_SEQUENCE_DETECT | ISC_REQ_REPLAY_DETECT
                      | ISC_REQ_ALLOCATE_MEMORY | ISC_REQ_STREAM
@@ -731,6 +738,7 @@ static SECURITY_STATUS PerformHandshake(WINTLS_TRANSPORT_CONTEXT *ctx) {
     if (OutBuffers[0].cbBuffer > 0 && OutBuffers[0].pvBuffer != NULL) {
         //
         cbData = send(ctx->socket, OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
+        ctx->err_no = errno;
         //
         DEBUGP(("WinTLS: client hello sent %d\n", cbData));
         //
@@ -762,7 +770,9 @@ HANDSHAKE_LOOP:
     {
         // need read server response
         if (ctx->can_recv) {
-            if (ez_socket_recv(ctx->socket, rcv_buff, 0) <= 0) {
+            i = ez_socket_recv(ctx->socket, rcv_buff, 0);
+            ctx->err_no = errno;
+            if (i <= 0) {
                 Status = SEC_E_INTERNAL_ERROR;
                 break;
             }
@@ -787,6 +797,7 @@ HANDSHAKE_LOOP:
                 if (OutBuffers[i].BufferType == SECBUFFER_TOKEN && OutBuffers[i].cbBuffer > 0) {
                     //
                     cbData = send(ctx->socket, OutBuffers[i].pvBuffer, OutBuffers[i].cbBuffer, 0);
+                    ctx->err_no = errno;
                     //
                     DEBUGP(("WinTLS: next handshake data sent %d\n", cbData));
                     //
@@ -880,7 +891,6 @@ static SECURITY_STATUS DisconnectFromServer(WINTLS_TRANSPORT_CONTEXT *ctx) {
     TimeStamp       tsExpiry;
     DWORD           Status;
 
-
     dwType = SCHANNEL_SHUTDOWN; // <--
     InitSecBuffer(&OutBuffers[0], sizeof(dwType), &dwType, SECBUFFER_TOKEN);
     InitSecBufferDesc(&OutBufferDesc, 1, OutBuffers);
@@ -942,10 +952,11 @@ static void perform_handshake_with_timeout_callback(void *arg) {
 static bool perform_handshake_with_timeout(WINTLS_TRANSPORT_CONTEXT *ctx, double timeout) {
     WINTLS_HSK_CB_ARGS args;
 
+    ctx->err_no = 0;
     args.ctx = ctx;
     if (run_with_timeout(timeout, perform_handshake_with_timeout_callback, &args)) {
         DEBUGP(("WinTLS: timeout!\n"));
-        errno = ETIMEDOUT;
+        ctx->err_no = ETIMEDOUT;
         return false;
     }
 
@@ -975,9 +986,12 @@ static int wintls_read_peek(int fd, char *buf, int bufsize, void *arg, double ti
     args.func = func;
     args.buf = buf;
     args.bufsize = bufsize;
+
+    args.ctx->err_no = 0;
+
     if (run_with_timeout(timeout, wintls_read_peek_callback, &args)) {
         DEBUGP(("WinTLS: timeout!\n"));
-        errno = ETIMEDOUT;
+        args.ctx->err_no = ETIMEDOUT;
         return -1;
     }
 
@@ -997,6 +1011,8 @@ static int schannel_send(WINTLS_TRANSPORT_CONTEXT *ctx, char *buf, int len) {
     SecBuffer       Buffers[4];
     //
     SecPkgContext_StreamSizes *pStreamSizes;
+
+    ctx->err_no = 0;
 
     pStreamSizes = &ctx->stream_sizes;
     // get max decryption buffer size
@@ -1031,6 +1047,7 @@ static int schannel_send(WINTLS_TRANSPORT_CONTEXT *ctx, char *buf, int len) {
     DEBUGP(("WinTLS: encrypted data len: %d\n", n));
 
     n = send(ctx->socket, SendBuff.data, n, 0);
+    ctx->err_no = errno;
     DEBUGP(("WinTLS: sent encrypted data len: %d\n", n));
     if (n == SOCKET_ERROR || n == 0) {
         logprintf(LOG_NOTQUIET, "error send encrypted data: %d\n", WSAGetLastError());
@@ -1138,6 +1155,8 @@ static int schannel_recv(WINTLS_TRANSPORT_CONTEXT *ctx, int len) {
     rcv_buff = &ctx->rcv_buff;
     dec_buff = &ctx->dec_buff;
 
+    ctx->err_no = 0;
+
     do {
         //
         if (ctx->can_recv == false) {
@@ -1148,6 +1167,7 @@ static int schannel_recv(WINTLS_TRANSPORT_CONTEXT *ctx, int len) {
         // read enough data to decrypt
         DEBUGP(("WinTLS: Start recv() ...\n"));
         n = ez_socket_recv(ctx->socket, rcv_buff, 0);
+        ctx->err_no = errno;
         if (n <= 0 || rcv_buff->used <= 0) {
             ctx->can_recv = false;
             return n;
@@ -1204,6 +1224,7 @@ static int schannel_read_peek(WINTLS_TRANSPORT_CONTEXT *ctx, char *buf, int len,
         //
         DEBUGP(("WinTLS: has %s len: %d, dec_buff->used: %d\n", flags & MSG_PEEK ? "peek" : "read", len, dec_buff->used));
     }
+
     return len;
 }
 
@@ -1226,12 +1247,21 @@ static int wintls_write (int fd _GL_UNUSED, char *buf, int bufsize, void *arg) {
 }
 
 static int wintls_poll(int fd, double timeout, int wait_for, void *arg) {
+    int ret;
     WINTLS_TRANSPORT_CONTEXT *ctx = arg;
+
+    ctx->err_no = 0;
+
     // readable bytes buffered
     if (ctx->dec_buff.used > 0) return 1;
     // otherwise
     if (timeout == -1) timeout = opt.read_timeout;
-    return select_fd(fd, timeout, wait_for);
+    ret = select_fd(fd, timeout, wait_for);
+    ctx->err_no = errno;
+
+    if (ret == 0) ctx->err_no = ETIMEDOUT; // select_fd says
+
+    return ret;
 }
 
 static int wintls_peek(int fd, char *buf, int bufsize, void *arg, double timeout) {
