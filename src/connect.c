@@ -363,6 +363,8 @@ connect_to_ip (const ip_address *ip, int port, const char *print)
     /* Protect errno from possible modifications by close and
        logprintf.  */
     int save_errno = errno;
+    if (print)
+      logprintf (LOG_NOTQUIET, _("failed: %s.\n"), strerror (errno));
     if (sock >= 0)
       {
 #ifdef WIN32
@@ -372,8 +374,6 @@ connect_to_ip (const ip_address *ip, int port, const char *print)
 #endif
 	  fd_close (sock);
       }
-    if (print)
-      logprintf (LOG_NOTQUIET, _("failed: %s.\n"), strerror (errno));
     errno = save_errno;
     return -1;
   }
