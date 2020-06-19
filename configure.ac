@@ -224,8 +224,7 @@ AS_IF([test "x$ENABLE_VALGRIND" != xno], [
 AC_ARG_ENABLE(assert,
   [AS_HELP_STRING([--enable-assert], [enable assertions in code base])],
   [ENABLE_ASSERTION=$enableval],
-  [ENABLE_ASSERTION=no]
-)
+  [ENABLE_ASSERTION=no])
 
 AS_IF([test "x$ENABLE_ASSERTION" != xyes], [
   CFLAGS="-DNDEBUG $CFLAGS"
@@ -370,6 +369,7 @@ case $host_os in
   *mingw32* )
     LIBS+=' -lws2_32'
     AC_LIBOBJ([mswindows])
+    IS_WINDOWS="yes"
     ;;
 esac
 
@@ -1026,6 +1026,7 @@ AM_CONDITIONAL([WITH_SSL], [test "X$with_ssl" != "Xno"])
 AM_CONDITIONAL([METALINK_IS_ENABLED], [test "X$with_metalink" != "Xno"])
 AM_CONDITIONAL([WITH_XATTR], [test "X$ENABLE_XATTR" != "Xno"])
 AM_CONDITIONAL([WITH_NTLM], [test "X$ENABLE_NTLM" == "Xyes"])
+AM_CONDITIONAL([IS_WINDOWS], [test "X$IS_WINDOWS" == "Xyes"])
 
 dnl
 dnl Create output

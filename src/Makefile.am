@@ -41,7 +41,12 @@ XATTR_OBJ = xattr.c
 endif
 
 # The following line is losing on some versions of make!
-DEFS     = @DEFS@ -DSYSTEM_WGETRC=\"$(sysconfdir)/wgetrc\" -DLOCALEDIR=\"$(localedir)\"
+if IS_WINDOWS
+DEFS_X = -DLOCALEDIR=./locale
+else
+DEFS_X = -DSYSTEM_WGETRC=\"$(sysconfdir)/wgetrc\" -DLOCALEDIR=\"$(localedir)\"
+endif
+DEFS = @DEFS@ $(DEFS_X)
 
 EXTRA_DIST = css.l css.c css_.c build_info.c.in build_info.c
 
@@ -87,6 +92,7 @@ version.c:  $(wget_SOURCES) ../lib/libgnu.a
 	    | $(ESCAPEQUOTE) >> $@
 	echo 'const char *link_string = "'$(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) $(LIBS) $(wget_LDADD)'";' \
+		| sed -r ':a;s/( -l\S+)(.*\1)/\2/;ta' \
 	    | $(ESCAPEQUOTE) >> $@
 
 css.c: $(srcdir)/css.l
