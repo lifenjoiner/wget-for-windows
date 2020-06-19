@@ -34,7 +34,11 @@ as that of the covered work.  */
 #include <stdlib.h>
 #include <string.h>
 
-#include "md5.h"
+# ifdef HAVE_WINHASHES
+# include "win-hashes.h"
+# else
+# include "md5.h"
+# endif
 #include "ftp.h"
 
 /* Dictionary for integer-word translations.  Available in appendix D

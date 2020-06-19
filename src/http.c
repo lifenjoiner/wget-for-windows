@@ -56,7 +56,11 @@ as that of the covered work.  */
 # include "http-ntlm.h"
 #endif
 #include "cookies.h"
-#include "md5.h"
+# ifdef HAVE_WINHASHES
+# include "win-hashes.h"
+# else
+# include "md5.h"
+# endif
 #include "convert.h"
 #include "spider.h"
 #include "warc.h"
