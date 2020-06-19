@@ -356,6 +356,8 @@ class _Handler(BaseHTTPRequestHandler):
         exp_headers = header_obj.headers
         for header_line in exp_headers:
             header_recd = self.headers.get(header_line)
+            print("Expected Header %s: %s, got %s" %
+                  (header_line, exp_headers[header_line], header_recd))
             if header_recd is None or header_recd != exp_headers[header_line]:
                 self.send_error(400, "Expected Header %s not found" %
                                 header_line)

@@ -12,7 +12,7 @@ import os
 A_File = WgetFile ("bar", 'Content')
 
 # put the URL into 'options' to avoid prepending scheme/localhost/port
-WGET_OPTIONS = "/foo/bar"
+WGET_OPTIONS = "//foo/bar"
 WGET_URLS = [[]]
 
 Files = [[A_File]]
