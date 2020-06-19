@@ -2731,7 +2731,7 @@ wg_hex_to_string (char *str_buffer, const char *hex_buffer, size_t hex_len)
   str_buffer[2 * i] = '\0';
 }
 
-#ifdef HAVE_SSL
+#if defined(HAVE_SSL) && !defined(HAVE_WINTLS)
 
 /*
  * Public key pem to der conversion

@@ -1,16 +1,14 @@
-#ifndef __HTTP_NTLM_H
-#define __HTTP_NTLM_H
-/* Declarations for http_ntlm.c
-   Copyright (C) 1995-1997, 2000, 2007-2011, 2015, 2018-2020 Free
-   Software Foundation, Inc.
-   Contributed by Daniel Stenberg.
+/* Windows SSPI public part.
+   Copyright (C) 2020-2020 Free Software Foundation,
+   Inc.
+   Originally contributed by YX Hao.
 
 This file is part of GNU Wget.
 
 GNU Wget is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 3 of the License, or
- (at your option) any later version.
+(at your option) any later version.
 
 GNU Wget is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -31,39 +29,33 @@ Corresponding Source for a non-source form of such a combination
 shall include the source code for the parts of OpenSSL used as well
 as that of the covered work.  */
 
-#ifdef HAVE_WINTLS
-#include "win-sspi.h"
-#endif
 
-typedef enum {
-  NTLMSTATE_NONE,
-  NTLMSTATE_TYPE1,
-  NTLMSTATE_TYPE2,
-  NTLMSTATE_TYPE3,
-  NTLMSTATE_LAST
-} wgetntlm;
+/* SSPI declarations for using Windows encryption/decryption
+    For: https, ftps; NTLM
+    Todo: Digest, Kerberos
+    4 types on Win:
+    https://docs.microsoft.com/en-us/windows/win32/secauthn/ssp-packages-provided-by-microsoft
+    HTTP/1.1 Authentication:
+    https://tools.ietf.org/html/rfc7235
+    https://www.iana.org/assignments/http-authschemes/http-authschemes.xhtml
+*/
 
-/* Struct used for NTLM challenge-response authentication */
-struct ntlmdata {
-  wgetntlm state;
-#ifdef HAVE_WINTLS
-  char *host;
-  int port;
-  CredHandle hCreds;
-  CtxtHandle hContext;
-  char *spn;
-  char *in;
-  size_t in_len;
-  char *out;
-  size_t out_len;
-#else
-  unsigned char nonce[8];
-#endif
-};
+#ifndef __WIN_SSPI_H__
+#define __WIN_SSPI_H__
 
-/* this is for ntlm header input */
-bool ntlm_input (struct ntlmdata *, const char *);
+#include <stdbool.h>
 
-/* this is for creating ntlm header output */
-char *ntlm_output (struct ntlmdata *, const char *, const char *, bool *);
+#define SECURITY_WIN32
+#include <sspi.h>
+
+extern HMODULE g_hSec_dll;
+extern PSecurityFunctionTable g_pSSPI;
+
+bool LoadSecurityLibrary(void);
+void UnloadSecurityLibrary(void);
+
+void InitSecBuffer(SecBuffer *buffer, unsigned long cbBuf, void *pBuf, unsigned long BufType);
+void InitSecBufferDesc(SecBufferDesc *desc, unsigned long cBuf, SecBuffer *pBufArr);
+char *sspi_strerror(SECURITY_STATUS err);
+
 #endif

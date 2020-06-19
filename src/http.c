@@ -5304,6 +5304,10 @@ create_authorization_line (const char *au, const char *user,
 #endif
 #ifdef ENABLE_NTLM
     case 'N':                   /* NTLM */
+# ifdef HAVE_WINTLS
+      pconn.ntlm.host = pconn.host;
+      pconn.ntlm.port = pconn.port;
+# endif
       if (!ntlm_input (&pconn.ntlm, au))
         {
           *finished = true;
