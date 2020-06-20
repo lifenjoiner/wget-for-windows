@@ -136,6 +136,24 @@ do_conversion (const char *tocode, const char *fromcode, char const *in_org, siz
   size_t len, done, outlen;
   int invalid = 0, tooshort = 0;
   char *s, *in, *in_save;
+  bool ret = false;
+
+  /* iconv() has to work on an unescaped string */
+  /* 1st, detect if it is escaped or not:
+     If escaped, keep it untouched and then directly send it 'back' is the best,
+     or else it is local charset and then needs conversion. */
+  in_save = in = xstrndup (in_org, inlen);
+  url_unescape_except_reserved (in);
+  len = strlen(in);
+  if (inlen != len)
+    {
+      *out = NULL;
+      xfree(in);
+      DEBUGP (("URI '%s' is most likely escaped by the server, untouched.\n", in_org));
+      return ret;
+    }
+
+  inlen = len;
 
   cd = iconv_open (tocode, fromcode);
   if (cd == (iconv_t)(-1))
@@ -143,13 +161,8 @@ do_conversion (const char *tocode, const char *fromcode, char const *in_org, siz
       logprintf (LOG_VERBOSE, _("Conversion from %s to %s isn't supported\n"),
                  quote (fromcode), quote (tocode));
       *out = NULL;
-      return false;
+      return ret;
     }
-
-  /* iconv() has to work on an unescaped string */
-  in_save = in = xstrndup (in_org, inlen);
-  url_unescape_except_reserved (in);
-  inlen = strlen(in);
 
   len = outlen = inlen * 2;
   *out = s = xmalloc (outlen + 1);
@@ -162,17 +175,8 @@ do_conversion (const char *tocode, const char *fromcode, char const *in_org, siz
         {
           *out = s;
           *(s + len - outlen - done) = '\0';
-          xfree(in_save);
-          iconv_close(cd);
-          IF_DEBUG
-          {
-            /* not not print out embedded passwords, in_org might be an URL */
-            if (!strchr(in_org, '@') && !strchr(*out, '@'))
-              debug_logprintf ("converted '%s' (%s) -> '%s' (%s)\n", in_org, fromcode, *out, tocode);
-            else
-              debug_logprintf ("logging suppressed, strings may contain password\n");
-          }
-          return true;
+          ret = true;
+          break;
         }
 
       /* Incomplete or invalid multibyte sequence */
@@ -215,7 +219,7 @@ do_conversion (const char *tocode, const char *fromcode, char const *in_org, siz
       else
         debug_logprintf ("logging suppressed, strings may contain password\n");
     }
-    return false;
+    return ret;
 }
 #else
 static bool
