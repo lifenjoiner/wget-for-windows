@@ -293,13 +293,13 @@ sub _show_diff
         $SNIPPET_SIZE += $snip_start;    # Take it from the end.
         $snip_start = 0;
     }
-    my $exp_snip = substr $expected, $snip_start, $SNIPPET_SIZE;
-    my $act_snip = substr $actual,   $snip_start, $SNIPPET_SIZE;
+    my $exp_snip = substr $expected, $snip_start, $SNIPPET_SIZE * 2;
+    my $act_snip = substr $actual,   $snip_start, $actlen - $snip_start;
     $exp_snip =~ s/[^[:print:]]/ quotechar($&) /gemsx;
     $act_snip =~ s/[^[:print:]]/ quotechar($&) /gemsx;
     $str .= "Mismatch at line $line, col $col:\n";
-    $str .= "    $exp_snip\n";
-    $str .= "    $act_snip\n";
+    $str .= "   expected: $exp_snip ...\n";
+    $str .= "   actual  : $act_snip\n";
 
     return $str;
 }
@@ -315,10 +315,12 @@ sub _verify_download
     my $old_input_record_separator = $INPUT_RECORD_SEPARATOR;
     local $INPUT_RECORD_SEPARATOR = undef;
 
+    my $files = join("\n", glob("./*"));
+
     while (my ($filename, $filedata) = each %{$self->{_output}})
     {
         open my $fh, '<', $filename
-          or return "Test failed: file $filename not downloaded\n";
+          or return "Test failed: file $filename not downloaded. Downloaded:\n$files\n";
 
         my $content = <$fh>;
 

@@ -2,6 +2,7 @@
 from sys import exit
 from test.http_test import HTTPTest
 from misc.wget_file import WgetFile
+from platform import platform
 
 """
     This test ensures Wget uses credentials from .netrc for Basic Authorization Negotiation.
@@ -34,7 +35,7 @@ Netrc = "machine localhost\n\tlogin {0}\n\tpassword {1}".format(User, Password)
 
 A_File = WgetFile ("File1", File1, rules=File1_rules)
 B_File = WgetFile ("File2", File2, rules=File2_rules)
-Netrc_File = WgetFile (".netrc", Netrc)
+Netrc_File = WgetFile ("_netrc" if "Windows" in platform() else ".netrc", Netrc)
 
 WGET_OPTIONS = "--user={0}".format(User)
 WGET_URLS = [["File1", "File2"]]
