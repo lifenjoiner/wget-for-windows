@@ -907,6 +907,13 @@ gpg_skip_verification:
 #endif
       last_retr_err = retr_err == RETROK ? last_retr_err : retr_err;
 
+      /* Close before removing */
+      if (output_stream)
+        {
+          fclose (output_stream);
+          output_stream = NULL;
+        }
+
       /* Rename the file if error encountered; remove if option specified.
          Note: the file has been downloaded using *_loop. Therefore, it
          is not necessary to keep the file for continuated download.  */
@@ -914,11 +921,6 @@ gpg_skip_verification:
            && destname != NULL && file_exists_p (destname, NULL))
         {
           badhash_or_remove (destname);
-        }
-      if (output_stream)
-        {
-          fclose (output_stream);
-          output_stream = NULL;
         }
       xfree (destname);
       xfree (filename);
