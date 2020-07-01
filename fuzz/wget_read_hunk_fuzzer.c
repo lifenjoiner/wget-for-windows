@@ -74,7 +74,7 @@ struct my_context {
 	char peekbuf[512];
 };
 
-static int my_peek (int fd _GL_UNUSED, char *buf, int bufsize, void *arg)
+static int my_peek (int fd _GL_UNUSED, char *buf, int bufsize, void *arg, double timeout)
 {
 	if (g_read < g_size) {
 		struct my_context *ctx = (struct my_context *) arg;
@@ -91,7 +91,7 @@ static int my_peek (int fd _GL_UNUSED, char *buf, int bufsize, void *arg)
 	}
 	return 0;
 }
-static int my_read (int fd _GL_UNUSED, char *buf, int bufsize, void *arg)
+static int my_read (int fd _GL_UNUSED, char *buf, int bufsize, void *arg, double timeout)
 {
 	struct my_context *ctx = (struct my_context *) arg;
 
