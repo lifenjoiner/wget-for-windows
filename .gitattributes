@@ -1,0 +1,8 @@
+# Set the default behavior, in case people don't have core.autocrlf set.
+# https://docs.github.com/en/github/using-git/configuring-git-to-handle-line-endings#per-repository-settings
+# https://git-scm.com/docs/gitattributes#_text
+# https://git-scm.com/docs/gitattributes#_end_of_line_conversion
+# https://git-scm.com/docs/git-config#Documentation/git-config.txt-coreautocrlf
+* text=auto
+
+# other specific rules
