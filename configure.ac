@@ -74,7 +74,7 @@ AC_ARG_WITH([ssl],
 
 dnl Hashes: Configure hash functions to use
 AC_ARG_WITH([winhashes],
-  [AS_HELP_STRING([--with-winhashes], [use windows native hash fucntions.])])
+  [AS_HELP_STRING([--without-winhashes], [disable windows native hash fucntions.])])
 
 dnl Zlib: Configure use of zlib for compression
 AC_ARG_WITH([zlib],
@@ -707,7 +707,7 @@ fi
 dnl
 dnl Check for winhashes
 dnl
-AS_IF([test x"$with_winhashes" != xno], [
+AS_IF([test x"$with_winhashes" != xno && test "X$IS_WINDOWS" == "Xyes"], [
   AC_LIBOBJ([win-hashes])
   AC_DEFINE([HAVE_WINHASHES], [1], [Define if using winhashes.])
   with_winhashes=yes
