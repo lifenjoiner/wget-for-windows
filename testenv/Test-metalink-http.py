@@ -70,7 +70,9 @@ FileOkLocal = WgetFile ("test.meta", File1)
 SigFile = WgetFile ("Sig.asc", Signature)
 FileNoMeta = WgetFile ("File2", File2)
 
-WGET_OPTIONS = "--metalink-over-http --preferred-location=uk"
+# --timeout to speed up testing http://this.is.no.good.example/File1_try2_badconnection
+# Non-existent domain would lead to blackhole ip 0.0.0.0
+WGET_OPTIONS = "--timeout=3 --metalink-over-http --preferred-location=uk"
 WGET_URLS = [["test.meta", "File2"]]
 
 Files = [[FileOkServer, FileBadPref, FileBadHash, MetaFile, SigFile, FileNoMeta]]
