@@ -76,14 +76,102 @@ enum url_scheme {
   SCHEME_INVALID
 };
 
+
+enum url_type {
+  ENC_RAW,
+  ENC_URL,  /* Validated */
+  ENC_IRI
+};
+
+/* Concepts
+https://tools.ietf.org/html/
+
+IRI: Internationalized Resource Identifiers, rfc3987. Encoding.
+URI: Uniform Resource Identifier, rfc3986. mailto, tel, urn ...
+URL: Uniform Resource Locators, rfc3305. Web.
+
+URN: Uniform Resource Names, Not for locations. rfc2141. BitTorrrent.
+
+URL (Percent-Encoding, Web) < URI (Wider) < IRI (UTF8 + Percent-Encoding) ---> Resource Server
+http(s)/ftp/metalink
+
+https://en.wikipedia.org/wiki/Percent-encoding
+
+-------------------------------------------------------------------------------
+
+IDN: Internationalized Domain Name (Multibyte Unicode), rfc5890
+Punycode: rfc3492
+DNS: Domain Name System. Limited set of ASCII characters are permitted in the DNS.
+IDNA: Internationalizing Domain Names in Applications
+
+IDN ---> Punycode --> DNS
+IP  <-----------------/
+*/
+
+/* Work Model
+============================================================================= \
+                                    Client                         Server     |
+====================================================           ============== |
+      Charset                    TargetEncoded                     Charset    |
+====================================================           ============== |
+  >>>                                                                         |
+      Local --> CLI-Input  --+----> ori_url --\                    utf8 most  |
+                             |      ori_enc   | IRI                ...        |
+ -i-+-> Any --> File-Input --/  /-------------/           Default: iso-8859-1 |
+    |                           |                                             |
+ /->/      /..................->+=> [enc_url]    ----------------> ...     ~\ |
+ |         :                                      Percent-Encoded           | |
+ |         :                        enc_type                                | |
+ |         :                         URL                                    . |
+ |         :        iconv => UTF8 => IRI                                    . |
+ |         :                                                                . |
+ |         : <* Unparse   Parse **>                                           |
+ |         :                        scheme                                    |
+ |         :                                                                  |
+ |         :       /--------------- ori_host                                  |
+ |         :       |                host        --+-<- TCP/IP ->   Server     |
+ |         :       \--> IDNA -+---> (punycode)    |                           |
+ |         :                  :Y    port          \.<-........->   DNS        |
+ |         \..........<=+.<.../                                               |
+ |                      :                                                     |
+ |                      +.. ?Proxy  user                                      |
+ | /- charset <=        +..         password                                  |
+ | |                    :                                                     |
+ | |                    :                                                     |
+ | \-> Saved   ori ||   +.<.        path  ----\                               |
+ |     File's  utf8-%   :                     |                               |
+ | /-- Link  <=\ -k     +.<.        query ....+?Dup                           |
+ | |         %%|        :                     |                               |
+ | |           |        \.<.        fragment  |                               |
+ | |           +----------------\             |                               |
+ | \-> Local   ++- Escaped  <-\ |Y            |                             . |
+ \-=<= File    N|             | |   dir  <----+                             . |
+       Name <--=+- unescape <-~-+-- file <----/                             . |
+  $$$  ^^^^    Y   iconv  <- Y   ~~~^^^^                                    | |
+        |                          ?%%              Content-Type            | |
+        \--------------------------------------  <----------------  ...  <--/ |
+                                                                              |
+============================================================================= /
+*/
 /* Structure containing info on a URL.  */
 struct url
 {
-  char *url;                /* Original URL */
+  char *ori_url;
+  char *ori_enc;
+
+  char *content_enc;        /* For `-r` */
+
+  char *url;                /* Encoded */
+  enum url_type enc_type;
+
   enum url_scheme scheme;   /* URL scheme */
 
   char *host;               /* Extracted hostname */
   int port;                 /* Port number */
+
+  /* Username and password (unquoted). */
+  char *user;
+  char *passwd;
 
   /* URL components (URL-quoted). */
   char *path;
@@ -94,10 +182,6 @@ struct url
   /* Extracted path info (unquoted). */
   char *dir;
   char *file;
-
-  /* Username and password (unquoted). */
-  char *user;
-  char *passwd;
 };
 
 /* Function declarations */
@@ -107,11 +191,13 @@ char *url_escape_unsafe_and_reserved (const char *);
 void url_unescape (char *);
 void url_unescape_except_reserved (char *);
 
-struct url *url_parse (const char *, int *, struct iri *iri, bool percent_encode);
+int url_parse (struct url *url, bool percent_encode, bool utf8_encode);
 char *url_error (const char *, int);
 char *url_full_path (const struct url *);
 void url_set_dir (struct url *, const char *);
 void url_set_file (struct url *, const char *);
+struct url *url_new_init ();
+struct url *url_dup (struct url *url);
 void url_free (struct url *);
 
 enum url_scheme url_scheme (const char *);
@@ -124,7 +210,7 @@ const char *scheme_leading_string (enum url_scheme);
 char *url_string (const struct url *, enum url_auth_mode);
 char *url_file_name (const struct url *, char *);
 
-char *uri_merge (const char *, const char *);
+char *url_merge (const char *, const char *);
 
 int mkalldirs (const char *);
 

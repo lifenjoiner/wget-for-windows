@@ -221,7 +221,6 @@ typedef double SUM_SIZE_INT;
 #include "quote.h"
 #include "quotearg.h"
 
-/* Likewise for struct iri definition */
 #include "iri.h"
 
 /* Useful macros used across the code: */

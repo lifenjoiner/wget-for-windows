@@ -1826,6 +1826,19 @@ exit_error:
 
    This loop either gets commands from con, or (if ON_YOUR_OWN is
    set), makes them up to retrieve the file given by the URL.  */
+
+/* There is a conflict on Windows:
+   Windows use Unicode as internal encoding, but the ASC APIs use OEM ANSI
+   which could not be compatible with the server charset.
+   It causes some file names couldn't be save correctly!
+   So, if the transcoding fails, we adopt the escaped string.
+   If don't transcode, file could not be able to be created, auto-transcoded
+   to unpredictable name, or be unreadable name.
+   Transcoding would not affect users with the same or compatible encoding.
+
+   2020: ftp is going to be obsolete ...
+   Maybe we can `chcp` to the same codepage as the server ... Keep as it is. */
+
 static uerr_t
 ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
                    ccon *con, char **local_file, bool force_full_retrieve)

@@ -38,6 +38,7 @@
   #include "utils.h"
   #include "html-url.h"
   #include "css-url.h"
+  #include "url.h"
 
   // declarations for wget internal functions
   int main_wget(int argc, const char **argv);
@@ -88,8 +89,16 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
    fm.length = size;
    fm.mmap_p = 0;
 
-   urls = get_urls_html_fm("xxx", &fm, "https://x.y", NULL, NULL);
-	free_urlpos(urls);
+   struct url *url = url_new_init();
+   url->ori_url = xstrdup("https://x.y");
+   url->ori_enc = xstrdup("iso-8859-1");
+   url->content_enc = xstrdup("iso-8859-1");
+   url_parse(url, true, true);
+
+   urls = get_urls_html_fm("xxx", &fm, url, false);
+	 free_urlpos(urls);
+
+   url_free(url);
 
 	RESTORE_STDERR
 

@@ -67,7 +67,6 @@ void exit_wget(int status)
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	struct url *url;
-	struct iri iri;
 	char *in;
 
 	if (size > 4096) // same as max_len = ... in .options file
@@ -75,29 +74,41 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
 	CLOSE_STDERR
 
+	url = url_new_init();
 	in = (char *) malloc(size + 1);
 	memcpy(in, data, size);
 	in[size] = 0;
-
-	iri.uri_encoding = (char *) "iso-8859-1";
-	iri.orig_url = NULL;
-
-	iri.utf8_encode = 0;
-	url = url_parse(in, NULL, &iri, 0);
+	url->ori_url = in;
+	url->ori_enc = xstrdup("iso-8859-1");
+	url_parse(url, false, false);
 	url_free(url);
 
-	url = url_parse(in, NULL, &iri, 1);
+	url = url_new_init();
+	in = (char *) malloc(size + 1);
+	memcpy(in, data, size);
+	in[size] = 0;
+	url->ori_url = in;
+	url->ori_enc = xstrdup("iso-8859-1");
+	url_parse(url, true, false);
 	url_free(url);
 
-	iri.utf8_encode = 1;
-	url = url_parse(in, NULL, &iri, 0);
+	url = url_new_init();
+	in = (char *) malloc(size + 1);
+	memcpy(in, data, size);
+	in[size] = 0;
+	url->ori_url = in;
+	url->ori_enc = xstrdup("iso-8859-1");
+	url_parse(url, false, true);
 	url_free(url);
 
-	url = url_parse(in, NULL, &iri, 1);
+	url = url_new_init();
+	in = (char *) malloc(size + 1);
+	memcpy(in, data, size);
+	in[size] = 0;
+	url->ori_url = in;
+	url->ori_enc = xstrdup("iso-8859-1");
+	url_parse(url, true, true);
 	url_free(url);
-
-	free(iri.orig_url);
-	free(in);
 
 	RESTORE_STDERR
 

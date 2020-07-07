@@ -56,7 +56,7 @@ all_tests(void)
   mu_run_test (test_commands_sorted);
   mu_run_test (test_cmd_spec_restrict_file_names);
   mu_run_test (test_path_simplify);
-  mu_run_test (test_append_uri_pathel);
+  mu_run_test (test_append_url_pathel);
   mu_run_test (test_are_urls_equal);
   mu_run_test (test_is_robots_txt_url);
 #ifdef HAVE_HSTS

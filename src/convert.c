@@ -80,7 +80,7 @@ convert_links_in_hashtable (struct hash_table *downloaded_set,
   for (i = 0; i < cnt; i++)
     {
       struct urlpos *urls, *cur_url;
-      char *url;
+      struct url *url;
       char *file = file_array[i];
 
       /* Determine the URL of the file.  get_urls_{html,css} will need
@@ -92,11 +92,11 @@ convert_links_in_hashtable (struct hash_table *downloaded_set,
           continue;
         }
 
-      DEBUGP (("Scanning %s (from %s)\n", file, url));
+      DEBUGP (("Scanning %s (from %s)\n", file, url->url));
 
       /* Parse the file...  */
       urls = is_css ? get_urls_css_file (file, url) :
-                      get_urls_html (file, url, NULL, NULL);
+                      get_urls_html (file, url, NULL);
 
       /* We don't respect meta_disallow_follow here because, even if
          the file is not followed, we might still want to convert the
@@ -105,8 +105,6 @@ convert_links_in_hashtable (struct hash_table *downloaded_set,
       for (cur_url = urls; cur_url; cur_url = cur_url->next)
         {
           char *local_name;
-          struct url *u;
-          struct iri *pi;
 
           if (cur_url->link_base_p)
             {
@@ -121,14 +119,7 @@ convert_links_in_hashtable (struct hash_table *downloaded_set,
              a URL was downloaded.  Downloaded URLs will be converted
              ABS2REL, whereas non-downloaded will be converted REL2ABS.  */
 
-          pi = iri_new ();
-          set_uri_encoding (pi, opt.locale, true);
-
-          u = url_parse (cur_url->url->url, NULL, pi, true);
-          if (!u)
-              continue;
-
-          local_name = hash_table_get (dl_url_file_map, u->url);
+          local_name = hash_table_get (dl_url_file_map, cur_url->url->url);
 
           /* Decide on the conversion type.  */
           if (local_name)
@@ -141,7 +132,7 @@ convert_links_in_hashtable (struct hash_table *downloaded_set,
                  we only convert the basename portion of the URL.  */
               cur_url->convert = (opt.convert_file_only ? CO_CONVERT_BASENAME_ONLY : CO_CONVERT_TO_RELATIVE);
               cur_url->local_name = xstrdup (local_name);
-              DEBUGP (("will convert url %s to local %s\n", u->url, local_name));
+              DEBUGP (("will convert url %s to local %s\n", cur_url->url->url, local_name));
             }
           else
             {
@@ -152,11 +143,8 @@ convert_links_in_hashtable (struct hash_table *downloaded_set,
               if (!cur_url->link_complete_p)
                 cur_url->convert = CO_CONVERT_TO_COMPLETE;
               cur_url->local_name = NULL;
-              DEBUGP (("will convert url %s to complete\n", u->url));
+              DEBUGP (("will convert url %s to complete\n", cur_url->url->url));
             }
-
-          url_free (u);
-          iri_free (pi);
         }
 
       /* Convert the links in the file.  */
@@ -521,7 +509,7 @@ convert_basename (const char *p, const struct urlpos *link)
     result = url;
   else
     {
-      result = uri_merge (url, local_basename);
+      result = url_merge (url, local_basename);
       xfree (url);
     }
 
@@ -894,10 +882,15 @@ dissociate_urls_from_file (const char *file)
    to references to local files.  It is also being used to check if a
    URL has already been downloaded.  */
 
+/* Take the struct url as the value of dl_file_url_map,
+   while other key/value by str dups.
+   So we need specific free-function. */
+
 void
-register_download (const char *url, const char *file)
+register_download (struct url *url, const char *file)
 {
-  char *old_file, *old_url;
+  char *old_file, *old_url_str;
+  struct url *old_url;
 
   ENSURE_TABLES_EXIST;
 
@@ -908,13 +901,13 @@ register_download (const char *url, const char *file)
 
   if (hash_table_get_pair (dl_file_url_map, file, &old_file, &old_url))
     {
-      if (0 == strcmp (url, old_url))
+      if (0 == strcmp (url->url, old_url->url))
         /* We have somehow managed to download the same URL twice.
            Nothing to do.  */
         return;
 
-      if (match_except_index (url, old_url)
-          && !hash_table_contains (dl_url_file_map, url))
+      if (match_except_index (url->url, old_url->url)
+          && !hash_table_contains (dl_url_file_map, url->url))
         /* The two URLs differ only in the "index.html" ending.  For
            example, one is "http://www.server.com/", and the other is
            "http://www.server.com/index.html".  Don't remove the old
@@ -923,7 +916,7 @@ register_download (const char *url, const char *file)
 
       hash_table_remove (dl_file_url_map, file);
       xfree (old_file);
-      xfree (old_url);
+      url_free (old_url);
 
       /* Remove all the URLs that point to this file.  Yes, there can
          be more than one such URL, because we store redirections as
@@ -941,14 +934,14 @@ register_download (const char *url, const char *file)
       dissociate_urls_from_file (file);
     }
 
-  hash_table_put (dl_file_url_map, xstrdup (file), xstrdup (url));
+  hash_table_put (dl_file_url_map, xstrdup (file), url_dup (url));
 
  url_only:
   /* A URL->FILE mapping is not possible without a FILE->URL mapping.
      If the latter were present, it should have been removed by the
      above `if'.  So we could write:
 
-         assert (!hash_table_contains (dl_url_file_map, url));
+         assert (!hash_table_contains (dl_url_file_map, url->url));
 
      The above is correct when running in recursive mode where the
      same URL always resolves to the same file.  But if you do
@@ -960,14 +953,14 @@ register_download (const char *url, const char *file)
      "FILE.1".  In that case, FILE.1 will not be found in
      dl_file_url_map, but URL will still point to FILE in
      dl_url_file_map.  */
-  if (hash_table_get_pair (dl_url_file_map, url, &old_url, &old_file))
+  if (hash_table_get_pair (dl_url_file_map, url->url, &old_url_str, &old_file))
     {
-      hash_table_remove (dl_url_file_map, url);
-      xfree (old_url);
+      hash_table_remove (dl_url_file_map, url->url);
       xfree (old_file);
+      xfree (old_url_str);
     }
 
-  hash_table_put (dl_url_file_map, xstrdup (url), xstrdup (file));
+  hash_table_put (dl_url_file_map, xstrdup (url->url), xstrdup (file));
 }
 
 /* Register that FROM has been redirected to "TO".  This assumes that TO
@@ -992,7 +985,8 @@ register_redirection (const char *from, const char *to)
 void
 register_delete_file (const char *file)
 {
-  char *old_url, *old_file;
+  struct url *old_url;
+  char *old_file;
 
   ENSURE_TABLES_EXIST;
 
@@ -1001,7 +995,7 @@ register_delete_file (const char *file)
 
   hash_table_remove (dl_file_url_map, file);
   xfree (old_file);
-  xfree (old_url);
+  url_free (old_url);
   dissociate_urls_from_file (file);
 }
 
@@ -1030,18 +1024,30 @@ register_css (const char *file)
 #if defined DEBUG_MALLOC || defined TESTING
 static void downloaded_files_free (void);
 
+static void
+url_free_cb (void *url)
+{
+  url_free ((struct url*) url);
+}
+
+static void
+xfree_cb (void *p)
+{
+  xfree (p);
+}
+
 void
 convert_cleanup (void)
 {
   if (dl_file_url_map)
     {
-      free_keys_and_values (dl_file_url_map);
+      free_keys_and_values (dl_file_url_map, url_free_cb);
       hash_table_destroy (dl_file_url_map);
       dl_file_url_map = NULL;
     }
   if (dl_url_file_map)
     {
-      free_keys_and_values (dl_url_file_map);
+      free_keys_and_values (dl_url_file_map, xfree_cb);
       hash_table_destroy (dl_url_file_map);
       dl_url_file_map = NULL;
     }

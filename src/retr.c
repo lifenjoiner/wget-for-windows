@@ -876,9 +876,9 @@ static char *getproxy (struct url *);
    multiple points. */
 
 uerr_t
-retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
+retrieve_url (struct url * orig_parsed, char **file,
               char **newloc, const char *refurl, int *dt, bool recursive,
-              struct iri *iri, bool register_status)
+              bool register_status)
 {
   uerr_t result;
   char *url;
@@ -902,7 +902,7 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
       dt = &dummy;
       dummy = 0;
     }
-  url = xstrdup (origurl);
+  url = xstrdup (orig_parsed->url);
   if (newloc)
     *newloc = NULL;
   if (file)
@@ -922,25 +922,21 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
   proxy = getproxy (u);
   if (proxy)
     {
-      struct iri *pi = iri_new ();
-      set_uri_encoding (pi, opt.locale, true);
-      pi->utf8_encode = false;
+      proxy_url = url_new_init ();
+      proxy_url->ori_url = xstrdup (proxy);
 
       /* Parse the proxy URL.  */
-      proxy_url = url_parse (proxy, &up_error_code, pi, true);
-      if (!proxy_url)
+      up_error_code = url_parse (proxy_url, true, true);
+      if (up_error_code)
         {
           char *error = url_error (proxy, up_error_code);
           logprintf (LOG_NOTQUIET, _("Error parsing proxy URL %s: %s.\n"),
                      proxy, error);
-          xfree (url);
           xfree (error);
+          url_free (proxy_url);
           xfree (proxy);
-          iri_free (pi);
-          RESTORE_METHOD;
+          xfree (url);
           result = PROXERR;
-          if (orig_parsed != u)
-            url_free (u);
           goto bail;
         }
       if (proxy_url->scheme != SCHEME_HTTP && proxy_url->scheme != u->scheme)
@@ -949,14 +945,9 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
           url_free (proxy_url);
           xfree (url);
           xfree (proxy);
-          iri_free (pi);
-          RESTORE_METHOD;
           result = PROXERR;
-          if (orig_parsed != u)
-            url_free (u);
           goto bail;
         }
-      iri_free(pi);
       xfree (proxy);
     }
 
@@ -981,7 +972,7 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
 	}
 #endif
       result = http_loop (u, orig_parsed, &mynewloc, &local_file, refurl, dt,
-                          proxy_url, iri);
+                          proxy_url);
     }
   else if (u->scheme == SCHEME_FTP
 #ifdef HAVE_SSL
@@ -1015,11 +1006,7 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
         }
     }
 
-  if (proxy_url)
-    {
-      url_free (proxy_url);
-      proxy_url = NULL;
-    }
+  url_free (proxy_url);
 
   location_changed = (result == NEWLOCATION || result == NEWLOCATION_KEEP_POST);
   if (location_changed)
@@ -1035,35 +1022,27 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
          redirects, but a ton of boneheaded webservers and CGIs out
          there break the rules and use relative URLs, and popular
          browsers are lenient about this, so wget should be too. */
-      construced_newloc = uri_merge (url, mynewloc ? mynewloc : "");
+      construced_newloc = url_merge (url, mynewloc ? mynewloc : "");
       xfree (mynewloc);
       mynewloc = construced_newloc;
 
-#ifdef HAVE_ICONV
-      /* Reset UTF-8 encoding state, set the URI encoding and reset
-         the content encoding. */
-      iri->utf8_encode = opt.enable_iri;
-      if (opt.encoding_remote)
-       set_uri_encoding (iri, opt.encoding_remote, true);
-      set_content_encoding (iri, NULL);
-      xfree (iri->orig_url);
-#endif
+      newloc_parsed = url_new_init ();
+      newloc_parsed->ori_url = xstrdup (mynewloc);
+      newloc_parsed->ori_enc = xstrdup (u->ori_enc);
+      if (u->content_enc)
+        newloc_parsed->content_enc = xstrdup (u->content_enc);
 
       /* Now, see if this new location makes sense. */
-      newloc_parsed = url_parse (mynewloc, &up_error_code, iri, true);
-      if (!newloc_parsed)
+      up_error_code = url_parse (newloc_parsed, true, true);
+      if (up_error_code)
         {
           char *error = url_error (mynewloc, up_error_code);
           logprintf (LOG_NOTQUIET, "%s: %s.\n", escnonprint_uri (mynewloc),
                      error);
-          if (orig_parsed != u)
-            {
-              url_free (u);
-            }
-          xfree (url);
-          xfree (mynewloc);
           xfree (error);
-          RESTORE_METHOD;
+          url_free (newloc_parsed);
+          xfree (mynewloc);
+          xfree (url);
           goto bail;
         }
 
@@ -1078,24 +1057,18 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
         {
           logprintf (LOG_NOTQUIET, _("%d redirections exceeded.\n"),
                      opt.max_redirect);
-          url_free (newloc_parsed);
-          if (orig_parsed != u)
-            {
-              url_free (u);
-            }
-          xfree (url);
           xfree (mynewloc);
-          RESTORE_METHOD;
+          url_free (newloc_parsed);
+          xfree (url);
           result = WRONGCODE;
           goto bail;
         }
 
       xfree (url);
       url = mynewloc;
+
       if (orig_parsed != u)
-        {
-          url_free (u);
-        }
+        url_free (u);
       u = newloc_parsed;
 
       /* If we're being redirected from POST, and we received a
@@ -1119,37 +1092,44 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
     }
 
   /* Try to not encode in UTF-8 if fetching failed */
-  if (!(*dt & RETROKF) && iri->utf8_encode)
+  if (!(*dt & RETROKF) && u->enc_type == ENC_IRI)
     {
-      iri->utf8_encode = false;
-      if (orig_parsed != u)
+      struct url *u2 = url_new_init ();
+      u2->ori_url = xstrdup (u->ori_url);
+      u2->ori_enc = xstrdup (u->ori_enc);
+      if (u->content_enc)
+        u2->content_enc = xstrdup (u->content_enc);
+      if (url_parse (u2, true, false) == 0)
         {
-          url_free (u);
-        }
-      u = url_parse (origurl, NULL, iri, true);
-      if (u)
-        {
-          if (strcmp(u->url, orig_parsed->url))
+          if (strcmp(u2->url, u->url))
             {
-              DEBUGP (("[IRI fallbacking to non-utf8 for %s\n", quote (url)));
+              if (orig_parsed != u)
+                url_free (u);
+              u = u2;
+              DEBUGP (("IRI fallbacking to non-utf8 for %s\n", quote (url)));
               xfree (url);
               url = xstrdup (u->url);
               iri_fallbacked = 1;
               goto redirected;
             }
           else
-              DEBUGP (("[Needn't fallback to non-utf8 for %s\n", quote (url)));
+              DEBUGP (("Needn't fallback to non-utf8 for %s\n", quote (url)));
         }
       else
-          DEBUGP (("[Couldn't fallback to non-utf8 for %s\n", quote (url)));
+          DEBUGP (("Couldn't fallback to non-utf8 for %s\n", quote (url)));
+      /* u2 is not adopted */
+      url_free (u2);
     }
 
   if (local_file && u && (*dt & RETROKF || opt.content_on_error))
     {
-      register_download (u->url, local_file);
+      /* Store a copy of url for link conversion in case of `orig_parsed == u`
+         `retrieve_tree` still uses the url after calling this.
+      */
+      register_download (u, local_file);
 
-      if (!opt.spider && redirection_count && 0 != strcmp (origurl, u->url))
-        register_redirection (origurl, u->url);
+      if (!opt.spider && redirection_count && 0 != strcmp (url, u->url))
+        register_redirection (url, u->url);
 
       if (*dt & TEXTHTML)
         register_html (local_file);
@@ -1162,9 +1142,6 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
     *file = local_file ? local_file : NULL;
   else
     xfree (local_file);
-
-  if (orig_parsed != u)
-    url_free (u);
 
   if (redirection_count || iri_fallbacked)
     {
@@ -1180,9 +1157,12 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
       xfree (url);
     }
 
+bail:
   RESTORE_METHOD;
 
-bail:
+  if (orig_parsed != u)
+    url_free (u);
+
   if (register_status)
     inform_exit_status (result);
 
@@ -1200,7 +1180,7 @@ retrieve_from_file (const char *file, bool html, int *count)
 {
   uerr_t status;
   struct urlpos *url_list, *cur_url;
-  struct iri *iri = iri_new();
+  struct url *url_parsed = url_new_init ();
 
   char *input_file, *url_file = NULL;
   const char *url = file;
@@ -1208,63 +1188,49 @@ retrieve_from_file (const char *file, bool html, int *count)
   status = RETROK;             /* Suppose everything is OK.  */
   *count = 0;                  /* Reset the URL count.  */
 
-  /* sXXXav : Assume filename and links in the file are in the locale */
-  set_uri_encoding (iri, opt.locale, true);
-  set_content_encoding (iri, opt.locale);
-
   if (url_valid_scheme (url))
     {
       int dt,url_err;
-      struct url *url_parsed = url_parse (url, &url_err, iri, true);
-      if (!url_parsed)
+      url_parsed->ori_url = xstrdup (url);
+      url_err = url_parse (url_parsed, true, true);
+      if (url_err)
         {
           char *error = url_error (url, url_err);
           logprintf (LOG_NOTQUIET, "%s: %s.\n", url, error);
           xfree (error);
-          iri_free (iri);
+          url_free (url_parsed);
           return URLERROR;
         }
 
       if (!opt.base_href)
         opt.base_href = xstrdup (url);
 
-      status = retrieve_url (url_parsed, url, &url_file, NULL, NULL, &dt,
-                             false, iri, true);
-      url_free (url_parsed);
+      status = retrieve_url (url_parsed, &url_file, NULL, NULL, &dt,
+                             false, true);
 
       if (!url_file || (status != RETROK))
-        return status;
+        {
+          return status;
+        }
 
       if (dt & TEXTHTML)
         html = true;
-
-#ifdef HAVE_ICONV
-      /* If we have a found a content encoding, use it.
-       * ( == is okay, because we're checking for identical object) */
-      if (iri->content_encoding != opt.locale)
-          set_uri_encoding (iri, iri->content_encoding, false);
-#endif
-
-      /* Reset UTF-8 encode status */
-      iri->utf8_encode = opt.enable_iri;
-      xfree (iri->orig_url);
 
       input_file = url_file;
     }
   else
     input_file = (char *) file;
 
-  url_list = (html ? get_urls_html (input_file, NULL, NULL, iri)
-              : get_urls_file (input_file));
+  url_list = (html ? get_urls_html (input_file, url_parsed, false)
+              : get_urls_file (input_file, url_parsed->content_enc));
 
+  url_free (url_parsed);
   xfree (url_file);
 
   for (cur_url = url_list; cur_url; cur_url = cur_url->next, ++*count)
     {
       char *filename = NULL, *new_file = NULL, *proxy;
       int dt = 0;
-      struct iri *tmpiri = iri_dup (iri);
-      struct url *parsed_url = NULL;
 
       if (cur_url->ignore_when_downloading)
         continue;
@@ -1274,8 +1240,6 @@ retrieve_from_file (const char *file, bool html, int *count)
           status = QUOTEXC;
           break;
         }
-
-      parsed_url = url_parse (cur_url->url->url, NULL, tmpiri, true);
 
       proxy = getproxy (cur_url->url);
       if ((opt.recursive || opt.page_requisites)
@@ -1295,20 +1259,18 @@ retrieve_from_file (const char *file, bool html, int *count)
               )
             opt.follow_ftp = 1;
 
-          status = retrieve_tree (parsed_url ? parsed_url : cur_url->url,
-                                  tmpiri);
+          status = retrieve_tree (cur_url->url);
 
           opt.follow_ftp = old_follow_ftp;
         }
       else
-        status = retrieve_url (parsed_url ? parsed_url : cur_url->url,
-                               cur_url->url->url, &filename,
-                               &new_file, NULL, &dt, opt.recursive, tmpiri,
-                               true);
-      xfree (proxy);
+        {
+          status = retrieve_url (cur_url->url, &filename,
+                                 &new_file, NULL, &dt, opt.recursive, true);
+          url_free (cur_url->url);
+        }
 
-      if (parsed_url)
-          url_free (parsed_url);
+      xfree (proxy);
 
       if (filename && opt.delete_after && file_exists_p (filename, NULL))
         {
@@ -1322,13 +1284,10 @@ Removing file due to --delete-after in retrieve_from_file():\n"));
 
       xfree (new_file);
       xfree (filename);
-      iri_free (tmpiri);
     }
 
   /* Free the linked list of URL-s.  */
   free_urlpos (url_list);
-
-  iri_free (iri);
 
   return status;
 }
@@ -1512,7 +1471,7 @@ url_uses_proxy (struct url * u)
   bool ret;
   char *proxy;
 
-  if (!u)
+  if (!u || !u->url)
     return false;
   proxy = getproxy (u);
   ret = proxy != NULL;

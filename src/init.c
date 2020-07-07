@@ -476,7 +476,7 @@ defaults (void)
 
   opt.waitretry = 10;
 
-#ifdef HAVE_ICONV
+#ifdef ENABLE_IRI
   opt.enable_iri = true;
 #else
   opt.enable_iri = false;

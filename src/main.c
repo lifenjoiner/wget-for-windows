@@ -91,10 +91,6 @@ as that of the covered work.  */
 # define PATH_SEPARATOR '/'
 #endif
 
-#ifndef HAVE_ICONV
-struct iri dummy_iri;
-#endif
-
 #ifdef HAVE_LIBCARES
 #include <ares.h>
 ares_channel ares;
@@ -1869,19 +1865,15 @@ for details.\n\n"));
     }
 
 #ifdef HAVE_ICONV
-  if (opt.enable_iri)
-    {
-      if (opt.locale && !check_encoding_name (opt.locale))
-        xfree (opt.locale);
+  if (opt.locale && !check_encoding_name (opt.locale))
+    xfree (opt.locale);
 
-      if (!opt.locale)
-        opt.locale = find_locale ();
+  if (!opt.locale)
+    opt.locale = find_locale ();
 
-      if (opt.encoding_remote && !check_encoding_name (opt.encoding_remote))
-        xfree (opt.encoding_remote);
-    }
+  if (opt.encoding_remote && !check_encoding_name (opt.encoding_remote))
+    xfree (opt.encoding_remote);
 #else
-  memset (&dummy_iri, 0, sizeof (dummy_iri));
   if (opt.enable_iri || opt.locale || opt.encoding_remote)
     {
       /* sXXXav : be more specific... */
@@ -2094,20 +2086,17 @@ only if outputting to a regular file.\n"));
       char *t;
       char *filename = NULL, *redirected_URL = NULL;
       int dt = 0, url_err;
-      /* Need to do a new struct iri every time, because
-       * retrieve_url may modify it in some circumstances,
-       * currently. */
-      struct iri *iri = iri_new ();
-      struct url *url_parsed;
+      /* If url enqueued by retrieve_tree, free after dequeued */
+      struct url *url = url_new_init ();
 
       t = rewrite_shorthand_url (argv[optind]);
       if (!t)
         t = argv[optind];
 
-      set_uri_encoding (iri, opt.locale, true);
-      url_parsed = url_parse (t, &url_err, iri, true);
+      url->ori_url = xstrdup (t);
 
-      if (!url_parsed)
+      url_err = url_parse (url, true, true);
+      if (url_err)
         {
           char *error = url_error (t, url_err);
           logprintf (LOG_NOTQUIET, "%s: %s.\n",t, error);
@@ -2118,7 +2107,7 @@ only if outputting to a regular file.\n"));
         {
           /* Request credentials if use_askpass is set. */
           if (opt.use_askpass)
-            use_askpass (url_parsed);
+            use_askpass (url);
 
           if ((opt.recursive || opt.page_requisites)
               && ((url_scheme (t) != SCHEME_FTP
@@ -2126,7 +2115,7 @@ only if outputting to a regular file.\n"));
               && url_scheme (t) != SCHEME_FTPS
 #endif
               )
-                  || url_uses_proxy (url_parsed)))
+                  || url_uses_proxy (url)))
             {
               int old_follow_ftp = opt.follow_ftp;
 
@@ -2138,14 +2127,15 @@ only if outputting to a regular file.\n"));
                   )
                 opt.follow_ftp = 1;
 
-              retrieve_tree (url_parsed, NULL);
+              retrieve_tree (url);
 
               opt.follow_ftp = old_follow_ftp;
             }
           else
             {
-              retrieve_url (url_parsed, t, &filename, &redirected_URL, NULL,
-                            &dt, opt.recursive, iri, true);
+              retrieve_url (url, &filename, &redirected_URL, NULL,
+                            &dt, opt.recursive, true);
+              url_free (url);
             }
 
           if (opt.delete_after && filename != NULL && file_exists_p (filename, NULL))
@@ -2157,10 +2147,7 @@ only if outputting to a regular file.\n"));
             }
           xfree (redirected_URL);
           xfree (filename);
-          url_free (url_parsed);
         }
-
-      iri_free (iri);
 
       if (t != argv[optind])
         xfree (t);

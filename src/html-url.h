@@ -38,9 +38,12 @@ as that of the covered work.  */
 
 struct map_context {
   char *text;                   /* HTML text. */
+  char *text_enc;               /* text encoding, base and parent_base
+                                   from the same site should be the same */
   char *base;                   /* Base URI of the document, possibly
                                    changed through <base href=...>. */
   const char *parent_base;      /* Base of the current document. */
+  const char *parent_enc;       /* parent_base encoding */
   const char *document_file;    /* File name of this document. */
   bool nofollow;                /* whether NOFOLLOW was specified in a
                                    <meta name=robots> tag. */
@@ -48,9 +51,10 @@ struct map_context {
   struct urlpos *head;          /* List of URLs that is being built. */
 };
 
-struct urlpos *get_urls_file (const char *);
-struct urlpos *get_urls_html (const char *, const char *, bool *, struct iri *);
-struct urlpos *get_urls_html_fm (const char *, const struct file_memory *, const char *, bool *, struct iri *);
+bool set_map_context_by_url (struct map_context *ctx, struct url *url);
+struct urlpos *get_urls_file (const char *, const char *);
+struct urlpos *get_urls_html (const char *, struct url *, bool *);
+struct urlpos *get_urls_html_fm (const char *, const struct file_memory *, struct url *, bool *);
 struct urlpos *append_url (const char *, int, int, struct map_context *);
 void free_urlpos (struct urlpos *);
 void cleanup_html_url (void);

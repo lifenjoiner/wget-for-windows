@@ -5,6 +5,9 @@ use warnings;
 
 use HTTPTest;
 
+use Encode::Locale;
+use Encode;
+
 # cf. http://en.wikipedia.org/wiki/Latin1
 #     http://en.wikipedia.org/wiki/ISO-8859-15
 
@@ -124,7 +127,7 @@ my %urls = (
         code => "200",
         msg => "Ok",
         headers => {
-            "Content-type" => "text/html; charset=UTF-8",
+            "Content-type" => "text/html; charset=ISO-8859-1",
         },
         content => $pagefrancais,
     },
@@ -166,6 +169,38 @@ my $cmdline = $WgetTest::WGETPATH . " --no-iri -nH -r http://localhost:{{port}}/
 
 my $expected_error_code = 0;
 
+if ($^O eq "msys" || $^O eq "cygwin") {
+    $^O = "MSWin32";
+    Encode::Locale::reinit();
+}
+
+sub can_transcode_to_locale
+{
+    my ($from, $str) = @_;
+    my $U = Encode::encode(console_in => Encode::decode($from, $str));
+    return Encode::encode($from, Encode::decode(console_in => $U)) eq $str;
+}
+
+my $p1_out = ${ccedilla_u8};
+if (!can_transcode_to_locale("UTF-8", $p1_out))
+{
+    $p1_out = "%E7";
+}
+
+my $p2_out = ${eacute_u8} . ${eacute_u8};
+if (!can_transcode_to_locale("UTF-8", $p2_out))
+{
+    $p2_out = "%E9%E9";
+}
+
+my $p3_out = ${eurosign_u8} . ${eurosign_u8} . ${eurosign_u8};
+if (!can_transcode_to_locale("UTF-8", $p3_out))
+{
+    $p3_out = "%A4%A4%A4";
+}
+
+# perl use UTF-8 as default string encoding now.
+
 my %expected_downloaded_files = (
     'index.html' => {
         content => $pageindex,
@@ -173,13 +208,13 @@ my %expected_downloaded_files = (
     'robots.txt' => {
         content => "",
     },
-    "p1_fran${ccedilla_l15}ais.html" => {
+    "p1_fran${p1_out}ais.html" => {
         content => $pagefrancais,
     },
-    "p2_${eacute_l1}${eacute_l1}n.html" => {
+    "p2_${p2_out}n.html" => {
         content => $pageeen,
     },
-    "p3_${eurosign_l15}${eurosign_l15}${eurosign_l15}.html" => {
+    "p3_${p3_out}.html" => {
         content => $pageeuro,
     },
 );

@@ -97,7 +97,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
 	struct map_context ctx = {
 		.text = (char *) data,
+		.text_enc = "iso-8859-1", // won't change
 		.parent_base = strdup("https://x.y"),
+		.parent_enc = "iso-8859-1",
 		.document_file = NULL,
 	};
 

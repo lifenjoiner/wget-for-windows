@@ -377,7 +377,6 @@ retrieve_from_metalink (const metalink_t* metalink)
         {
           metalink_resource_t *mres = *mres_ptr;
           metalink_checksum_t **mchksum_ptr, *mchksum;
-          struct iri *iri;
           struct url *url;
           file_stats_t flstats;
           int url_err;
@@ -417,17 +416,17 @@ retrieve_from_metalink (const metalink_t* metalink)
           retr_err = METALINK_RETR_ERROR;
 
           /* Parse our resource URL.  */
-          iri = iri_new ();
-          set_uri_encoding (iri, opt.locale, true);
-          url = url_parse (mres->url, &url_err, iri, false);
+          url = url_new_init ();
+          url->ori_url = xstrdup (mres->url);
+          url_err = url_parse (url, true, true);
 
-          if (!url)
+          if (url_err)
             {
               char *error = url_error (mres->url, url_err);
               logprintf (LOG_NOTQUIET, "%s: %s.\n", mres->url, error);
               xfree (error);
+              url_free (url);
               inform_exit_status (URLERROR);
-              iri_free (iri);
               continue;
             }
           else
@@ -485,8 +484,9 @@ retrieve_from_metalink (const metalink_t* metalink)
 
               opt.metalink_over_http = false;
               DEBUGP (("Storing to %s\n", destname));
-              retr_err = retrieve_url (url, mres->url, NULL, NULL,
-                                       NULL, NULL, opt.recursive, iri, false);
+              retr_err = retrieve_url (url, NULL, NULL,
+                                       NULL, NULL, opt.recursive, false);
+              url_free (url);
               opt.metalink_over_http = _metalink_http;
 
               /*
@@ -499,8 +499,6 @@ retrieve_from_metalink (const metalink_t* metalink)
               if (!output_stream && file_exists_p (destname, &flstats))
                 output_stream = fopen_stat (destname, "ab", &flstats);
             }
-          url_free (url);
-          iri_free (iri);
 
           if (retr_err == RETROK)
             {
@@ -1176,23 +1174,18 @@ fetch_metalink_file (const char *url_str,
 
   uerr_t retr_err = URLERROR;
 
-  struct iri *iri;
-  struct url *url;
+  struct url *url = url_new_init ();
   int url_err;
 
-  /* Parse the URL.  */
-  iri = iri_new ();
-  set_uri_encoding (iri, opt.locale, true);
-  url = url_parse (url_str, &url_err, iri, false);
+  url->ori_url = xstrdup (url_str);
+  url_err = url_parse (url, true, true);
 
-  if (!url)
+  if (url_err)
     {
       char *error = url_error (url_str, url_err);
       logprintf (LOG_NOTQUIET, "%s: %s.\n", url_str, error);
-      inform_exit_status (retr_err);
-      iri_free (iri);
       xfree (error);
-      return retr_err;
+      goto cleanup;
     }
 
   output_stream = NULL;
@@ -1228,8 +1221,8 @@ fetch_metalink_file (const char *url_str,
   opt.metalink_over_http = metalink_http;
 
   DEBUGP (("Storing to %s\n", local_file));
-  retr_err = retrieve_url (url, url_str, NULL, NULL,
-                           NULL, NULL, opt.recursive, iri, false);
+  retr_err = retrieve_url (url, NULL, NULL,
+                           NULL, NULL, opt.recursive, false);
 
   if (retr_err == RETROK)
     {
@@ -1250,10 +1243,9 @@ fetch_metalink_file (const char *url_str,
   output_stream_regular = _output_stream_regular;
   output_stream = _output_stream;
 
-  inform_exit_status (retr_err);
-
-  iri_free (iri);
+cleanup:
   url_free (url);
+  inform_exit_status (retr_err);
 
   return retr_err;
 }

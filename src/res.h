@@ -32,6 +32,7 @@ as that of the covered work.  */
 #define RES_H
 
 struct robot_specs;
+struct url;
 
 struct robot_specs *res_parse (const char *, int);
 struct robot_specs *res_parse_from_file (const char *);
@@ -41,7 +42,7 @@ bool res_match_path (const struct robot_specs *, const char *);
 void res_register_specs (const char *, int, struct robot_specs *);
 struct robot_specs *res_get_specs (const char *, int);
 
-bool res_retrieve_file (const char *, char **, struct iri *);
+bool res_retrieve_file (struct url *, char **);
 
 bool is_robots_txt_url (const char *);
 
