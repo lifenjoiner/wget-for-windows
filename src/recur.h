@@ -44,6 +44,6 @@ as that of the covered work.  */
 struct urlpos;
 
 void recursive_cleanup (void);
-uerr_t retrieve_tree (struct url *, struct iri *);
+uerr_t retrieve_tree (struct url *);
 
 #endif /* RECUR_H */

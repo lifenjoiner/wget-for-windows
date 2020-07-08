@@ -102,7 +102,7 @@ typedef enum
 
 downloaded_file_t downloaded_file (downloaded_file_t, const char *);
 
-void register_download (const char *, const char *);
+void register_download (struct url *, const char *);
 void register_redirection (const char *, const char *);
 void register_html (const char *);
 void register_css (const char *);

@@ -10,6 +10,16 @@ use HTTPTest;
 my $osname = $^O;
 print "OS=$osname\n";
 
+my $restrict = "unix";
+my $expected_f1 = "site;sub:.html";
+my $expected_l1 = "site;sub:.html";
+
+if ($osname eq "MSWin32" || $osname eq "msys" || $osname eq "cygwin") {
+  $restrict = "windows";
+  $expected_f1 = "site;sub%3A.html";
+  $expected_l1 = "site%3Bsub%253A.html";
+}
+
 my $index = <<EOF;
 <html>
   <head>
@@ -21,13 +31,14 @@ my $index = <<EOF;
 </html>
 EOF
 
+# construct_relative("foo", "bar") -> "bar"
 my $converted = <<EOF;
 <html>
   <head>
     <title>Index</title>
   </head>
   <body>
-    <a href="./site%3Bsub:.html">Site</a>
+    <a href="${expected_l1}">Site</a>
   </body>
 </html>
 EOF
@@ -63,11 +74,6 @@ my %urls = (
     },
 );
 
-my $restrict = "unix";
-if ($osname eq "MSWin32") {
-  $restrict = "windows";
-}
-
 my $cmdline = $WgetTest::WGETPATH . " -k -r -nH --restrict-file-names=$restrict http://localhost:{{port}}/index.html";
 
 my $expected_error_code = 0;
@@ -76,7 +82,7 @@ my %expected_downloaded_files = (
     'index.html' => {
         content => $converted,
     },
-    'site;sub:.html' => {
+    $expected_f1 => {
         content => $site,
     },
 );

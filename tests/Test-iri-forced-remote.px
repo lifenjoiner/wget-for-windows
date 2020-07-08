@@ -6,6 +6,9 @@ use warnings;
 use WgetFeature qw(iri);
 use HTTPTest;
 
+use Encode::Locale;
+use Encode;
+
 # cf. http://en.wikipedia.org/wiki/Latin1
 #     http://en.wikipedia.org/wiki/ISO-8859-15
 
@@ -46,7 +49,7 @@ my $pagefrancais = <<EOF;
 <html>
 <head>
   <title>La seule page en français</title>
-  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"/>
 </head>
 <body>
   <p>
@@ -153,6 +156,36 @@ my $cmdline = $WgetTest::WGETPATH . " --iri -e robots=on --trust-server-names --
 
 my $expected_error_code = 0;
 
+if ($^O eq "msys" || $^O eq "cygwin") {
+    $^O = "MSWin32";
+    Encode::Locale::reinit();
+}
+
+sub can_transcode_to_locale
+{
+    my ($from, $str) = @_;
+    my $U = Encode::encode(console_in => Encode::decode($from, $str));
+    return Encode::encode($from, Encode::decode(console_in => $U)) eq $str;
+}
+
+my $p1_out = ${ccedilla_u8};
+if (!can_transcode_to_locale("UTF-8", $p1_out))
+{
+    $p1_out = "%C3%A7";
+}
+
+my $p2_out = ${eacute_u8} . ${eacute_u8};
+if (!can_transcode_to_locale("UTF-8", $p2_out))
+{
+    $p2_out = "%C3%A9%C3%A9";
+}
+
+my $p3_out = ${eurosign_u8} . ${eurosign_u8} . ${eurosign_u8};
+if (!can_transcode_to_locale("UTF-8", $p3_out))
+{
+    $p3_out = "%E2%82%AC%E2%82%AC%E2%82%AC";
+}
+
 my %expected_downloaded_files = (
     'index.html' => {
         content => $pageindex,
@@ -160,13 +193,13 @@ my %expected_downloaded_files = (
     'robots.txt' => {
         content => "",
     },
-    "p1_fran${ccedilla_u8}ais.html" => {
+    "p1_fran${p1_out}ais.html" => {
         content => $pagefrancais,
     },
-    "p2_${eacute_u8}${eacute_u8}n.html" => {
+    "p2_${p2_out}n.html" => {
         content => $pageeen,
     },
-    "p3_${eurosign_u8}${eurosign_u8}${eurosign_u8}.html" => {
+    "p3_${p3_out}.html" => {
         content => $pageeuro,
     },
 );

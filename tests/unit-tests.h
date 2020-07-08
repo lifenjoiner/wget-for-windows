@@ -53,7 +53,7 @@ const char *test_commands_sorted(void);
 const char *test_cmd_spec_restrict_file_names(void);
 const char *test_is_robots_txt_url(void);
 const char *test_path_simplify (void);
-const char *test_append_uri_pathel(void);
+const char *test_append_url_pathel(void);
 const char *test_are_urls_equal(void);
 const char *test_subdir_p(void);
 const char *test_dir_matches_p(void);

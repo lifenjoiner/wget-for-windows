@@ -117,7 +117,9 @@ void string_set_add (struct hash_table *, const char *);
 int string_set_contains (struct hash_table *, const char *);
 void string_set_to_array (struct hash_table *, char **);
 void string_set_free (struct hash_table *);
-void free_keys_and_values (struct hash_table *);
+/* There could be types of value. */
+typedef void VALUE_FREE_FUNC (void *value);
+void free_keys_and_values (struct hash_table *, VALUE_FREE_FUNC *);
 
 const char *with_thousand_seps (wgint);
 

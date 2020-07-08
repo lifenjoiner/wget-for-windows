@@ -722,7 +722,7 @@ char *
 unique_name_passthrough (const char *file, bool allow_passthrough)
 {
   /* Return the FILE itself, without modification, irregardful. */
-  return (char *) file);
+  return (char *) file;
 }
 char *
 
@@ -1022,7 +1022,7 @@ make_directory (const char *directory)
    file_merge("/foo/bar/", "baz") => "/foo/bar/baz"
    file_merge("foo", "bar")       => "bar"
 
-   In other words, it's a simpler and gentler version of uri_merge.  */
+   In other words, it's a simpler and gentler version of url_merge.  */
 
 char *
 file_merge (const char *base, const char *file)
@@ -1548,13 +1548,13 @@ string_set_free (struct hash_table *ht)
 /* Utility function: simply call xfree() on all keys and values of HT.  */
 
 void
-free_keys_and_values (struct hash_table *ht)
+free_keys_and_values (struct hash_table *ht, VALUE_FREE_FUNC *free_func)
 {
   hash_table_iterator iter;
   for (hash_table_iterate (ht, &iter); hash_table_iter_next (&iter); )
     {
       xfree (iter.key);
-      xfree (iter.value);
+      free_func (iter.value);
     }
 }
 

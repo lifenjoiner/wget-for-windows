@@ -6,11 +6,13 @@ use warnings;
 use WgetFeature qw(iri);
 use HTTPTest;
 
+use Encode::Locale;
+use Encode;
+
 # Just a sanity check to verify that %-encoded values are always left
 # untouched.
 
 my $ccedilla_l15 = "\xE7";
-my $ccedilla_l15_pct = "%E7";
 my $ccedilla_u8 = "\xC3\xA7";
 my $ccedilla_u8_pct = "%C3%A7";
 my $eacute_l1 = "\xE9";
@@ -25,7 +27,7 @@ my $pageindex = <<EOF;
 <body>
   <p>
     Link to page 1 <a
-    href="http://localhost:{{port}}/hello_${ccedilla_l15_pct}${eacute_l1}.html">La seule page en fran&ccedil;ais</a>.
+    href="http://localhost:{{port}}/hello_${ccedilla_u8_pct}${eacute_l1}.html">La seule page en fran&ccedil;ais</a>.
   </p>
 </body>
 </html>
@@ -68,11 +70,29 @@ my $cmdline = $WgetTest::WGETPATH . " --iri -e robots=off --restrict-file-names=
 
 my $expected_error_code = 0;
 
+if ($^O eq "msys" || $^O eq "cygwin") {
+    $^O = "MSWin32";
+    Encode::Locale::reinit();
+}
+
+sub can_transcode_to_locale
+{
+    my ($from, $str) = @_;
+    my $U = Encode::encode(console_in => Encode::decode($from, $str));
+    return Encode::encode($from, Encode::decode(console_in => $U)) eq $str;
+}
+
+my $str_out = ${ccedilla_u8} . ${eacute_u8};
+if (!can_transcode_to_locale("UTF-8", $str_out))
+{
+    $str_out = ${ccedilla_u8_pct} . ${eacute_u8_pct};
+}
+
 my %expected_downloaded_files = (
     'index.html' => {
         content => $pageindex,
     },
-    "hello_${ccedilla_u8}${eacute_u8}.html" => {
+    "hello_${str_out}.html" => {
         content => $pagefrancais,
     },
 );

@@ -539,27 +539,23 @@ res_get_specs (const char *host, int port)
    Return true if robots were retrieved OK, false otherwise.  */
 
 bool
-res_retrieve_file (const char *url, char **file, struct iri *iri)
+res_retrieve_file (struct url *url, char **file)
 {
-  struct iri *i = iri_new ();
   uerr_t err;
-  char *robots_url = uri_merge (url, RES_SPECS_LOCATION);
+  char *robots_url = url_merge (url->url, RES_SPECS_LOCATION);
   int saved_ts_val = opt.timestamping;
   int saved_sp_val = opt.spider, url_err;
-  struct url * url_parsed;
-
-  /* Copy server URI encoding for a possible IDNA transformation, no need to
-     encode the full URI in UTF-8 because "robots.txt" is plain ASCII */
-  set_uri_encoding (i, iri->uri_encoding, false);
-  i->utf8_encode = false;
+  struct url * url_parsed = url_new_init ();
 
   logputs (LOG_VERBOSE, _("Loading robots.txt; please ignore errors.\n"));
   *file = NULL;
   opt.timestamping = false;
   opt.spider       = false;
 
-  url_parsed = url_parse (robots_url, &url_err, i, true);
-  if (!url_parsed)
+  url_parsed->ori_url = robots_url;
+  url_parsed->ori_enc = xstrdup (url->ori_enc);
+  url_err = url_parse (url_parsed, true, true);
+  if (url_err)
     {
       char *error = url_error (robots_url, url_err);
       logprintf (LOG_NOTQUIET, "%s: %s.\n", robots_url, error);
@@ -568,15 +564,14 @@ res_retrieve_file (const char *url, char **file, struct iri *iri)
     }
   else
     {
-      err = retrieve_url (url_parsed, robots_url, file, NULL, NULL, NULL,
-                          false, i, false);
-      url_free(url_parsed);
+      err = retrieve_url (url_parsed, file, NULL, NULL, NULL,
+                          false, false);
     }
+
+  url_free(url_parsed);
 
   opt.timestamping = saved_ts_val;
   opt.spider       = saved_sp_val;
-  xfree (robots_url);
-  iri_free (i);
 
   if (err != RETROK && *file != NULL)
     {
@@ -591,7 +586,7 @@ res_retrieve_file (const char *url, char **file, struct iri *iri)
 bool
 is_robots_txt_url (const char *url)
 {
-  char *robots_url = uri_merge (url, RES_SPECS_LOCATION);
+  char *robots_url = url_merge (url, RES_SPECS_LOCATION);
   bool ret = are_urls_equal (url, robots_url);
 
   xfree (robots_url);

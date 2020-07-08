@@ -76,6 +76,10 @@ dnl Hashes: Configure hash functions to use
 AC_ARG_WITH([winhashes],
   [AS_HELP_STRING([--without-winhashes], [disable windows native hash fucntions.])])
 
+dnl WinIDN: Use winidn explicitly
+AC_ARG_WITH([winidn],
+  [AS_HELP_STRING([--with-winidn], [use windows native idn fucntions.])])
+
 dnl Zlib: Configure use of zlib for compression
 AC_ARG_WITH([zlib],
   [AS_HELP_STRING([--without-zlib], [disable zlib.])])
@@ -851,6 +855,7 @@ AS_IF([test "X$iri" != "Xno"],[
 AC_ARG_WITH(libidn, AC_HELP_STRING([--with-libidn=[DIR]],
                                    [Support IDN2008/IRIs (needs GNU libidn2 + libunicode)]),
                                    libidn=$withval, libidn="")
+
 if test "X$iri" != "Xno"; then
   AS_IF([test "x$with_libidn2" != xno], [
     AC_SEARCH_LIBS(idn2_lookup_u8, idn2,
@@ -862,6 +867,13 @@ if test "X$iri" != "Xno"; then
 #        [AC_DEFINE([ENABLE_IRI], 1, [Define if IRI support is enabled.])],
 #        [iri=no; AC_MSG_WARN(*** LIBUNISTRING was not found. You will not be able to use IDN2008 support)])
 #    ])
+  ])
+
+  AS_IF([test "x$with_libidn2" = xno && test "x$with_winidn" != xno
+        test "X$IS_WINDOWS" == "Xyes" && test "X$am_cv_func_iconv" == "Xyes" ],
+  [
+    iri=yes
+    AC_DEFINE([ENABLE_IRI], 1, [Define if IRI support is enabled.])
   ])
 fi
 

@@ -48,6 +48,7 @@ as that of the covered work.  */
 
 #include "wget.h"
 #include "utils.h"
+#include "url.h"
 #include "convert.h"
 #include "html-url.h"
 #include "css-tokens.h"
@@ -73,7 +74,7 @@ extern void yylex_destroy(void);
   parenthesis.
 */
 static char *
-get_uri_string (const char *at, int *pos, int *length)
+get_url_string (const char *at, int *pos, int *length)
 {
   if (*length < 4)
     return NULL;
@@ -146,7 +147,7 @@ get_urls_css (struct map_context *ctx, int offset, int buf_length)
 
               if (token == URI)
                 {
-                  uri = get_uri_string (ctx->text, &pos, &length);
+                  uri = get_url_string (ctx->text, &pos, &length);
                 }
               else if (length >= 2)
                 {
@@ -184,7 +185,7 @@ get_urls_css (struct map_context *ctx, int offset, int buf_length)
         {
           pos = buffer_pos + offset;
           length = yyleng;
-          uri = get_uri_string (ctx->text, &pos, &length);
+          uri = get_url_string (ctx->text, &pos, &length);
 
           if (uri)
             {
@@ -209,7 +210,7 @@ get_urls_css (struct map_context *ctx, int offset, int buf_length)
 }
 
 struct urlpos *
-get_urls_css_file (const char *file, const char *url)
+get_urls_css_file (const char *file, struct url *url)
 {
   struct file_memory *fm;
   struct map_context ctx;
@@ -223,12 +224,14 @@ get_urls_css_file (const char *file, const char *url)
     }
   DEBUGP (("Loaded %s (size %s).\n", file, number_to_static_string (fm->length)));
 
-  ctx.text = fm->content;
+  if (!set_map_context_by_url (&ctx, url))
+  return NULL;
+
   ctx.head = NULL;
   ctx.base = NULL;
-  ctx.parent_base = url ? url : opt.base_href;
+  ctx.text = fm->content;
   ctx.document_file = file;
-  ctx.nofollow = 0;
+  ctx.nofollow = false;
 
   get_urls_css (&ctx, 0, fm->length);
   wget_read_file_free (fm);

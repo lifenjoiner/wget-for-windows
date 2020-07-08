@@ -6,6 +6,9 @@ use warnings;
 use WgetFeature qw(iri);
 use HTTPTest;
 
+use Encode::Locale;
+use Encode;
+
 # cf. http://en.wikipedia.org/wiki/Latin1
 #     http://en.wikipedia.org/wiki/ISO-8859-15
 ###############################################################################
@@ -147,6 +150,30 @@ my $cmdline = $WgetTest::WGETPATH . " --iri --trust-server-names -i http://local
 
 my $expected_error_code = 0;
 
+if ($^O eq "msys" || $^O eq "cygwin") {
+    $^O = "MSWin32";
+    Encode::Locale::reinit();
+}
+
+sub can_transcode_to_locale
+{
+    my ($from, $str) = @_;
+    my $U = Encode::encode(console_in => Encode::decode($from, $str));
+    return Encode::encode($from, Encode::decode(console_in => $U)) eq $str;
+}
+
+my $p1_out = ${ccedilla_l1};
+if (!can_transcode_to_locale("UTF-8", $p1_out))
+{
+    $p1_out = "%E7";
+}
+
+my $p2_out = ${eacute_u8} . ${eacute_u8};
+if (!can_transcode_to_locale("UTF-8", $p2_out))
+{
+    $p2_out = "%C3%A9%C3%A9";
+}
+
 my %expected_downloaded_files = (
     'url_list.txt' => {
         content => $urllist,
@@ -154,10 +181,10 @@ my %expected_downloaded_files = (
     'index.html' => {
         content => $pageindex,
     },
-    "p1_fran${ccedilla_l1}ais.html" => {
+    "p1_fran${p1_out}ais.html" => {
         content => $pagefrancais,
     },
-    "p2_${eacute_u8}${eacute_u8}n.html" => {
+    "p2_${p2_out}n.html" => {
         content => $pageeen,
     },
 );
