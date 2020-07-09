@@ -359,9 +359,9 @@ class _Handler(BaseHTTPRequestHandler):
             print("Expected Header %s: %s, got %s" %
                   (header_line, exp_headers[header_line], header_recd))
             if header_recd is None or header_recd != exp_headers[header_line]:
-                self.send_error(400, "Expected Header %s not found" %
+                self.send_error(400, "Expected Header '%s' not found/match" %
                                 header_line)
-                raise ServerError("Header " + header_line + " not found")
+                raise ServerError("Header '" + header_line + "' not found/match")
 
     def RejectHeader(self, header_obj):
         rej_headers = header_obj.headers

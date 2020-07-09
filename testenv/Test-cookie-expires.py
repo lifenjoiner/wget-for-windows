@@ -2,6 +2,7 @@
 from sys import exit
 from test.http_test import HTTPTest
 from misc.wget_file import WgetFile
+from platform import platform
 
 """
     This test ensures that Wget handles Cookie expiry dates correctly.
@@ -33,7 +34,14 @@ File3_rules = {
         "Set-Cookie"    : "sess-id=0213; path=/; ExPIRes=Sun, 06 Nov 2001 12:32:43 GMT"
     },
     "ExpectHeader"      : {
-        "Cookie"        : "new-sess=N; sess-id=0213"
+        # buildin `store_cookie` uses `hash_table_put` by domain
+        # It puts cookies LIFO, the last in the frist.
+        # The trick is that `qsort` (by domain and path) is UNSTABLE:
+        #   msvcrt bubbles the biggest to the last!
+        #   gnulibc bubbles the smallest to the first!
+        #   They all set the 1st as initial selected. msvcrt is more unstable.
+        "Cookie"        : "sess-id=0213; new-sess=N" if "Windows" in platform()
+                            else "new-sess=N; sess-id=0213"
     }
 }
 File4_rules = {
