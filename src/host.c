@@ -841,7 +841,8 @@ lookup_host (const char *host, int flags)
     {
       char *str = NULL, *name;
 
-      if (opt.enable_iri && (name = idn_decode ((char *) host)) != NULL)
+      if (opt.enable_iri && strstr (host, "xn--") &&
+          (name = idn_decode ((char *) host)) != NULL)
         {
           str = aprintf ("%s (%s)", name, host);
           xfree (name);

@@ -273,7 +273,8 @@ connect_to_ip (const ip_address *ip, int port, const char *print)
         {
           char *str = NULL, *name;
 
-          if (opt.enable_iri && (name = idn_decode ((char *) print)) != NULL)
+          if (opt.enable_iri && strstr (print, "xn--") &&
+              (name = idn_decode ((char *) print)) != NULL)
             {
               str = aprintf ("%s (%s)", name, print);
               xfree (name);
