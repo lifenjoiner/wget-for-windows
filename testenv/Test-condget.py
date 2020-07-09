@@ -2,6 +2,7 @@
 from sys import exit
 from test.http_test import HTTPTest
 from misc.wget_file import WgetFile
+from platform import platform
 
 """
     Simple test for HTTP Conditional-GET Requests using the -N command
@@ -76,7 +77,10 @@ Outdated_Rules = {
         "Last-Modified" : "Thursday, 01-Jan-15 00:00:00 GMT",
     },
     "ExpectHeader" : {
-        "If-Modified-Since" : "Mon, 01 Jan 1990 00:00:00 GMT",
+        "If-Modified-Since" : "Mon, 01 Jan 1990 00:00:0" +
+            # wget adds 1s on Windows in case of FAT drives!
+            # code: `++hs->orig_file_tstamp`
+            ("1" if "Windows" in platform() else "0") + " GMT",
     },
 }
 

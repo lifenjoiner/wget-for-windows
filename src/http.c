@@ -2299,8 +2299,11 @@ set_file_timestamp (struct http_stat *hs)
       hs->orig_file_size = st.st_size;
       hs->orig_file_tstamp = st.st_mtime;
 #ifdef WINDOWS
-      /* Modification time granularity is 2 seconds for Windows, so
-          increase local time by 1 second for later comparison. */
+      /* Modification time granularity is 2 seconds for Windows (FAT drives),
+         so increase local time by 1 second for later comparison. */
+      /* Timestamps on FAT drives (<= FAT32) always end with an even number of seconds:
+         https://en.wikipedia.org/wiki/File_Allocation_Table
+         Floppy, USB drive etc. NTFS has no limit on this. */
       ++hs->orig_file_tstamp;
 #endif
       hs->timestamp_checked = true;
