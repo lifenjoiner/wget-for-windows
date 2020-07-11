@@ -1367,7 +1367,7 @@ bar_set_params (const char *params)
 {
 /* if run_with_timeout() will be used for read, needs to disable interactive bar,
    or  on every timeout(1s) we will have 'retry' with error "decryption failed" */
-#if (defined(HAVE_LIBSSL) || defined(HAVE_LIBSSL32)) && defined(OPENSSL_RUN_WITHTIMEOUT)
+#if (defined(HAVE_LIBSSL) || defined(HAVE_LIBSSL32)) && defined(OPENSSL_RUN_WITHTIMEOUT) || defined(HAVE_WINTLS)
   current_impl->interactive = false;
 #else
   current_impl->interactive = true;
