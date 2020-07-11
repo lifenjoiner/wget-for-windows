@@ -1269,7 +1269,8 @@ static int wintls_peek(int fd, char *buf, int bufsize, void *arg, double timeout
 }
 
 static const char* wintls_errstr(int fd _GL_UNUSED, void *arg) {
-    return strerror(errno);
+    WINTLS_TRANSPORT_CONTEXT *ctx = arg;
+    return strerror(ctx->err_no);
 }
 
 static void wintls_close(int fd, void *arg) {
@@ -1283,7 +1284,7 @@ static void wintls_close(int fd, void *arg) {
     ez_buff_free(&ctx->dec_buff);
     ctx->dec_buff.used = 0;
     free(ctx);
-    close(fd);
+    closesocket(fd); // could result WSAENOTSOCK
 }
 
 /* wintls_transport is the singleton that describes the SSL transport
