@@ -1267,7 +1267,6 @@ retrieve_from_file (const char *file, bool html, int *count)
         {
           status = retrieve_url (cur_url->url, &filename,
                                  &new_file, NULL, &dt, opt.recursive, true);
-          url_free (cur_url->url);
         }
 
       xfree (proxy);

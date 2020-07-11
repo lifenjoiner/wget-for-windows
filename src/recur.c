@@ -471,7 +471,7 @@ retrieve_tree (struct url *start_url_parsed)
           register_delete_file (file);
         }
 
-      xfree (url);
+      url_free (url);
       xfree (referer);
       xfree (file);
     }
