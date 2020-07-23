@@ -92,7 +92,7 @@ version.c:  $(wget_SOURCES) ../lib/libgnu.a
 	    | $(ESCAPEQUOTE) >> $@
 	echo 'const char *link_string = "'$(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) $(LIBS) $(wget_LDADD)'";' \
-		| sed -r ':a;s/( -l\S+)(.*\1)/\2/;ta' \
+		| sed -r ':a;s/( +-[ILl]\S+)(( .*)*\1[ "])/\2/;ta' \
 	    | $(ESCAPEQUOTE) >> $@
 
 css.c: $(srcdir)/css.l
