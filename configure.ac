@@ -643,7 +643,7 @@ AS_IF([test x"$with_ssl" = xopenssl], [
   AC_CHECK_FUNCS(gnutls_priority_set_direct)
 ], [test x"$with_ssl" = xwintls], [
   dnl Now actually check for wintls
-  AC_MSG_CHECKING([for gdi32])
+  AC_MSG_CHECKING([for gdi32]) # >= XP
   my_ac_save_LIBS=$LIBS
   LIBS="-lgdi32 $LIBS"
   AC_LINK_IFELSE(
@@ -657,10 +657,10 @@ AS_IF([test x"$with_ssl" = xopenssl], [
     AC_LIBOBJ([wintls])
     AC_DEFINE([HAVE_WINTLS], [1], [Define if using wintls.])
     AC_MSG_RESULT([yes])],
-    [dnl failed, restore LIBS
-    LIBS=$my_ac_save_LIBS
+    [dnl failed
     AC_MSG_RESULT(no)]
   )
+  LIBS=$my_ac_save_LIBS
 ]) # endif: --with-ssl
 
 dnl Enable NTLM if requested and if SSL is available.
