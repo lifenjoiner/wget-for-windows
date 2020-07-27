@@ -182,6 +182,7 @@ static const char *additional_attributes[] = {
   "http-equiv",                 /* used by tag_handle_meta  */
   "name",                       /* used by tag_handle_meta  */
   "content",                    /* used by tag_handle_meta  */
+  "charset",                    /* used by tag_handle_meta  */
   "action",                     /* used by tag_handle_form  */
   "style",                      /* used by check_style_attr */
   "srcset",                     /* used by tag_handle_img */
@@ -191,7 +192,7 @@ static struct hash_table *interesting_tags;
 static struct hash_table *interesting_attributes;
 
 /* Will contains the (last) charset found in 'http-equiv=content-type'
-   meta tags  */
+   by html 4.01 or 'charset=' by html5 of meta tags.  */
 static char *meta_charset;
 
 static void
@@ -590,6 +591,7 @@ tag_handle_meta (int tagid _GL_UNUSED, struct taginfo *tag, struct map_context *
 {
   char *name = find_attr (tag, "name", NULL);
   char *http_equiv = find_attr (tag, "http-equiv", NULL);
+  char *charset = find_attr (tag, "charset", NULL);
 
   if (http_equiv && 0 == c_strcasecmp (http_equiv, "refresh"))
     {
@@ -652,6 +654,15 @@ tag_handle_meta (int tagid _GL_UNUSED, struct taginfo *tag, struct map_context *
 
       xfree (meta_charset);
       meta_charset = mcharset;
+    }
+  else if (charset && check_encoding_name (charset))
+    {
+      /* Handle stuff like:
+         <meta charset="CHARSET">
+         This is the html5 standard. */
+
+      xfree (meta_charset);
+      meta_charset = xstrdup (charset);
     }
   else if (name && 0 == c_strcasecmp (name, "robots"))
     {
