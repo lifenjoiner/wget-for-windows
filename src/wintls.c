@@ -653,7 +653,7 @@ static SECURITY_STATUS CreateCredentials(PCredHandle phCreds) {
     }
     // WinCE is out of date
     if (opt.check_cert == CHECK_CERT_ON) {
-        schannel_cred.dwFlags = SCH_CRED_AUTO_CRED_VALIDATION | SCH_CRED_REVOCATION_CHECK_CHAIN;
+        schannel_cred.dwFlags = SCH_CRED_AUTO_CRED_VALIDATION | SCH_CRED_REVOCATION_CHECK_CHAIN | SCH_CRED_IGNORE_REVOCATION_OFFLINE;
     }
     else { // --no-check-certificate
         schannel_cred.dwFlags = SCH_CRED_MANUAL_CRED_VALIDATION;
