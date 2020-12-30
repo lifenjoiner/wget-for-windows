@@ -1284,7 +1284,7 @@ static void wintls_close(int fd, void *arg) {
     ez_buff_free(&ctx->dec_buff);
     ctx->dec_buff.used = 0;
     free(ctx);
-    close(fd); // `closesocket` could result WSAENOTSOCK
+    closesocket(fd); // could result WSAENOTSOCK
 }
 
 /* wintls_transport is the singleton that describes the SSL transport
