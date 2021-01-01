@@ -1,11 +1,13 @@
 GNU Wget NEWS -- history of user-visible changes.
 
-Copyright (C) 1997-2020 Free Software Foundation, Inc.
+Copyright (C) 1997-2021 Free Software Foundation, Inc.
 See the end for copying conditions.
 
 Please send GNU Wget bug reports to <bug-wget@gnu.org>.
 
-* Changes in Wget 1.21 (unreleased)
+* Changes in Wget 1.21
+
+** Improve the number of translated strings
 
 ** Remove all uses of alloca
    In some places the length of untrusted strings has been used, e.g.

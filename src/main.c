@@ -1,5 +1,5 @@
 /* Command line parsing.
-   Copyright (C) 1996-2015, 2018-2020 Free Software Foundation, Inc.
+   Copyright (C) 1996-2015, 2018-2021 Free Software Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -149,6 +149,7 @@ i18n_initialize (void)
   setlocale (LC_ALL, "");
   /* Set the text message domain.  */
   bindtextdomain ("wget", LOCALEDIR);
+  bindtextdomain ("wget-gnulib", LOCALEDIR);
   textdomain ("wget");
 #elif defined WINDOWS
   char MBCP[16] = "";
@@ -173,7 +174,7 @@ get_hsts_database (void)
 
   if (opt.homedir)
     {
-      char *dir = aprintf ("%s/.wget-hsts", opt.homedir);
+      char *dir = ajoin_dir_file(opt.homedir, ".wget-hsts");
       return dir;
     }
 
@@ -430,7 +431,9 @@ static struct cmdline_option option_data[] =
     { "tries", 't', OPT_VALUE, "tries", -1 },
     { "unlink", 0, OPT_BOOLEAN, "unlink", -1 },
     { "trust-server-names", 0, OPT_BOOLEAN, "trustservernames", -1 },
+#ifndef __VMS
     { "use-askpass", 0, OPT_VALUE, "useaskpass", -1},
+#endif
     { "use-server-timestamps", 0, OPT_BOOLEAN, "useservertimestamps", -1 },
     { "user", 0, OPT_VALUE, "user", -1 },
     { "user-agent", 'U', OPT_VALUE, "useragent", -1 },
@@ -686,11 +689,14 @@ Download:\n"),
     N_("\
        --read-timeout=SECS         set the read timeout to SECS\n"),
     N_("\
-  -w,  --wait=SECONDS              wait SECONDS between retrievals\n"),
+  -w,  --wait=SECONDS              wait SECONDS between retrievals\n\
+                                     (applies if more then 1 URL is to be retrieved)\n"),
     N_("\
-       --waitretry=SECONDS         wait 1..SECONDS between retries of a retrieval\n"),
+       --waitretry=SECONDS         wait 1..SECONDS between retries of a retrieval\n\
+                                     (applies if more then 1 URL is to be retrieved)\n"),
     N_("\
-       --random-wait               wait from 0.5*WAIT...1.5*WAIT secs between retrievals\n"),
+       --random-wait               wait from 0.5*WAIT...1.5*WAIT secs between retrievals\n\
+                                     (applies if more then 1 URL is to be retrieved)\n"),
     N_("\
        --no-proxy                  explicitly turn off proxy\n"),
     N_("\
@@ -720,11 +726,13 @@ Download:\n"),
        --password=PASS             set both ftp and http password to PASS\n"),
     N_("\
        --ask-password              prompt for passwords\n"),
+#ifndef __VMS
     N_("\
        --use-askpass=COMMAND       specify credential handler for requesting \n\
                                      username and password.  If no COMMAND is \n\
                                      specified the WGET_ASKPASS or the SSH_ASKPASS \n\
                                      environment variable is used.\n"),
+#endif
     N_("\
        --no-iri                    turn off IRI support\n"),
     N_("\
@@ -1263,6 +1271,12 @@ print_version (void)
   if (printf ("\n") < 0)
     exit (WGET_EXIT_IO_FAIL);
 
+  /* Print VMS-specific version info. */
+#ifdef __VMS
+  if (vms_version_supplement() < 0)
+    exit (WGET_EXIT_IO_FAIL);
+#endif /* def __VMS */
+
   /* Handle the case when $WGETRC is unset and $HOME/.wgetrc is
      absent. */
   if (printf ("%s\n", wgetrc_title) < 0)
@@ -1743,6 +1757,12 @@ for details.\n\n"));
                _("Cannot specify both --ask-password and --password.\n"));
       print_usage (1);
       exit (WGET_EXIT_GENERIC_ERROR);
+    }
+
+  if (opt.ask_passwd && !(opt.user || opt.http_user || opt.ftp_user))
+    {
+      fprintf(stderr,
+              _("WARNING: No username set with --ask-password. This is usually not what you want.\n"));
     }
 
   if (opt.start_pos >= 0 && opt.always_rest)

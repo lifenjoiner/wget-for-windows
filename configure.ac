@@ -1,5 +1,5 @@
 dnl Template file for GNU Autoconf
-dnl Copyright (C) 1995-1997, 2001, 2007-2014, 2018-2020 Free Software
+dnl Copyright (C) 1995-1997, 2001, 2007-2014, 2018-2021 Free Software
 dnl Foundation, Inc.
 
 dnl This program is free software; you can redistribute it and/or modify
@@ -30,10 +30,8 @@ dnl
 dnl Process this file with autoconf to produce a configure script.
 dnl
 
-AC_INIT([wget],
-        m4_esyscmd([build-aux/git-version-gen .tarball-version]),
-	[bug-wget@gnu.org])
-AC_PREREQ(2.63)
+AC_INIT([wget],[m4_esyscmd(build-aux/git-version-gen .tarball-version)],[bug-wget@gnu.org])
+AC_PREREQ([2.64])
 
 dnl
 dnl What version of Wget are we building?
@@ -49,6 +47,10 @@ dnl
 dnl Automake setup
 dnl
 AM_INIT_AUTOMAKE([subdir-objects])
+
+AC_USE_SYSTEM_EXTENSIONS
+AC_PROG_CC
+AM_PROG_CC_C_O
 
 dnl
 dnl Get canonical host
@@ -247,10 +249,6 @@ dnl We want these before the checks, so the checks can modify their values.
 test -z "$CFLAGS"  && CFLAGS= auto_cflags=1
 test -z "$CC" && cc_specified=yes
 
-AC_PROG_CC
-AM_PROG_CC_C_O
-AC_AIX
-
 gl_EARLY
 
 dnl
@@ -325,11 +323,7 @@ dnl Check sizes of integer types.  These are used to find n-bit
 dnl integral types on older systems that fail to provide intN_t and
 dnl uintN_t typedefs.
 dnl
-AC_CHECK_SIZEOF([short])
-AC_CHECK_SIZEOF([int])
 AC_CHECK_SIZEOF([long])
-AC_CHECK_SIZEOF([long long])
-AC_CHECK_SIZEOF([void *])
 
 dnl
 dnl Checks for non-universal or system-specific types.
@@ -367,8 +361,6 @@ dnl We expect to have these functions on Unix-like systems configure
 dnl runs on.  The defines are provided to get them in config.h.in so
 dnl Wget can still be ported to non-Unix systems (such as Windows)
 dnl that lack some of these functions.
-AC_DEFINE([HAVE_STRCASECMP], 1, [Define to 1 if you have the `strcasecmp' function.])
-AC_DEFINE([HAVE_STRNCASECMP], 1, [Define to 1 if you have the `strncasecmp' function.])
 AC_DEFINE([HAVE_STRDUP], 1, [Define to 1 if you have the `strdup' function.])
 AC_DEFINE([HAVE_ISATTY], 1, [Define to 1 if you have the `isatty' function.])
 
@@ -734,7 +726,7 @@ dnl is to autodetect IPv6 and use it where available.
 dnl
 
 AC_ARG_ENABLE(ipv6,
-  AC_HELP_STRING([--disable-ipv6],[disable IPv6 support]),
+  AS_HELP_STRING([--disable-ipv6],[disable IPv6 support]),
   [case "${enable_ipv6}" in
     no)
       AC_MSG_NOTICE([disabling IPv6 at user request])
@@ -815,7 +807,7 @@ dnl Check for IDN/IRIs
 dnl
 
 AC_ARG_ENABLE(iri,
-  AC_HELP_STRING([--disable-iri],[disable IDN/IRIs support]),
+  AS_HELP_STRING([--disable-iri],[disable IDN/IRIs support]),
   [case "${enable_iri}" in
     no)
       dnl Disable IRIs checking
@@ -852,8 +844,7 @@ AS_IF([test "X$iri" != "Xno"],[
   fi
 ])
 
-AC_ARG_WITH(libidn, AC_HELP_STRING([--with-libidn=[DIR]],
-                                   [Support IDN2008/IRIs (needs GNU libidn2 + libunicode)]),
+AC_ARG_WITH(libidn, AS_HELP_STRING([--with-libidn=[DIR]],[Support IDN2008/IRIs (needs GNU libidn2 + libunicode)]),
                                    libidn=$withval, libidn="")
 
 if test "X$iri" != "Xno"; then
@@ -881,8 +872,7 @@ dnl
 dnl Check for UUID
 dnl
 
-AC_ARG_WITH(libuuid, AC_HELP_STRING([--without-libuuid],
-                                    [Generate UUIDs for WARC files via libuuid]))
+AC_ARG_WITH(libuuid, AS_HELP_STRING([--without-libuuid],[Generate UUIDs for WARC files via libuuid]))
 
 AS_IF([test "x$with_libuuid" = xyes], [
   # libuuid was explicitly requested
@@ -919,10 +909,8 @@ dnl
 dnl Check for PCRE2 / PCRE
 dnl
 
-AC_ARG_ENABLE(pcre2, AC_HELP_STRING([--disable-pcre2],
-                                   [Disable PCRE2 style regular expressions]))
-AC_ARG_ENABLE(pcre, AC_HELP_STRING([--disable-pcre],
-                                   [Disable PCRE style regular expressions]))
+AC_ARG_ENABLE(pcre2, AS_HELP_STRING([--disable-pcre2],[Disable PCRE2 style regular expressions]))
+AC_ARG_ENABLE(pcre, AS_HELP_STRING([--disable-pcre],[Disable PCRE style regular expressions]))
 
 AS_IF([test "X$enable_pcre2" != "Xno"],[
   enable_pcre2=no
@@ -1057,8 +1045,8 @@ dnl
 dnl Create output
 dnl
 AC_CONFIG_FILES([Makefile src/Makefile doc/Makefile util/Makefile
-                 po/Makefile.in tests/Makefile fuzz/Makefile
-                 lib/Makefile testenv/Makefile
+                 po/Makefile.in gnulib_po/Makefile.in tests/Makefile
+                 fuzz/Makefile lib/Makefile testenv/Makefile
                  tests/certs/interca.conf tests/certs/rootca.conf])
 AC_CONFIG_HEADERS([src/config.h])
 AC_OUTPUT

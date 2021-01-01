@@ -1,5 +1,5 @@
 /* HTTP support.
-   Copyright (C) 1996-2012, 2014-2015, 2018-2020 Free Software
+   Copyright (C) 1996-2012, 2014-2015, 2018-2021 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -5355,7 +5355,10 @@ http_cleanup (void)
     invalidate_persistent ();
 
   if (wget_cookie_jar)
-    cookie_jar_delete (wget_cookie_jar);
+    {
+      cookie_jar_delete (wget_cookie_jar);
+      wget_cookie_jar = NULL;
+    }
 
   if (basic_authed_hosts)
     {
@@ -5430,9 +5433,7 @@ test_parse_range_header (void)
       { "bytes 42-1233/1234", 42, 1233, 1234, true },
       { "bytes 42-1233/*", 42, 1233, -1, true },
       { "bytes 0-2147483648/2147483649", 0, 2147483648U, 2147483649U, true },
-#if SIZEOF_WGINT >= 8
       { "bytes 2147483648-4294967296/4294967297", 2147483648U, 4294967296ULL, 4294967297ULL, true },
-#endif
   };
 
   wgint firstbyteptr[sizeof(wgint)];

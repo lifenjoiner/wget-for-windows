@@ -1,5 +1,5 @@
 /* Messages logging.
-   Copyright (C) 1998-2011, 2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1998-2011, 2015, 2018-2021 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -971,7 +971,7 @@ redirect_output (bool to_file, const char *signal_name)
 static void
 check_redirect_output (void)
 {
-#ifndef WINDOWS
+#if !defined(WINDOWS) && !defined(__VMS)
   /* If it was redirected already to log file by SIGHUP, SIGUSR1 or -o parameter,
    * it was permanent.
    * If there was no SIGHUP or SIGUSR1 and shell is interactive
@@ -991,5 +991,5 @@ check_redirect_output (void)
           redirect_output (false,NULL);
         }
     }
-#endif /* WINDOWS */
+#endif /* !defined(WINDOWS) && !defined(__VMS) */
 }

@@ -1,5 +1,5 @@
 /* Miscellaneous declarations.
-   Copyright (C) 1996-2011, 2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1996-2011, 2015, 2018-2021 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -135,76 +135,16 @@ as that of the covered work.  */
    don't necessarily want to tie having a 64-bit type for internal
    calculations to having LFS support.  */
 
-#ifdef WINDOWS
-  /* nothing to do, see mswindows.h */
-#elif SIZEOF_LONG >= 8
-  /* long is large enough, so use it. */
-  typedef long wgint;
-# define SIZEOF_WGINT SIZEOF_LONG
-#elif SIZEOF_LONG_LONG >= 8
-  /* long long is large enough and available, use that */
-  typedef long long wgint;
-# define SIZEOF_WGINT SIZEOF_LONG_LONG
-#elif HAVE_INT64_T
-  typedef int64_t wgint;
-# define SIZEOF_WGINT 8
-#elif SIZEOF_OFF_T >= 8
-  /* In case off_t is typedeffed to a large non-standard type that our
-     tests don't find. */
-  typedef off_t wgint;
-# define SIZEOF_WGINT SIZEOF_OFF_T
-#else
-  /* Fall back to using long, which is always available and in most
-     cases large enough. */
-  typedef long wgint;
-# define SIZEOF_WGINT SIZEOF_LONG
-#endif
+/* Gnulib's stdint.h module essentially guarantees the existence of int64_t.
+ * Thus we can simply assume it always exists and use it.
+ */
+#include <stdint.h>
 
-/* Pick a strtol-compatible function that will work with wgint.  The
-   choices are strtol, strtoll, or our own implementation of strtoll
-   in cmpt.c, activated with NEED_STRTOLL.  */
-
-#ifdef WINDOWS
-  /* nothing to do, see mswindows.h */
-#elif SIZEOF_WGINT == SIZEOF_LONG
-# define str_to_wgint strtol
-#elif SIZEOF_WGINT == SIZEOF_LONG_LONG
-# define str_to_wgint strtoll
-# ifndef HAVE_STRTOLL
-#  define NEED_STRTOLL
-#  define strtoll_type long long
-# endif
-#else
-  /* wgint has a strange size; synthesize strtoll and use it. */
-# define str_to_wgint strtoll
-# define NEED_STRTOLL
-# define strtoll_type wgint
-#endif
-
-#define WGINT_MAX TYPE_MAXIMUM (wgint)
-
-/* Declare our strtoll replacement. */
-#ifdef NEED_STRTOLL
-strtoll_type strtoll (const char *, char **, int);
-#endif
-
-/* Now define a large numeric type useful for storing sizes of *sums*
-   of downloads, such as the value of the --quota option.  This should
-   be a type able to hold 2G+ values even on systems without large
-   file support.  (It is useful to limit Wget's download quota to say
-   10G even if a single file cannot be that large.)
-
-   To make sure we get the largest size possible, we use `double' on
-   systems without a 64-bit integral type.  (Since it is used in very
-   few places in Wget, this is acceptable.)  */
-
-#if SIZEOF_WGINT >= 8
-/* just use wgint */
+typedef int64_t wgint;
+#define WGINT_MAX INT64_MAX
 typedef wgint SUM_SIZE_INT;
-#else
-/* On systems without LFS, use double, which buys us integers up to 2^53. */
-typedef double SUM_SIZE_INT;
-#endif
+
+#define str_to_wgint strtol
 
 #include "options.h"
 

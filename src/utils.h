@@ -1,5 +1,5 @@
 /* Declarations for utils.c.
-   Copyright (C) 1996-2011, 2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1996-2011, 2015, 2018-2021 Free Software Foundation,
    Inc.
 
 This file is part of GNU Wget.
@@ -124,14 +124,8 @@ void free_keys_and_values (struct hash_table *, VALUE_FREE_FUNC *);
 const char *with_thousand_seps (wgint);
 
 /* human_readable must be able to accept wgint and SUM_SIZE_INT
-   arguments.  On machines where wgint is 32-bit, declare it to accept
-   double.  */
-#if SIZEOF_WGINT >= 8
-# define HR_NUMTYPE wgint
-#else
-# define HR_NUMTYPE double
-#endif
-char *human_readable (HR_NUMTYPE, const int, const int);
+   arguments. */
+char *human_readable (wgint, const int, const int);
 
 
 int numdigit (wgint);
