@@ -62,6 +62,10 @@ bool LoadSecurityLibrary(void) {
         return false;
     }
 
+    if (g_hSec_dll != NULL) {
+        return true;
+    }
+
     if (VerInfo.dwPlatformId == VER_PLATFORM_WIN32_NT && VerInfo.dwMajorVersion == 4) {
         g_hSec_dll = LoadLibrary("security");
     }
@@ -74,23 +78,25 @@ bool LoadSecurityLibrary(void) {
 
     if (g_hSec_dll == NULL) {
         logprintf(LOG_NOTQUIET, "Loading security dll failed!\n");
-        return false;
+        goto FAIL;
     }
-
-    atexit(UnloadSecurityLibrary);
 
     // Init SSPI
     pInitSecurityInterface = (INIT_SECURITY_INTERFACE)GetProcAddress(g_hSec_dll, "InitSecurityInterfaceA");
     if (pInitSecurityInterface == NULL) {
-        return false;
+        goto FAIL;
     }
-
     g_pSSPI = pInitSecurityInterface();
     if (g_pSSPI == NULL) {
-        return false;
+        goto FAIL;
     }
 
+    atexit(UnloadSecurityLibrary);
     return true;
+
+FAIL:
+	UnloadSecurityLibrary();
+	return false;
 }
 
 void UnloadSecurityLibrary(void) {
