@@ -703,7 +703,7 @@ fi
 dnl
 dnl Check for winhashes
 dnl
-AS_IF([test x"$with_winhashes" != xno && test "X$IS_WINDOWS" == "Xyes"], [
+AS_IF([test x"$with_winhashes" != xno && test "X$IS_WINDOWS" = "Xyes"], [
   AC_LIBOBJ([win-hashes])
   AC_DEFINE([HAVE_WINHASHES], [1], [Define if using winhashes.])
   with_winhashes=yes
@@ -861,7 +861,7 @@ if test "X$iri" != "Xno"; then
   ])
 
   AS_IF([test "x$with_libidn2" = xno && test "x$with_winidn" != xno
-        test "X$IS_WINDOWS" == "Xyes" && test "X$am_cv_func_iconv" == "Xyes" ],
+        test "X$IS_WINDOWS" = "Xyes" && test "X$am_cv_func_iconv" = "Xyes" ],
   [
     iri=yes
     AC_DEFINE([ENABLE_IRI], 1, [Define if IRI support is enabled.])
