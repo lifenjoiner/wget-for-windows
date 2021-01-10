@@ -495,8 +495,8 @@ fd_read_body (const char *downloaded_filename, int fd, FILE *out, wgint toread, 
                     case Z_STREAM_END:
                       if (exact && sum_read != toread)
                         {
-                          DEBUGP(("zlib stream ended unexpectedly after "
-                                  "%ld/%ld bytes\n", sum_read, toread));
+                          DEBUGP(("zlib stream ended unexpectedly after %"PRId64"/%"PRId64
+                                  " bytes\n", sum_read, toread));
                         }
                     }
 
@@ -588,7 +588,7 @@ fd_read_body (const char *downloaded_filename, int fd, FILE *out, wgint toread, 
 
       if (gzstream.total_in != (uLong) sum_read)
         {
-          DEBUGP(("zlib read size differs from raw read size (%lu/%ld)\n",
+          DEBUGP(("zlib read size differs from raw read size (%lu/%"PRId64")\n",
                   gzstream.total_in, sum_read));
         }
     }
@@ -1373,9 +1373,10 @@ rotate_backups(const char *fname)
 # define SEP "."
 # define AVSL 0
 #endif
+#define FILE_BUF_SIZE 1024
 
   /* avoid alloca() here */
-  char from[1024], to[1024];
+  char from[FILE_BUF_SIZE], to[FILE_BUF_SIZE];
   struct stat sb;
   bool overflow;
   int i;
@@ -1400,20 +1401,24 @@ rotate_backups(const char *fname)
             delete (to);
         }
 #endif
-      if ((overflow = ((unsigned) snprintf (to, sizeof (to), "%s%s%d", fname, SEP, i)) >= sizeof (to)))
-	     errno = ENAMETOOLONG;
-      else if ((overflow = ((unsigned) snprintf (from, sizeof (from), "%s%s%d", fname, SEP, i - 1)) >= sizeof (from)))
-	     errno = ENAMETOOLONG;
+      overflow = (unsigned) snprintf (to, FILE_BUF_SIZE, "%s%s%d", fname, SEP, i) >= FILE_BUF_SIZE;
+      overflow |= (unsigned) snprintf (from, FILE_BUF_SIZE, "%s%s%d", fname, SEP, i - 1) >= FILE_BUF_SIZE;
+
+      if (overflow)
+          errno = ENAMETOOLONG;
       if (overflow || rename (from, to))
         logprintf (LOG_NOTQUIET, "Failed to rename %s to %s: (%d) %s\n",
                    from, to, errno, strerror (errno));
     }
 
-  if ((overflow = ((unsigned) snprintf (to, sizeof (to), "%s%s%d", fname, SEP, 1)) >= sizeof (to)))
+  overflow = (unsigned) snprintf (to, FILE_BUF_SIZE, "%s%s%d", fname, SEP, 1) >= FILE_BUF_SIZE;
+  if (overflow)
     errno = ENAMETOOLONG;
   if (overflow || rename(fname, to))
     logprintf (LOG_NOTQUIET, "Failed to rename %s to %s: (%d) %s\n",
                fname, to, errno, strerror (errno));
+
+#undef FILE_BUF_SIZE
 }
 
 static bool no_proxy_match (const char *, const char **);
