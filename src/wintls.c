@@ -853,7 +853,7 @@ HANDSHAKE_LOOP:
             continue;
         }
 
-        // function failures: fatal
+        // function failures:
         // https://docs.microsoft.com/en-us/windows/win32/api/sspi/nf-sspi-acquirecredentialshandlea
         switch (Status) {
         case SEC_E_INSUFFICIENT_MEMORY:
@@ -862,12 +862,16 @@ HANDSHAKE_LOOP:
         case SEC_E_NOT_OWNER:
         case SEC_E_SECPKG_NOT_FOUND:
         case SEC_E_UNKNOWN_CREDENTIALS:
+            // fatal
             logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08X\n", Status);
+            break;
+        default:
+            // other nonfatal issues
+            logprintf(LOG_NOTQUIET, "WinTLS: Certificate error: %s\n", sspi_strerror(Status));
+            logprintf(LOG_NOTQUIET, "WinTLS: To connect insecurely, use `--no-check-certificate'.\n");
         }
 
-        // other nonfatal issues
-        logprintf(LOG_NOTQUIET, "WinTLS: Certificate error: %s\n", sspi_strerror(Status));
-        logprintf(LOG_NOTQUIET, "WinTLS: To connect insecurely, use `--no-check-certificate'.\n");
+        break;
     }
 
     // out of recv and send
