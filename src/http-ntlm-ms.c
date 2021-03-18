@@ -305,7 +305,7 @@ bool ntlm_input(struct ntlmdata *ntlm, const char *header) {
             return false;
         }
         //
-        if (wget_base64_decode(header, ntlm->in, ntlm->in_len) != ntlm->in_len) {
+        if (wget_base64_decode(header, ntlm->in, ntlm->in_len) < 0) {
             logprintf(LOG_NOTQUIET, "NTLM-Auth: invalid data.\n");
             return false;
         }
