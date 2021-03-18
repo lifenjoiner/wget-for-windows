@@ -30,6 +30,11 @@ dnl
 dnl Process this file with autoconf to produce a configure script.
 dnl
 
+dnl Error if AX_CODE_COVERAGE if missing (like on the 1.21 release).
+m4_pattern_forbid([^_?AX_])
+m4_pattern_allow([AX_CHECK_GNU_MAKE_HEADLINE])
+m4_pattern_allow([_AX_CODE_COVERAGE_GCOV_PROG_WITH])
+
 AC_INIT([wget],[m4_esyscmd(build-aux/git-version-gen .tarball-version)],[bug-wget@gnu.org])
 AC_PREREQ([2.64])
 
@@ -50,6 +55,7 @@ AM_INIT_AUTOMAKE([subdir-objects dist-lzip])
 
 AC_USE_SYSTEM_EXTENSIONS
 AC_PROG_CC
+AC_PROG_CC_C99
 AM_PROG_CC_C_O
 
 dnl
@@ -261,11 +267,11 @@ dnl
 dnl Gettext
 dnl
 AM_GNU_GETTEXT([external],[need-ngettext])
-AM_GNU_GETTEXT_VERSION([0.19.3])
+AM_GNU_GETTEXT_VERSION([0.20])
 
 AC_PROG_RANLIB
 
-AC_PROG_LEX
+AC_PROG_LEX([noyywrap])
 
 dnl Turn on optimization by default.  Specifically:
 dnl
@@ -295,13 +301,6 @@ AC_C_CONST
 AC_C_INLINE
 AC_C_VOLATILE
 
-dnl Check for basic headers, even though we expect them to exist and
-dnl #include them unconditionally in the code.  Their detection is
-dnl still needed because test programs used by Autoconf macros check.
-dnl Without the checks they will fail to be included in test programs,
-dnl which will subsequently fail.
-AC_HEADER_STDC
-
 dnl Check for large file support.  This check needs to come fairly
 dnl early because it could (in principle) affect whether functions and
 dnl headers are available, whether they work, etc.
@@ -313,7 +312,7 @@ dnl Checks for system header files that might be missing.
 dnl
 AC_HEADER_STDBOOL
 AC_CHECK_HEADERS(unistd.h sys/time.h)
-AC_CHECK_HEADERS(termios.h sys/ioctl.h sys/select.h utime.h sys/utime.h)
+AC_CHECK_HEADERS(termios.h sys/ioctl.h sys/select.h)
 AC_CHECK_HEADERS(stdint.h inttypes.h pwd.h wchar.h dlfcn.h)
 
 AC_CHECK_DECLS(h_errno,,,[#include <netdb.h>])
@@ -361,8 +360,8 @@ dnl We expect to have these functions on Unix-like systems configure
 dnl runs on.  The defines are provided to get them in config.h.in so
 dnl Wget can still be ported to non-Unix systems (such as Windows)
 dnl that lack some of these functions.
-AC_DEFINE([HAVE_STRDUP], 1, [Define to 1 if you have the `strdup' function.])
-AC_DEFINE([HAVE_ISATTY], 1, [Define to 1 if you have the `isatty' function.])
+AC_DEFINE([HAVE_STRDUP], 1, [Define to 1 if you have the 'strdup' function.])
+AC_DEFINE([HAVE_ISATTY], 1, [Define to 1 if you have the 'isatty' function.])
 
 dnl Deal with specific hosts
 case $host_os in
@@ -569,7 +568,7 @@ AS_IF([test x"$with_ssl" = xopenssl], [
             AC_MSG_NOTICE([Enabling support for SSL via OpenSSL (shared)])
             AC_LIBOBJ([openssl])
             LIBS="${LIBS} -lssl32"
-            AC_DEFINE([HAVE_LIBSSL32], [1], [Define to 1 if you have the `ssl32' library (-lssl32).])
+            AC_DEFINE([HAVE_LIBSSL32], [1], [Define to 1 if you have the 'ssl32' library (-lssl32).])
           ],
           AC_MSG_ERROR([openssl not found: shared lib eay32 found but ssl32 not found]))
 
@@ -743,7 +742,7 @@ AC_ARG_ENABLE(ipv6,
       ipv6=yes
       ;;
     *)
-      AC_MSG_ERROR([Invalid --enable-ipv6 argument \`$enable_ipv6'])
+      AC_MSG_ERROR([Invalid --enable-ipv6 argument '$enable_ipv6'])
       ;;
     esac
   ], [
@@ -761,7 +760,7 @@ fi
 
 if test "X$ipv6" = "Xyes"; then
   TYPE_STRUCT_SOCKADDR_IN6([],[
-    AC_MSG_NOTICE([Disabling IPv6 support: your system does not support \`struct sockaddr_in6'])
+    AC_MSG_NOTICE([Disabling IPv6 support: your system does not support 'struct sockaddr_in6'])
     ipv6=no
   ])
   if test "X$ipv6" = "Xyes"; then
@@ -779,9 +778,9 @@ fi
 
 dnl
 dnl Find makeinfo.  We used to provide support for Emacs processing
-dnl Texinfo using `emacs -batch -eval ...' where makeinfo is
+dnl Texinfo using 'emacs -batch -eval ...' where makeinfo is
 dnl unavailable, but that broke with the addition of makeinfo-specific
-dnl command-line options, such as `-I'.  Now we depend on makeinfo to
+dnl command-line options, such as '-I'.  Now we depend on makeinfo to
 dnl build the Info documentation.
 dnl
 
@@ -824,7 +823,7 @@ AC_ARG_ENABLE(iri,
       iri=yes
       ;;
     *)
-      AC_MSG_ERROR([Invalid --enable-iri argument \`$enable_iri'])
+      AC_MSG_ERROR([Invalid --enable-iri argument '$enable_iri'])
       ;;
     esac
   ], [

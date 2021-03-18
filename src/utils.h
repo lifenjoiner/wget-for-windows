@@ -123,8 +123,7 @@ void free_keys_and_values (struct hash_table *, VALUE_FREE_FUNC *);
 
 const char *with_thousand_seps (wgint);
 
-/* human_readable must be able to accept wgint and SUM_SIZE_INT
-   arguments. */
+/* human_readable must be able to accept wgint arguments. */
 char *human_readable (wgint, const int, const int);
 
 
