@@ -42,7 +42,7 @@ endif
 
 # The following line is losing on some versions of make!
 if IS_WINDOWS
-DEFS_X = -DLOCALEDIR=./locale
+DEFS_X = -DLOCALEDIR=\"./locale\"
 else
 DEFS_X = -DSYSTEM_WGETRC=\"$(sysconfdir)/wgetrc\" -DLOCALEDIR=\"$(localedir)\"
 endif
