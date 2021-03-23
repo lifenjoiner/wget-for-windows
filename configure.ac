@@ -847,6 +847,13 @@ AC_ARG_WITH(libidn, AS_HELP_STRING([--with-libidn=[DIR]],[Support IDN2008/IRIs (
                                    libidn=$withval, libidn="")
 
 if test "X$iri" != "Xno"; then
+  AS_IF([test "x$with_winidn" != xno && test "X$IS_WINDOWS" = "Xyes" && test "X$am_cv_func_iconv" = "Xyes"],
+  [
+    iri=yes
+    AC_DEFINE([ENABLE_IRI], 1, [Define if IRI support is enabled.])
+    with_libidn2=no
+  ])
+
   AS_IF([test "x$with_libidn2" != xno], [
     AC_SEARCH_LIBS(idn2_lookup_u8, idn2,
       [with_libidn2=yes; AC_DEFINE([ENABLE_IRI], 1, [Define if IRI support is enabled.])],
@@ -857,13 +864,6 @@ if test "X$iri" != "Xno"; then
 #        [AC_DEFINE([ENABLE_IRI], 1, [Define if IRI support is enabled.])],
 #        [iri=no; AC_MSG_WARN(*** LIBUNISTRING was not found. You will not be able to use IDN2008 support)])
 #    ])
-  ])
-
-  AS_IF([test "x$with_libidn2" = xno && test "x$with_winidn" != xno
-        test "X$IS_WINDOWS" = "Xyes" && test "X$am_cv_func_iconv" = "Xyes" ],
-  [
-    iri=yes
-    AC_DEFINE([ENABLE_IRI], 1, [Define if IRI support is enabled.])
   ])
 fi
 
