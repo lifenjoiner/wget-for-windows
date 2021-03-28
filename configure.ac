@@ -1035,6 +1035,7 @@ test "X${ENABLE_XATTR}" = "Xyes" && AC_DEFINE([ENABLE_XATTR], 1,
 dnl Needed by src/Makefile.am
 AM_CONDITIONAL([IRI_IS_ENABLED], [test "X$iri" != "Xno"])
 AM_CONDITIONAL([WITH_SSL], [test "X$with_ssl" != "Xno"])
+AM_CONDITIONAL([WITH_WINTLS], [test x"$with_ssl" = "xwintls"])
 AM_CONDITIONAL([METALINK_IS_ENABLED], [test "X$with_metalink" != "Xno"])
 AM_CONDITIONAL([WITH_XATTR], [test "X$ENABLE_XATTR" != "Xno"])
 AM_CONDITIONAL([WITH_NTLM], [test "X$ENABLE_NTLM" = "Xyes"])

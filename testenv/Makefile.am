@@ -71,6 +71,21 @@ if WITH_SSL
   AM_TESTS_ENVIRONMENT += export SSL_TESTS=1;
 endif
 
+if WITH_WINTLS
+  HTTPS_TESTS =
+else
+  HTTPS_TESTS = \
+    Test-hsts.py                                    \
+    Test--https.py                                  \
+    Test--https-crl.py                              \
+    Test-pinnedpubkey-der-https.py                  \
+    Test-pinnedpubkey-der-no-check-https.py         \
+    Test-pinnedpubkey-hash-https.py                 \
+    Test-pinnedpubkey-hash-no-check-fail-https.py   \
+    Test-pinnedpubkey-pem-fail-https.py             \
+    Test-pinnedpubkey-pem-https.py
+endif
+
 if HAVE_PYTHON3
   TESTS = Test-504.py                               \
     Test-416.py                                     \
@@ -96,17 +111,8 @@ if HAVE_PYTHON3
     Test-cookie-expires.py                          \
     Test-cookie.py                                  \
     Test-Head.py                                    \
-    Test-hsts.py                                    \
-    Test--https.py                                  \
-    Test--https-crl.py                              \
     Test-missing-scheme-retval.py                   \
     Test-O.py                                       \
-    Test-pinnedpubkey-der-https.py                  \
-    Test-pinnedpubkey-der-no-check-https.py         \
-    Test-pinnedpubkey-hash-https.py                 \
-    Test-pinnedpubkey-hash-no-check-fail-https.py   \
-    Test-pinnedpubkey-pem-fail-https.py             \
-    Test-pinnedpubkey-pem-https.py                  \
     Test-Post.py                                    \
     Test-recursive-basic.py                         \
     Test-recursive-include.py                       \
@@ -117,6 +123,7 @@ if HAVE_PYTHON3
     Test-reserved-chars.py                          \
     Test--spider-r.py                               \
     Test-no_proxy-env.py                            \
+    $(HTTPS_TESTS)                                  \
     $(METALINK_TESTS)
 
 endif
