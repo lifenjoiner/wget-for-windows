@@ -99,8 +99,7 @@ class BaseTest:
         cmd_line = self.gen_cmd_line()
         params = shlex.split(cmd_line)
         print(params)
-        envs = os.environ.copy()
-        envs["HOME"] = os.getcwd()
+        envs = {"HOME": os.getcwd(), "PATH": os.environ["PATH"]}
         envs.update(**self.envs)
         print(envs)
 
