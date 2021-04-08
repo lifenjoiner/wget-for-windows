@@ -14,9 +14,9 @@ use POSIX qw(locale_h);
 use locale;
 
 if (defined $ENV{'WGET_PATH'}) {
-    our $WGETPATH = $ENV{'WGET_PATH'} . ' -d --no-config -T 10 -t 3';
+    our $WGETPATH = $ENV{'WGET_PATH'} . ' -d --no-config';
 } else {
-    our $WGETPATH = '../src/wget -d --no-config -T 10 -t 3';
+    our $WGETPATH = '../src/wget -d --no-config';
 }
 
 
