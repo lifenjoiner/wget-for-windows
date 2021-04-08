@@ -825,12 +825,7 @@ sock_peek (int fd, char *buf, int bufsize)
 static void
 sock_close (int fd)
 {
-#ifdef WINDOWS
-  /* GNU `close` may work with MSVC, but not MinGW. */
-  closesocket (fd);
-#else
   close (fd);
-#endif
   DEBUGP (("Closed fd %d\n", fd));
 }
 #undef read
