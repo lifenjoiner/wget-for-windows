@@ -302,7 +302,7 @@ idn_encode (const char *encoding, const char *host)
 #endif
 
   /* Encode to UTF-8 if not done */
-  if (!i->utf8_encode)
+  if (c_strcasecmp (encoding, "UTF-8"))
     {
       if (!remote_to_utf8 (encoding, host, &utf8_encoded))
           return NULL;  /* Nothing to encode or an error occurred */
