@@ -9,8 +9,18 @@ use HTTPTest;
 # " Kon'nichiwa <dot> Japan
 my $euc_jp_hostname = "\272\243\306\374\244\317.\306\374\313\334";
 my $punycoded_hostname = 'xn--v9ju72g90p.xn--wgv71a';
+# Windows will transcode the command line parameters into native locale encoded!
+my $url = <<EOF;
+$euc_jp_hostname
+EOF
 
 ###############################################################################
+
+my %preexisting_files = (
+    'locale-url.txt' => {
+        content => $url,
+    },
+);
 
 my $result_file = <<EOF;
 Found me!
@@ -29,7 +39,7 @@ my %urls = (
 );
 
 my $cmdline = $WgetTest::WGETPATH . " --iri -r"
-    . " -e http_proxy=localhost:{{port}} --local-encoding=EUC-JP $euc_jp_hostname";
+    . " -e http_proxy=localhost:{{port}} --local-encoding=EUC-JP -i locale-url.txt";
 
 my $expected_error_code = 0;
 
@@ -44,6 +54,7 @@ my %expected_downloaded_files = (
 my $the_test = HTTPTest->new (input => \%urls,
                               cmdline => $cmdline,
                               errcode => $expected_error_code,
+                              existing => \%preexisting_files,
                               output => \%expected_downloaded_files);
 exit $the_test->run();
 
