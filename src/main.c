@@ -738,9 +738,9 @@ Download:\n"),
     N_("\
        --no-iri                    turn off IRI support\n"),
     N_("\
-       --local-encoding=ENC        use ENC as the local encoding for IRIs\n"),
+       --local-encoding=ENC        use ENC as the local inputted url encoding\n"),
     N_("\
-       --remote-encoding=ENC       use ENC as the default remote encoding\n"),
+       --remote-encoding=ENC       use ENC as the default remote url encoding\n"),
     N_("\
        --unlink                    remove file before clobber\n"),
 #ifdef HAVE_METALINK

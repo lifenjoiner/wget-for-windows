@@ -1650,17 +1650,15 @@ append_url_pathel (const char *b, const char *e, bool escaped,
 static char *
 convert_fname (char *fname, const struct url *url)
 {
-  const char *from_encoding = opt.encoding_remote;
+  const char *from_encoding;
   /* Save file name as system locale. opt.locale is for url input. */
   const char *to_encoding = find_locale ();
   char *fname_new;
   char *out;
 
-  /* Defaults for remote and local encodings.  */
-  if (!from_encoding)
-    from_encoding = url->enc_type == ENC_IRI ? "UTF-8"
-                    : url->enc_type == ENC_URL ? url->ori_enc
-                    : opt.locale;
+  from_encoding = url->enc_type == ENC_IRI ? "UTF-8"
+                  : url->enc_type == ENC_URL ? url->ori_enc
+                  : opt.locale;
 
   DEBUGP (("Converting file name: '%s' %s -> %s\n", fname, from_encoding, to_encoding));
 
