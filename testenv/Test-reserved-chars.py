@@ -5,7 +5,7 @@ from test.http_test import HTTPTest
 from misc.wget_file import WgetFile
 
 """
-This test ensures that Wget keeps reserved characters in URLs in non-UTF-8 charsets.
+This test ensures that Wget does not unescape new recursive URLs.
 """
 # This bug only happened with ASCII charset,
 # so we need to set LC_ALL="C" in order to reproduce it.

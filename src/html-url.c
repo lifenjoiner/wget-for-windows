@@ -299,6 +299,7 @@ append_url (const char *link_url, int position, int size,
   text_enc = ctx->text_enc ? ctx->text_enc : (char*) opt.locale;
   url->ori_enc = xstrdup (text_enc);
 
+  /* Wget does not unescape reserved characters in URLs when following redirections. */
   if (opt.enable_iri && strcasecmp (text_enc, ctx->parent_enc))
     {
       if (remote_to_utf8 (text_enc, link_url, &link_url_new))
