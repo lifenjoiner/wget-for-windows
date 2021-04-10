@@ -78,9 +78,7 @@ as that of the covered work.  */
 #ifdef WINDOWS
 # include <io.h>
 # include <fcntl.h>
-#ifndef ENABLE_NLS
 # include <mbctype.h>
-#endif
 #endif
 
 #ifdef __VMS
@@ -151,7 +149,11 @@ i18n_initialize (void)
   bindtextdomain ("wget", LOCALEDIR);
   bindtextdomain ("wget-gnulib", LOCALEDIR);
   textdomain ("wget");
-#elif defined WINDOWS
+#endif /* ENABLE_NLS */
+  /* Windows prefer OEM encoding:
+    (`locale -i` == `locale -u` == `locale -f`) != (`locale -s` == `locale -n`).
+    `setlocale(LC_ALL, ".OCP");` isn't the same. */
+#ifdef WINDOWS
   char MBCP[16] = "";
   int CP;
 
@@ -159,7 +161,7 @@ i18n_initialize (void)
   if (CP > 0)
     snprintf(MBCP, sizeof(MBCP), ".%d", CP);
   setlocale(LC_ALL, MBCP);
-#endif /* ENABLE_NLS */
+#endif
 }
 
 #ifdef HAVE_HSTS
