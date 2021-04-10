@@ -150,16 +150,33 @@ my $cmdline = $WgetTest::WGETPATH . " --iri --trust-server-names -i http://local
 
 my $expected_error_code = 0;
 
+# Windows prefer OEM encoding.
+
+# To make the downloaded (shell displays non-transcoded), this test listed (transcoded) and expected the same!
+# Only `reinit` still has issue on Windows when:
+# Set lang to "English", within OEM encoding version OS;
+# (`locale -i` == `locale -u` == `locale -f`) != (`locale -s` == `locale -n`).
+# Wget's `find_locale` requires to be prepared too!
 if ($^O eq "msys" || $^O eq "cygwin") {
+    use Encode::Locale qw($ENCODING_LOCALE $ENCODING_CONSOLE_IN $ENCODING_CONSOLE_OUT);
+    print "LC_CTYPE: " . $ENV{'LC_CTYPE'} . "\n";
+    print "ENCODING_LOCALE: " . $ENCODING_LOCALE . "\n";
+    print "ENCODING_CONSOLE_IN: " . $ENCODING_CONSOLE_IN . "\n";
+    print "ENCODING_CONSOLE_OUT: " . $ENCODING_CONSOLE_OUT . "\n";
+    print "Encode::Locale::reinit locale from UTF-8 to OS default ...\n";
     $^O = "MSWin32";
     Encode::Locale::reinit();
+    print "LC_CTYPE: " . $ENV{'LC_CTYPE'} . "\n";
+    print "ENCODING_LOCALE: " . $ENCODING_LOCALE . "\n";
+    print "ENCODING_CONSOLE_IN: " . $ENCODING_CONSOLE_IN . "\n";
+    print "ENCODING_CONSOLE_OUT: " . $ENCODING_CONSOLE_OUT . "\n";
 }
 
 sub can_transcode_to_locale
 {
     my ($from, $str) = @_;
-    my $U = Encode::encode(console_in => Encode::decode($from, $str));
-    return Encode::encode($from, Encode::decode(console_in => $U)) eq $str;
+    my $m = Encode::encode(locale => Encode::decode($from, $str));
+    return Encode::encode($from, Encode::decode(locale => $m)) eq $str;
 }
 
 my $p1_out = ${ccedilla_l1};
