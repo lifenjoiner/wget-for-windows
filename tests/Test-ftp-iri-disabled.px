@@ -12,7 +12,6 @@ use Encode;
 ###############################################################################
 
 my $ccedilla_l1 = "\xE7";
-my $ccedilla_l1_pct = "%E7";
 my $ccedilla_u8 = "\xC3\xA7";
 
 my $francais = <<EOF;
@@ -32,7 +31,7 @@ my %urls = (
     },
 );
 
-my $cmdline = $WgetTest::WGETPATH . " --no-iri --local-encoding=iso-8859-1 -S ftp://localhost:{{port}}/fran${ccedilla_l1_pct}ais.txt";
+my $cmdline = $WgetTest::WGETPATH . " --no-iri --local-encoding=iso-8859-1 -S ftp://localhost:{{port}}/fran${ccedilla_l1}ais.txt";
 
 my $expected_error_code = 0;
 
