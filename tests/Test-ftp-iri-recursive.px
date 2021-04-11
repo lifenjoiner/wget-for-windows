@@ -57,7 +57,7 @@ sub can_transcode_to_locale
 my $ccedilla_expected = ${ccedilla_l1};
 if (can_transcode_to_locale($ENCODING_LOCALE, $ccedilla_expected))
 {
-   $ccedilla_expected = Encode::decode(locale => $ccedilla_expected);
+   $ccedilla_expected = Encode::decode("iso-8859-1", $ccedilla_expected);
 } else {
     print "Skip: Windows can't transcode correctly with current codepage.\n";
     # example: 0xE7 as CP936 transcoded to utf8 results 0x3F.
