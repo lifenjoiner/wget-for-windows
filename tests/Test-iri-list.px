@@ -179,7 +179,7 @@ sub can_transcode_to_locale
     return Encode::encode($from, Encode::decode(locale => $m)) eq $str;
 }
 
-my $p1_out = ${ccedilla_l1};
+my $p1_out = ${ccedilla_u8};
 if (!can_transcode_to_locale("UTF-8", $p1_out))
 {
     $p1_out = "%E7";
