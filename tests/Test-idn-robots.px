@@ -9,7 +9,8 @@ use HTTPTest;
 # " Kon'nichiwa <dot> Japan
 my $euc_jp_hostname = "\272\243\306\374\244\317.\306\374\313\334";
 my $punycoded_hostname = 'xn--v9ju72g90p.xn--wgv71a';
-my $escaped_hostname = "%ba%a3%c6%fc%a4%cf.%c6%fc%cb%dc";
+# URL should always be encoded from utf-8.
+my $escaped_hostname = "%E4%BB%8A%E6%97%A5%E3%81%AF.%E6%97%A5%E6%9C%AC";
 # Windows will transcode the command line parameters into native locale encoded!
 my $url = <<EOF;
 $euc_jp_hostname

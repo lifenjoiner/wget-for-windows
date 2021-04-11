@@ -12,8 +12,8 @@ use Encode;
 # Just a sanity check to verify that %-encoded values are always left
 # untouched.
 
+# URL should always be encoded from utf-8.
 my $ccedilla_l15 = "\xE7";
-my $ccedilla_l15_pct = "%E7";
 my $ccedilla_u8 = "\xC3\xA7";
 my $ccedilla_u8_pct = "%C3%A7";
 my $eacute_l1 = "\xE9";
@@ -28,7 +28,7 @@ my $pageindex = <<EOF;
 <body>
   <p>
     Link to page 1 <a
-    href="http://localhost:{{port}}/hello_${ccedilla_l15_pct}${eacute_l1}.html">La seule page en fran&ccedil;ais</a>.
+    href="http://localhost:{{port}}/hello_${ccedilla_u8_pct}${eacute_l1}.html">La seule page en fran&ccedil;ais</a>.
   </p>
 </body>
 </html>
