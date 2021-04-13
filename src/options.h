@@ -314,8 +314,9 @@ struct options
                                    waiting for a challenge. */
 
   bool enable_iri;
-  char *encoding_remote;
-  const char *locale;
+  char *encoding_remote;        /* remote input/server */
+  char *encoding_local;         /* local input */
+  const char *locale;           /* OS native locale */
 
   bool trustservernames;
 #ifdef __VMS

@@ -251,7 +251,7 @@ static const struct {
   { "keepsessioncookies", &opt.keep_session_cookies, cmd_boolean },
   { "limitrate",        &opt.limit_rate,        cmd_bytes },
   { "loadcookies",      &opt.cookies_input,     cmd_file },
-  { "localencoding",    &opt.locale,            cmd_string },
+  { "localencoding",    &opt.encoding_local,     cmd_string },
   { "logfile",          &opt.lfilename,         cmd_file },
   { "login",            &opt.ftp_user,          cmd_string },/* deprecated*/
   { "maxredirect",      &opt.max_redirect,      cmd_number },
@@ -484,6 +484,7 @@ defaults (void)
   opt.enable_iri = false;
 #endif
   opt.locale = NULL;
+  opt.encoding_local = NULL;
   opt.encoding_remote = NULL;
 
   opt.useservertimestamps = true;
@@ -2043,6 +2044,7 @@ cleanup (void)
   xfree (opt.use_askpass);
   xfree (opt.retry_on_http_error);
 
+  xfree (opt.encoding_local);
   xfree (opt.encoding_remote);
   xfree (opt.locale);
 #ifdef HAVE_HSTS

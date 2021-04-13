@@ -1188,10 +1188,6 @@ retrieve_from_file (const char *file, bool html, int *count)
   status = RETROK;             /* Suppose everything is OK.  */
   *count = 0;                  /* Reset the URL count.  */
 
-  /* Local input uses opt.locale. Downloaded file encoding follows server response. */
-  xfree (url_parsed->content_enc);
-  url_parsed->content_enc = xstrdup (opt.locale);
-
   if (url_valid_scheme (url))
     {
       int dt,url_err;
@@ -1223,7 +1219,13 @@ retrieve_from_file (const char *file, bool html, int *count)
       input_file = url_file;
     }
   else
-    input_file = (char *) file;
+    {
+      /* Local input uses opt.encoding_local. */
+      xfree (url_parsed->content_enc);
+      url_parsed->content_enc = xstrdup (opt.encoding_local);
+
+      input_file = (char *) file;
+    }
 
   url_list = (html ? get_urls_html (input_file, url_parsed, false)
               : get_urls_file (input_file, url_parsed->content_enc));

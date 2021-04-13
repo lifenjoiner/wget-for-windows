@@ -1887,16 +1887,18 @@ for details.\n\n"));
     }
 
 #ifdef HAVE_ICONV
-  if (opt.locale && !check_encoding_name (opt.locale))
-    xfree (opt.locale);
+  opt.locale = find_locale ();
 
-  if (!opt.locale)
-    opt.locale = find_locale ();
+  if (opt.encoding_local && !check_encoding_name (opt.encoding_local))
+    xfree (opt.encoding_local);
+
+  if (!opt.encoding_local)
+    opt.encoding_local = xstrdup (opt.locale);
 
   if (opt.encoding_remote && !check_encoding_name (opt.encoding_remote))
     xfree (opt.encoding_remote);
 #else
-  if (opt.enable_iri || opt.locale || opt.encoding_remote)
+  if (opt.enable_iri || opt.encoding_local || opt.encoding_remote)
     {
       /* sXXXav : be more specific... */
       fprintf (stderr, _("This version does not have support for IRIs\n"));
