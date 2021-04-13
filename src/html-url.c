@@ -306,6 +306,7 @@ append_url (const char *link_url, int position, int size,
         {
           link_url = link_url_new;
           /* Have iconv, all to UTF-8 */
+          xfree (url->ori_enc);
           url->ori_enc = xstrdup ("UTF-8");
         }
     }
