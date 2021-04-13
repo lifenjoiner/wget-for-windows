@@ -777,7 +777,7 @@ local_quote_string (const char *file, bool no_html_quote)
     return no_html_quote ? strdup (newname) : html_quote_string (newname);
 
   if (no_html_quote)
-    return newname;
+    return strdup (newname);
 
   res = html_quote_string (newname);
   xfree (newname);
