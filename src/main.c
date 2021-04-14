@@ -78,7 +78,6 @@ as that of the covered work.  */
 #ifdef WINDOWS
 # include <io.h>
 # include <fcntl.h>
-# include <mbctype.h>
 #endif
 
 #ifdef __VMS
@@ -150,17 +149,24 @@ i18n_initialize (void)
   bindtextdomain ("wget-gnulib", LOCALEDIR);
   textdomain ("wget");
 #endif /* ENABLE_NLS */
-  /* Windows prefer OEM encoding:
-    (`locale -i` == `locale -u` == `locale -f`) != (`locale -s` == `locale -n`).
-    `setlocale(LC_ALL, ".OCP");` isn't the same. */
 #ifdef WINDOWS
-  char MBCP[16] = "";
+  /* Windows prefer "Windows code pages" encoding. Windows code pages are also
+    sometimes referred to as "active code pages" or "system active code pages".
+    MSYS can: (`locale -i` == `locale -u` == `locale -f`) != (`locale -s` == `locale -n`)
+    OS (github action) may has: GetACP: 1252, GetOEMCP: 437, _getmbcp: 0
+    Even OS with GetACP: 936, GetOEMCP: 936, _getmbcp: 936
+    setlocale(LC_ALL, "") -> *.1252
+    setlocale(LC_ALL, ".ACP") -> *.1252
+    setlocale(LC_ALL, ".OCP") -> *.437
+    setlocale(LC_ALL, ".936") -> *.936
+    */
+  char ACP[16] = "";
   int CP;
 
-  CP = _getmbcp(); /* Consider it's different from default. */
+  CP = GetACP();
   if (CP > 0)
-    snprintf(MBCP, sizeof(MBCP), ".%d", CP);
-  setlocale(LC_ALL, MBCP);
+    snprintf(ACP, sizeof(ACP), ".%d", CP);
+  setlocale(LC_ALL, ACP);
 #endif
 }
 
