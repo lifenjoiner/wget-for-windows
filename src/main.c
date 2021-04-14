@@ -2159,7 +2159,6 @@ only if outputting to a regular file.\n"));
             {
               retrieve_url (url, &filename, &redirected_URL, NULL,
                             &dt, opt.recursive, true);
-              url_free (url);
             }
 
           if (opt.delete_after && filename != NULL && file_exists_p (filename, NULL))
@@ -2172,6 +2171,8 @@ only if outputting to a regular file.\n"));
           xfree (redirected_URL);
           xfree (filename);
         }
+
+      url_free (url);
 
       if (t != argv[optind])
         xfree (t);

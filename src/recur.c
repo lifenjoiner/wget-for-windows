@@ -499,8 +499,6 @@ retrieve_tree (struct url *start_url_parsed)
 
   string_set_free (blacklist);
 
-  url_free (start_url_parsed);
-
   if (opt.quota && total_downloaded_bytes > opt.quota)
     return QUOTEXC;
   else if (status == FWRITEERR)
