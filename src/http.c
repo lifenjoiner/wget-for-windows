@@ -2572,7 +2572,7 @@ open_output_stream (struct http_stat *hs, int count, FILE **fp)
           *fp = fopen (hs->local_file, "ab");
 #endif /* def __VMS [else] */
         }
-      else if (ALLOW_CLOBBER || count > 0)
+      else if (ALLOW_CLOBBER || count > 1)
         {
           if (opt.unlink_requested && file_exists_p (hs->local_file, NULL))
             {
