@@ -179,7 +179,7 @@ struct url
   char *query;
   char *fragment;
 
-  /* Extracted path info (unquoted). */
+  /* Extracted path info (unquoted), locale encoding. */
   char *dir;
   char *file;
 };
@@ -209,6 +209,8 @@ const char *scheme_leading_string (enum url_scheme);
 
 char *url_string (const struct url *, enum url_auth_mode);
 char *url_file_name (const struct url *, char *);
+
+char *convert_fname (const char *fname, const char *from_encoding, const char *to_encoding);
 
 char *url_merge (const char *, const char *);
 

@@ -37,7 +37,7 @@ as that of the covered work.  */
 char *parse_charset (const char *str);
 const char *find_locale (void);
 bool check_encoding_name (const char *encoding);
-const char *locale_to_utf8 (const char *str);
+char *locale_to_utf8 (const char *str);
 bool remote_to_utf8 (const char *encoding, const char *str, char **new);
 bool transcode (const char *tocode, const char *fromcode,
                 char const *in, size_t inlen, char **out);

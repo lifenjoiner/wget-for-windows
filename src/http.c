@@ -2320,26 +2320,36 @@ check_file_output (const struct url *u, struct http_stat *hs,
    * hstat.local_file is set by http_loop to the argument of -O. */
   if (!hs->local_file)
     {
-      char *local_file = NULL;
+      char *file_disposition = NULL;
+      char *str_u, *url_enc;
 
       /* Honor Content-Disposition whether possible. */
       if (!opt.content_disposition
           || !resp_header_copy (resp, "Content-Disposition",
                                 hdrval, hdrsize)
-          || !parse_content_disposition (hdrval, &local_file))
+          || !parse_content_disposition (hdrval, &file_disposition))
         {
           /* The Content-Disposition header is missing or broken.
            * Choose unique file name according to given URL. */
-          hs->local_file = url_file_name (u, NULL);
+          str_u = url_file_name (u, NULL);
         }
       else
         {
           DEBUGP (("Parsed filename from Content-Disposition: %s\n",
-                  local_file));
-          hs->local_file = url_file_name (u, local_file);
+                  file_disposition));
+          str_u = url_file_name (u, file_disposition);
         }
 
-      xfree (local_file);
+      url_enc = u->enc_type == ENC_IRI ? "UTF-8" : u->ori_enc;
+      if (strcasecmp (url_enc, opt.locale))
+        {
+          hs->local_file = convert_fname (str_u, url_enc, opt.locale);
+          xfree (str_u);
+        }
+      else
+        hs->local_file = str_u;
+
+      xfree (file_disposition);
     }
 
   hs->temporary = opt.delete_after || opt.spider || !acceptable (hs->local_file);
@@ -4286,8 +4296,14 @@ http_loop (struct url *u, struct url *original_url, char **newloc,
     }
   else if (!opt.content_disposition)
     {
-      hstat.local_file =
-        url_file_name (opt.trustservernames ? u : original_url, NULL);
+      struct url *u2 = opt.trustservernames ? u : original_url;
+      char *url_enc = u2->enc_type == ENC_IRI ? "UTF-8" : u2->ori_enc;
+      char *file_u = url_file_name (u2, NULL);
+      if (strcasecmp (url_enc, opt.locale))
+        hstat.local_file = convert_fname (file_u, url_enc, opt.locale);
+      else
+        hstat.local_file = xstrdup (file_u);
+      xfree (file_u);
       got_name = true;
     }
 

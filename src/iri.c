@@ -252,7 +252,7 @@ iri_to_utf8 (const char *encoding, const char *str, char **new)
 
 /* Try converting string str from locale to UTF-8. Return a new string
    on success, or str on error or if conversion isn't needed. */
-const char *
+char *
 locale_to_utf8 (const char *str)
 {
   char *new;

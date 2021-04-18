@@ -622,8 +622,6 @@ rewrite_shorthand_url (const char *url)
   return ret;
 }
 
-static char * convert_fname (char *fname, const struct url *url);
-
 static void get_local_path (struct url *url);
 
 /* Like strpbrk, with the exception that it returns the pointer to the
@@ -1034,52 +1032,33 @@ get_local_path (struct url *url)
   char *last_slash = strrchr (url->path, '/');
   char *dir_u, *file_u;
   char *dir_l, *file_l;
+  const char *from_encoding;
 
   if (!last_slash)
     {
-      url->dir = xstrdup ("");
-      url->file = xstrdup (url->path);
       dir_u = xstrdup ("");
       file_u = xstrdup (url->path);
     }
   else
     {
-      url->dir = strdupdelim (url->path, last_slash);
-      url->file = xstrdup (last_slash + 1);
       dir_u = strdupdelim (url->path, last_slash);
       file_u = xstrdup (last_slash + 1);
     }
 
   url_unescape (dir_u);
   url_unescape (file_u);
-  dir_l = convert_fname (dir_u, url);
-  file_l = convert_fname (file_u, url);
 
-  if (dir_l == NULL || file_l == NULL)
-    {
-      /* Failed converting to locale name */
-      xfree (dir_l);
-      xfree (file_l);
-      xfree (dir_u);
-      xfree (file_u);
-    }
-  else if (dir_l == dir_u && file_l == file_u)
-    {
-      /* Same encoding to locale */
-      xfree (url->dir);
-      xfree (url->file);
-      url->dir = dir_u;
-      url->file = file_u;
-    }
-  else
-    {
-      xfree (dir_u);
-      xfree (file_u);
-      xfree (url->dir);
-      xfree (url->file);
-      url->dir = dir_l;
-      url->file = file_l;
-    }
+  from_encoding = url->enc_type == ENC_IRI ? "UTF-8"
+                  : url->enc_type == ENC_URL ? url->ori_enc
+                  : opt.locale;
+  dir_l = convert_fname (dir_u, from_encoding, opt.locale);
+  file_l = convert_fname (file_u, from_encoding, opt.locale);
+  xfree (dir_u);
+  xfree (url->dir);
+  xfree (file_u);
+  xfree (url->file);
+  url->dir = dir_l;
+  url->file = file_l;
 
   DEBUGP (("Locale dir: '%s' (%s)\n", url->dir, opt.locale));
   DEBUGP (("Locale file: '%s' (%s)\n", url->file, opt.locale));
@@ -1189,6 +1168,10 @@ url_escape_dir (const char *dir)
 /* Sync u->path and u->url with u->dir and u->file.  Called after
    u->file or u->dir have been changed, typically by the FTP code.  */
 
+/* To solve non-English characters in filenames, the FTP protocol has been
+   extended in a backwards compatible way to use UTF-8 as the character set.
+   https://wiki.filezilla-project.org/Character_Encoding */
+
 static void
 sync_path (struct url *u)
 {
@@ -1202,8 +1185,24 @@ sync_path (struct url *u)
      path will be correctly assembled.  (u->file can contain slashes
      if the URL specifies it with %2f, or if an FTP server returns
      it.)  */
-  edir = url_escape_dir (u->dir);
-  efile = url_escape_1 (u->file, urlchr_unsafe | urlchr_reserved, 1);
+
+  if (strcasecmp (opt.locale, "UTF-8"))
+    {
+      char *dir_utf8 = locale_to_utf8 (u->dir);
+      char *file_utf8 = locale_to_utf8 (u->file);
+      edir = url_escape_dir (dir_utf8);
+      efile = url_escape_1 (file_utf8, urlchr_unsafe | urlchr_reserved, 1);
+      /* url_escape_dir: allow_passthrough, align. */
+      if (edir != dir_utf8)
+        xfree (dir_utf8);
+      if (efile != file_utf8)
+        xfree (file_utf8);
+    }
+  else
+    {
+      edir = url_escape_dir (u->dir);
+      efile = url_escape_1 (u->file, urlchr_unsafe | urlchr_reserved, 1);
+    }
 
   if (!*edir)
     newpath = xstrdup (efile);
@@ -1243,6 +1242,7 @@ url_set_dir (struct url *url, const char *newdir)
   xfree (url->dir);
   url->dir = xstrdup (newdir);
   sync_path (url);
+  DEBUGP (("url_set_dir:\ndir: %s\nfile: %s\nurl: %s\n", url->dir, url->file, url->url));
 }
 
 void
@@ -1251,6 +1251,7 @@ url_set_file (struct url *url, const char *newfile)
   xfree (url->file);
   url->file = xstrdup (newfile);
   sync_path (url);
+  DEBUGP (("url_set_file:\ndir: %s\nfile: %s\nurl: %s\n", url->dir, url->file, url->url));
 }
 
 struct url *url_new_init ()
@@ -1647,46 +1648,33 @@ append_url_pathel (const char *b, const char *e, bool escaped,
 
 #ifdef HAVE_ICONV
 
-static char *
-convert_fname (char *fname, const struct url *url)
+char *
+convert_fname (const char *fname, const char *from_encoding, const char *to_encoding)
 {
-  const char *from_encoding;
-  /* Save file name as system locale. opt.locale is for url input. */
-  const char *to_encoding = find_locale ();
-  char *fname_new;
   char *out;
-
-  from_encoding = url->enc_type == ENC_IRI ? "UTF-8"
-                  : url->enc_type == ENC_URL ? url->ori_enc
-                  : opt.locale;
 
   DEBUGP (("Converting file name: '%s' %s -> %s\n", fname, from_encoding, to_encoding));
 
   if (strcasecmp (from_encoding, to_encoding) == 0)
-    {
-      xfree (to_encoding);
-      return fname;
-    }
+    return xstrdup (fname);
 
-  fname_new = xstrdup (fname);
-  url_unescape(fname_new);
-  if (transcode (to_encoding, from_encoding, fname_new, strlen(fname_new), &out))
+  if (transcode (to_encoding, from_encoding, fname, strlen(fname), &out))
+    DEBUGP (("Converted file name:  '%s' (%s)\n", out, to_encoding));
+  else
     {
-      DEBUGP (("Converted file name:  '%s' (%s)\n", out, to_encoding));
+      out = reencode_escapes (fname);
+      DEBUGP (("Converted file name: invalid chars escaped: '%s' (%s)\n", out, to_encoding));
     }
-  xfree (fname_new);
-
-  xfree (to_encoding);
 
   return out;
 }
 
 #else
 
-static char *
-convert_fname (char *fname, const struct url *url)
+char *
+convert_fname (const char *fname, const char *from_encoding, const char *to_encoding)
 {
-  return fname;
+  return xstrdup (fname);
 }
 
 #endif
@@ -1735,6 +1723,7 @@ append_dir_structure (const struct url *u, struct growable *dest)
 
 /* Return a unique file name that matches the given URL as well as
    possible.  Does not create directories on the file system.  */
+/* Result is with url encoding. */
 
 char *
 url_file_name (const struct url *u, char *replaced_filename)
@@ -1801,7 +1790,20 @@ url_file_name (const struct url *u, char *replaced_filename)
   if (!replaced_filename)
     {
       /* Create the filename. Locale validated. */
-      u_file = *u->file ? u->file : index_filename;
+      char *u_file_new = NULL;
+      if (*u->file)
+        {
+          char *url_enc = u->enc_type == ENC_IRI ? "UTF-8" : u->ori_enc;
+          if (strcasecmp (url_enc, opt.locale))
+            {
+              u_file_new = convert_fname (u->file, opt.locale, url_enc);
+              u_file = u_file_new;
+            }
+          else
+            u_file = u->file;
+        }
+      else
+        u_file = index_filename;
 
       /* Append "?query" to the file name, even if empty,
        * and create fname_len_check. */
@@ -1810,6 +1812,8 @@ url_file_name (const struct url *u, char *replaced_filename)
         fname_len_check = concat_strings (u_file, FN_QUERY_SEP_STR, u->query, NULL);
       else
         fname_len_check = strdupdelim (u_file, u_file + strlen (u_file));
+
+      xfree(u_file_new);
     }
   else
     {
