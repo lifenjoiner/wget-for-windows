@@ -953,7 +953,14 @@ Error in server response, closing control connection.\n"));
                 logprintf (LOG_VERBOSE, "==> CWD (%d) %s ... ", cwd_count,
                            quotearg_style (escape_quoting_style, target));
 
-              err = ftp_cwd (csock, targ);
+              if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+                {
+                  char *targ_remote = convert_fname (targ, opt.locale, opt.encoding_remote);
+                  err = ftp_cwd (csock, targ_remote);
+                  xfree (targ_remote);
+                }
+              else
+                err = ftp_cwd (csock, targ);
 
               /* FTPRERR, WRITEFAILED, FTPNSFOD */
               switch (err)
@@ -1006,7 +1013,14 @@ Error in server response, closing control connection.\n"));
                        quotearg_style (escape_quoting_style, u->file));
         }
 
-      err = ftp_size (csock, u->file, &expected_bytes);
+      if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+        {
+          char *file_remote = convert_fname (u->file, opt.locale, opt.encoding_remote);
+          err = ftp_size (csock, file_remote, &expected_bytes);
+          xfree (file_remote);
+        }
+      else
+        err = ftp_size (csock, u->file, &expected_bytes);
       /* FTPRERR */
       switch (err)
         {
@@ -1276,7 +1290,14 @@ Error in server response, closing control connection.\n"));
             }
         }
 
-      err = ftp_retr (csock, u->file);
+      if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+        {
+          char *file_remote = convert_fname (u->file, opt.locale, opt.encoding_remote);
+          err = ftp_retr (csock, file_remote);
+          xfree (file_remote);
+        }
+      else
+        err = ftp_retr (csock, u->file);
       /* FTPRERR, WRITEFAILED, FTPNSFOD */
       switch (err)
         {
@@ -1402,6 +1423,13 @@ Error in server response, closing control connection.\n"));
      there allows a open failure to be detected immediately, without first
      connecting to the server.)
   */
+
+  char *target_locale = NULL; /* dynamic from remote */
+  if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+    target_locale = convert_fname (con->target, opt.encoding_remote, opt.locale);
+  else
+    target_locale = xstrdup (con->target);
+
   if (!output_stream || con->cmd & DO_LIST)
     {
 /* On VMS, alter the name as required. */
@@ -1413,12 +1441,17 @@ Error in server response, closing control connection.\n"));
         {
           xfree (con->target);
           con->target = targ;
+          xfree (target_locale);
+          if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+            target_locale = convert_fname (targ, opt.encoding_remote, opt.locale);
+          else
+            target_locale = xstrdup (targ);
         }
 #endif /* def __VMS */
 
-      mkalldirs (con->target);
+      mkalldirs (target_locale);
       if (opt.backups)
-        rotate_backups (con->target);
+        rotate_backups (target_locale);
 
 /* 2005-04-15 SMS.
    For VMS, define common fopen() optional arguments, and a handy macro
@@ -1455,26 +1488,27 @@ Error in server response, closing control connection.\n"));
           if (BIN_TYPE_FILE)
             {
               open_id = 3;
-              fp = fopen (con->target, "ab", FOPEN_OPT_ARGS_BIN);
+              fp = fopen (target_locale, "ab", FOPEN_OPT_ARGS_BIN);
             }
           else
             {
               open_id = 4;
-              fp = fopen (con->target, "a", FOPEN_OPT_ARGS);
+              fp = fopen (target_locale, "a", FOPEN_OPT_ARGS);
             }
 #else /* def __VMS */
-          fp = fopen (con->target, "ab");
+          fp = fopen (target_locale, "ab");
 #endif /* def __VMS [else] */
         }
       else if (opt.noclobber || opt.always_rest || opt.timestamping || opt.dirstruct
                || opt.output_document || count > 0)
         {
-          if (opt.unlink_requested && file_exists_p (con->target, NULL))
+          if (opt.unlink_requested && file_exists_p (target_locale, NULL))
             {
-              if (unlink (con->target) < 0)
+              if (unlink (target_locale) < 0)
                 {
-                  logprintf (LOG_NOTQUIET, "%s: %s\n", con->target,
+                  logprintf (LOG_NOTQUIET, "%s: %s\n", target_locale,
                     strerror (errno));
+                    xfree (target_locale);
                     fd_close (csock);
                     con->csock = -1;
                     fd_close (dtsock);
@@ -1489,20 +1523,20 @@ Error in server response, closing control connection.\n"));
           if (BIN_TYPE_FILE)
             {
               open_id = 5;
-              fp = fopen (con->target, "wb", FOPEN_OPT_ARGS_BIN);
+              fp = fopen (target_locale, "wb", FOPEN_OPT_ARGS_BIN);
             }
           else
             {
               open_id = 6;
-              fp = fopen (con->target, "w", FOPEN_OPT_ARGS);
+              fp = fopen (target_locale, "w", FOPEN_OPT_ARGS);
             }
 #else /* def __VMS */
-          fp = fopen (con->target, "wb");
+          fp = fopen (target_locale, "wb");
 #endif /* def __VMS [else] */
         }
       else
         {
-          fp = fopen_excl (con->target, BIN_TYPE_FILE);
+          fp = fopen_excl (target_locale, BIN_TYPE_FILE);
           if (!fp && errno == EEXIST)
             {
               /* We cannot just invent a new name and use it (which is
@@ -1510,7 +1544,8 @@ Error in server response, closing control connection.\n"));
                  because we told the user we'd use this name.
                  Instead, return and retry the download.  */
               logprintf (LOG_NOTQUIET, _("%s has sprung into existence.\n"),
-                         con->target);
+                         target_locale);
+              xfree (target_locale);
               fd_close (csock);
               con->csock = -1;
               fd_close (dtsock);
@@ -1520,7 +1555,8 @@ Error in server response, closing control connection.\n"));
         }
       if (!fp)
         {
-          logprintf (LOG_NOTQUIET, "%s: %s\n", con->target, strerror (errno));
+          logprintf (LOG_NOTQUIET, "%s: %s\n", target_locale, strerror (errno));
+          xfree (target_locale);
           fd_close (csock);
           con->csock = -1;
           fd_close (dtsock);
@@ -1552,6 +1588,7 @@ Error in server response, closing control connection.\n"));
             logputs (LOG_NOTQUIET, "Server does not want to resume the SSL session. Trying with a new one.\n");
           if (!ssl_connect_wget (dtsock, u->host, NULL))
             {
+              xfree (target_locale);
               fd_close (csock);
               fd_close (dtsock);
               err = CONERROR;
@@ -1564,6 +1601,7 @@ Error in server response, closing control connection.\n"));
 
       if (!ssl_check_certificate (dtsock, u->host))
         {
+          xfree (target_locale);
           fd_close (csock);
           fd_close (dtsock);
           err = CONERROR;
@@ -1577,7 +1615,7 @@ Error in server response, closing control connection.\n"));
   if (restval && rest_failed)
     flags |= rb_skip_startpos;
   rd_size = 0;
-  res = fd_read_body (con->target, dtsock, fp,
+  res = fd_read_body (target_locale, dtsock, fp,
                       expected_bytes ? expected_bytes - restval : 0,
                       restval, &rd_size, qtyread, &con->dltime, flags, warc_tmp);
 
@@ -1599,14 +1637,20 @@ Error in server response, closing control connection.\n"));
   if (res == -2 || (warc_tmp != NULL && res == -3))
     {
       logprintf (LOG_NOTQUIET, _("%s: %s, closing control connection.\n"),
-                 con->target, strerror (errno));
+                 target_locale, strerror (errno));
       fd_close (csock);
       con->csock = -1;
       fd_close (dtsock);
       if (res == -2)
-        return FWRITEERR;
+        {
+          xfree (target_locale);
+          return FWRITEERR;
+        }
       else if (res == -3)
-        return WARC_TMP_FWRITEERR;
+        {
+          xfree (target_locale);
+          return WARC_TMP_FWRITEERR;
+        }
     }
   else if (res == -1)
     {
@@ -1630,6 +1674,7 @@ Error in server response, closing control connection.\n"));
          return FTPRETRINT, since there is a possibility that the
          whole file was retrieved nevertheless (but that is for
          ftp_loop_internal to decide).  */
+      xfree (target_locale);
       fd_close (csock);
       con->csock = -1;
       return FTPRETRINT;
@@ -1649,10 +1694,12 @@ Error in server response, closing control connection.\n"));
         {
           logputs (LOG_NOTQUIET, "FTPS server rejects new SSL sessions in the data connection.\n");
           xfree (respline);
+          xfree (target_locale);
           return FTPRESTFAIL;
         }
 #endif
       xfree (respline);
+      xfree (target_locale);
       return FTPRETRINT;
     }
   xfree (respline);
@@ -1661,6 +1708,7 @@ Error in server response, closing control connection.\n"));
     {
       /* What now?  The data connection was erroneous, whereas the
          response says everything is OK.  We shall play it safe.  */
+      xfree (target_locale);
       return FTPRETRINT;
     }
 
@@ -1690,13 +1738,18 @@ Error in server response, closing control connection.\n"));
         {
           xfree (con->target);
           con->target = targ;
+          xfree (target_locale);
+          if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+            target_locale = convert_fname (con->target, opt.encoding_remote, opt.locale);
+          else
+            target_locale = xstrdup (con->target);
         }
 #endif /* def __VMS */
 
-      mkalldirs (con->target);
-      fp = fopen (con->target, "r");
+      mkalldirs (target_locale);
+      fp = fopen (target_locale, "r");
       if (!fp)
-        logprintf (LOG_ALWAYS, "%s: %s\n", con->target, strerror (errno));
+        logprintf (LOG_ALWAYS, "%s: %s\n", target_locale, strerror (errno));
       else
         {
           char *line = NULL;
@@ -1807,6 +1860,7 @@ Error in server response, closing control connection.\n"));
             }
         }
     }
+    xfree (target_locale);
   } while (try_again);
   return RETRFINISHED;
 
@@ -1833,8 +1887,9 @@ exit_error:
    to unpredictable name, or be unreadable name.
    Transcoding would not affect users with the same or compatible encoding.
 
-   2020: ftp is going to be obsolete ...
-   Maybe we can `chcp` to the same codepage as the server ... Keep as it is. */
+   To solve non-English characters in filenames, the FTP protocol has been
+   extended in a backwards compatible way to use UTF-8 as the character set.
+   https://wiki.filezilla-project.org/Character_Encoding */
 
 static uerr_t
 ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
@@ -1842,7 +1897,7 @@ ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
 {
   int count, orig_lp;
   wgint restval, len = 0, qtyread = 0;
-  char *tms, *locf;
+  char *tms, *file_u, *locf;
   const char *tmrate = NULL;
   uerr_t err;
   struct stat st;
@@ -1857,17 +1912,28 @@ ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
   if ((f == NULL) && (con->target))
     {
       /* Explicit file (like ".listing"). */
-      locf = con->target;
+      if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+        locf = convert_fname (con->target, opt.encoding_remote, opt.locale);
+      else
+        locf = xstrdup (con->target);
     }
   else
     {
       /* URL-derived file.  Consider "-O file" name. */
+      struct url *u2 = opt.trustservernames || !original_url ? u : original_url;
+      char *url_enc = u2->enc_type == ENC_IRI ? "UTF-8" : u2->ori_enc;
+      file_u = url_file_name (u2, NULL);
       xfree (con->target);
-      con->target = url_file_name (opt.trustservernames || !original_url ? u : original_url, NULL);
-      if (!opt.output_document)
-        locf = con->target;
-      else
-        locf = opt.output_document;
+      /* ftp fallback: servers and clients are with the same encoding. */
+      const char *remote_enc = opt.encoding_remote ? opt.encoding_remote : opt.locale;
+      con->target = convert_fname (file_u, url_enc, remote_enc);
+      locf = convert_fname (file_u, url_enc, opt.locale);
+      xfree (file_u);
+      if (opt.output_document)
+        {
+          xfree (locf);
+          locf = xstrdup (opt.output_document);
+        }
     }
 
   /* If the output_document was given, then this check was already done and
@@ -1876,17 +1942,18 @@ ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
   /* If we receive .listing file it is necessary to determine system type of the ftp
      server even if opn.noclobber is given. Thus we must ignore opt.noclobber in
      order to establish connection with the server and get system type. */
-  if (opt.noclobber && !opt.output_document && file_exists_p (con->target, NULL)
+  if (opt.noclobber && !opt.output_document && file_exists_p (locf, NULL)
       && !((con->cmd & DO_LIST) && !(con->cmd & DO_RETR)))
     {
       logprintf (LOG_VERBOSE,
-                 _("File %s already there; not retrieving.\n"), quote (con->target));
+                 _("File %s already there; not retrieving.\n"), quote (locf));
       /* If the file is there, we suppose it's retrieved OK.  */
-      return RETROK;
+      err = RETROK;
+      goto RET;
     }
 
   /* Remove it if it's a link.  */
-  remove_link (con->target);
+  remove_link (locf);
 
   count = 0;
 
@@ -1928,7 +1995,10 @@ ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
         {
           warc_tmp = warc_tempfile ();
           if (warc_tmp == NULL)
-            return WARC_TMP_FOPENERR;
+            {
+              err = WARC_TMP_FOPENERR;
+              goto RET;
+            }
 
           if (!con->proxy && con->csock != -1)
             {
@@ -2017,9 +2087,17 @@ ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
           if (err == FOPEN_EXCL_ERR)
             {
               /* Re-determine the file name. */
+              char *url_enc = u->enc_type == ENC_IRI ? "UTF-8" : u->ori_enc;
+              file_u = url_file_name (u, NULL);
               xfree (con->target);
-              con->target = url_file_name (u, NULL);
-              locf = con->target;
+              if (opt.encoding_remote && strcasecmp (url_enc, opt.encoding_remote))
+                /* back to remote */
+                con->target = convert_fname (file_u, url_enc, opt.encoding_remote);
+              else
+                con->target = xstrdup (file_u);
+              xfree (locf);
+              locf = convert_fname (file_u, url_enc, opt.locale);
+              xfree (file_u);
             }
           continue;
         case FTPRETRINT:
@@ -2036,6 +2114,7 @@ ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
           break;
         default:
           /* Not as great.  */
+          xfree (locf);
           abort ();
         }
       tms = datetime_str (time (NULL));
@@ -2083,7 +2162,10 @@ ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
                                                   warc_ip, NULL, warc_tmp, -1);
 
           if (! warc_res)
-            return WARC_ERR;
+            {
+              err = WARC_ERR;
+              goto RET;
+            }
 
           /* warc_write_resource_record has also closed warc_tmp. */
           warc_tmp = NULL;
@@ -2139,7 +2221,8 @@ Removing file due to --delete-after in ftp_loop_internal():\n"));
           warc_tmp = NULL;
         }
 
-      return RETROK;
+      err = RETROK;
+      goto RET;
     } while (!opt.ntry || (count < opt.ntry));
 
   if (con->csock != -1 && (con->st & ON_YOUR_OWN))
@@ -2151,7 +2234,11 @@ Removing file due to --delete-after in ftp_loop_internal():\n"));
   if (warc_tmp != NULL)
     fclose (warc_tmp);
 
-  return TRYLIMEXC;
+  err = TRYLIMEXC;
+
+RET:
+  xfree (locf);
+  return err;
 }
 
 /* Return the directory listing in a reusable format.  The directory
@@ -2162,7 +2249,9 @@ ftp_get_listing (struct url *u, struct url *original_url, ccon *con,
 {
   uerr_t err;
   char *uf;                     /* url file name */
+  char *rf;                     /* remote file full name */
   char *lf;                     /* list file name */
+  char *url_enc;
   char *old_target = con->target;
 
   con->st &= ~ON_YOUR_OWN;
@@ -2175,12 +2264,21 @@ ftp_get_listing (struct url *u, struct url *original_url, ccon *con,
   uf = url_file_name (u, NULL);
   lf = file_merge (uf, LIST_FILENAME);
   xfree (uf);
+  uf = lf;
+
+  url_enc = u->enc_type == ENC_IRI ? "UTF-8" : u->ori_enc;
+  if (opt.encoding_remote && strcasecmp (url_enc, opt.encoding_remote))
+    rf = convert_fname (uf, url_enc, opt.encoding_remote);
+  else
+    rf = xstrdup (uf);
+
+  lf = convert_fname (uf, url_enc, opt.locale);
+
+  xfree (uf);
   DEBUGP ((_("Using %s as listing tmp file.\n"), quote (lf)));
 
-  con->target = xstrdup (lf);
-  xfree (lf);
+  con->target = rf;
   err = ftp_loop_internal (u, original_url, NULL, con, NULL, false);
-  lf = xstrdup (con->target);
   xfree (con->target);
   con->target = old_target;
 
@@ -2256,19 +2354,33 @@ ftp_retrieve_list (struct url *u, struct url *original_url,
 
   while (f)
     {
-      char *old_target, *ofile;
+      char *ofile, *file_locale, *target_u, *target_locale;
+      char *url_enc;
 
       if (opt.quota && total_downloaded_bytes > opt.quota)
         {
           --depth;
           return QUOTEXC;
         }
-      old_target = con->target;
 
       ofile = xstrdup (u->file);
-      url_set_file (u, f->name);
+      if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+        file_locale = convert_fname (f->name, opt.encoding_remote, opt.locale);
+      else
+        file_locale = xstrdup (f->name);
+      url_set_file (u, file_locale);
+      xfree (file_locale);
 
-      con->target = url_file_name (u, NULL);
+      target_u = url_file_name (u, NULL);
+      url_enc = u->enc_type == ENC_IRI ? "UTF-8" : u->ori_enc;
+      if (strcasecmp (url_enc, opt.locale))
+        {
+          target_locale = convert_fname (target_u, url_enc, opt.locale);
+          xfree (target_u);
+        }
+      else
+        target_locale = target_u;
+
       err = RETROK;
 
       dlthis = true;
@@ -2280,7 +2392,7 @@ ftp_retrieve_list (struct url *u, struct url *original_url,
              I'm not implementing it now since files on an FTP server are much
              more likely than files on an HTTP server to legitimately have a
              .orig suffix. */
-          if (!stat (con->target, &st))
+          if (!stat (target_locale, &st))
             {
               bool eq_size;
               bool cor_val;
@@ -2302,7 +2414,7 @@ ftp_retrieve_list (struct url *u, struct url *original_url,
                   /* Remote file is older, file sizes can be compared and
                      are both equal. */
                   logprintf (LOG_VERBOSE, _("\
-Remote file no newer than local file %s -- not retrieving.\n"), quote (con->target));
+Remote file no newer than local file %s -- not retrieving.\n"), quote (target_locale));
                   dlthis = false;
                 }
               else if (f->tstamp > tml)
@@ -2311,7 +2423,7 @@ Remote file no newer than local file %s -- not retrieving.\n"), quote (con->targ
                   force_full_retrieve = true;
                   logprintf (LOG_VERBOSE, _("\
 Remote file is newer than local file %s -- retrieving.\n\n"),
-                             quote (con->target));
+                             quote (target_locale));
                 }
               else
                 {
@@ -2337,13 +2449,18 @@ The sizes do not match (local %s) -- retrieving.\n\n"),
                          _("Invalid name of the symlink, skipping.\n"));
               else
                 {
+                  char *linkto_locale = NULL;
+                  if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+                    linkto_locale = convert_fname (f->linkto, opt.encoding_remote, opt.locale);;
+                  else
+                    linkto_locale = xstrdup (f->linkto);
                   struct stat st;
                   /* Check whether we already have the correct
                      symbolic link.  */
-                  int rc = lstat (con->target, &st);
+                  int rc = lstat (target_locale, &st);
                   if (rc == 0)
                     {
-                      size_t len = strlen (f->linkto) + 1;
+                      size_t len = strlen (linkto_locale) + 1;
                       if (S_ISLNK (st.st_mode))
                         {
                           char buf[1024], *link_target;
@@ -2355,8 +2472,8 @@ The sizes do not match (local %s) -- retrieving.\n\n"),
                           else
                             link_target = xmalloc (len);
 
-                          n = readlink (con->target, link_target, len);
-                          res = (n == len - 1) && (memcmp (link_target, f->linkto, n) == 0);
+                          n = readlink (target_locale, link_target, len);
+                          res = (n == len - 1) && (memcmp (link_target, linkto_locale, n) == 0);
 
                           if (link_target != buf)
                             xfree (link_target);
@@ -2365,25 +2482,27 @@ The sizes do not match (local %s) -- retrieving.\n\n"),
                             {
                               logprintf (LOG_VERBOSE, _("\
 Already have correct symlink %s -> %s\n\n"),
-                                         quote (con->target),
-                                         quote (f->linkto));
+                                         quote (target_locale),
+                                         quote (linkto_locale));
                               dlthis = false;
+                              xfree (linkto_locale);
                               break;
                             }
                         }
                     }
                   logprintf (LOG_VERBOSE, _("Creating symlink %s -> %s\n"),
-                             quote (con->target), quote (f->linkto));
+                             quote (target_locale), quote (linkto_locale));
                   /* Unlink before creating symlink!  */
-                  unlink (con->target);
-                  if (symlink (f->linkto, con->target) == -1)
+                  unlink (target_locale);
+                  if (symlink (linkto_locale, target_locale) == -1)
                     logprintf (LOG_NOTQUIET, "symlink: %s\n", strerror (errno));
                   logputs (LOG_VERBOSE, "\n");
+                  xfree (linkto_locale);
                 } /* have f->linkto */
 #else  /* not HAVE_SYMLINK */
               logprintf (LOG_NOTQUIET,
                          _("Symlinks not supported, skipping symlink %s.\n"),
-                         quote (con->target));
+                         quote (target_locale));
 #endif /* not HAVE_SYMLINK */
             }
           else                /* opt.retr_symlinks */
@@ -2423,7 +2542,7 @@ Already have correct symlink %s -> %s\n\n"),
        * appropriate.  (Do the test once, and save the result.)
        */
 
-      set_local_file (&actual_target, con->target);
+      set_local_file (&actual_target, target_locale);
 
       /* If downloading a plain file, and the user requested it, then
          set valid (non-zero) permissions. */
@@ -2450,7 +2569,7 @@ Already have correct symlink %s -> %s\n\n"),
               && !(f->type == FT_SYMLINK && !opt.retr_symlinks)
               && f->tstamp != -1
               && dlthis
-              && file_exists_p (con->target, NULL))
+              && file_exists_p (target_locale, NULL))
             {
               touch (actual_target, f->tstamp);
             }
@@ -2459,8 +2578,7 @@ Already have correct symlink %s -> %s\n\n"),
                        actual_target);
         }
 
-      xfree (con->target);
-      con->target = old_target;
+      xfree (target_locale);
 
       url_set_file (u, ofile);
       xfree (ofile);
@@ -2501,6 +2619,7 @@ ftp_retrieve_dirs (struct url *u, struct url *original_url,
     {
       int size;
       char *odir, *newdir;
+      char *dir_locale;
 
       if (opt.quota && total_downloaded_bytes > opt.quota)
         break;
@@ -2536,11 +2655,18 @@ ftp_retrieve_dirs (struct url *u, struct url *original_url,
       DEBUGP (("Composing new CWD relative to the initial directory.\n"));
       DEBUGP (("  odir = '%s'\n  f->name = '%s'\n  newdir = '%s'\n\n",
                odir, f->name, newdir));
-      if (!accdir (newdir))
+
+      if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+        dir_locale = convert_fname (newdir, opt.encoding_remote, opt.locale);
+      else
+        dir_locale = xstrdup (newdir);
+
+      if (!accdir (dir_locale))
         {
           logprintf (LOG_VERBOSE, _("\
 Not descending to %s as it is excluded/not-included.\n"),
-                     quote (newdir));
+                     quote (dir_locale));
+          xfree (dir_locale);
           continue;
         }
 
@@ -2548,10 +2674,11 @@ Not descending to %s as it is excluded/not-included.\n"),
 
       odir = xstrdup (u->dir);  /* because url_set_dir will free
                                    u->dir. */
-      url_set_dir (u, newdir);
+      url_set_dir (u, dir_locale);
       ftp_retrieve_glob (u, original_url, con, GLOB_GETALL);
       url_set_dir (u, odir);
       xfree (odir);
+      xfree (dir_locale);
 
       /* Set the time-stamp?  */
     }
@@ -2801,10 +2928,27 @@ ftp_loop (struct url *u, struct url *original_url, char **local_file, int *dt,
           if (opt.htmlify && !opt.spider)
             {
               struct url *url_file = opt.trustservernames ? u : original_url;
+              /* local file name to save as. */
               char *filename = (opt.output_document
                                 ? xstrdup (opt.output_document)
-                                : (con.target ? xstrdup (con.target)
-                                   : url_file_name (url_file, NULL)));
+                                : (con.target
+                                   ? (opt.encoding_remote &&
+                                      strcasecmp (opt.encoding_remote, opt.locale))
+                                      ? convert_fname (con.target, opt.encoding_remote, opt.locale)
+                                      : xstrdup (con.target)
+                                   : NULL));
+              if (filename = NULL)
+                {
+                  char *str_u = url_file_name (url_file, NULL);
+                  char *url_enc = url_file->enc_type == ENC_IRI ? "UTF-8" : url_file->ori_enc;
+                  if (strcasecmp (url_enc, opt.locale))
+                    {
+                      filename = convert_fname (str_u, url_enc, opt.locale);
+                      xfree (str_u);
+                    }
+                  else
+                    filename = str_u;
+                }
               res = ftp_index (filename, u, f);
               if (res == FTPOK && opt.verbose)
                 {
