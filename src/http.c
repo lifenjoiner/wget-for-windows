@@ -2670,7 +2670,18 @@ metalink_from_http (const struct response *resp, const struct http_stat *hs,
 
   /* Initialize metalink file for our simple use case.  */
   if (hs->local_file)
-    mfile->name = xstrdup (hs->local_file);
+    {
+      /* Align with response. */
+      char *local_file = xstrdup (hs->local_file);
+      char *url_enc = u->content_enc ? u->content_enc : "UTF-8";
+      if (strcasecmp (url_enc, opt.locale))
+        {
+          mfile->name = convert_fname (local_file, opt.locale, url_enc);
+          xfree (local_file);
+        }
+      else
+        mfile->name = local_file;
+    }
   else
     mfile->name = url_file_name (u, NULL);
 
