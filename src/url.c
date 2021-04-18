@@ -1259,6 +1259,8 @@ struct url *url_new_init ()
   struct url *url = xcalloc (1, sizeof (struct url));
 
 #ifdef HAVE_ICONV
+  if (!opt.locale)
+    opt.locale = find_locale ();
   if (opt.locale)
     url->ori_enc = xstrdup (opt.locale);
   if (opt.encoding_remote)
