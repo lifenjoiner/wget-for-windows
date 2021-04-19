@@ -10,6 +10,7 @@ jobs:
       matrix:
         #os: [ubuntu-latest, windows-latest] # run native test
         bits: [32, 64]
+      fail-fast: false
     # https://github.com/actions/virtual-environments
     name: mingw${{matrix.bits}}-wintls-winhashes-shared-full
     runs-on: windows-latest
@@ -149,29 +150,30 @@ jobs:
       run: |
         cd $CDir/fuzz
         make check
-      continue-on-error: true
 
     - name: testenv
+      if: ${{success()}} || ${{failure()}}
       run: |
         cd $CDir/testenv
         make check
-      timeout-minutes: 5 # why stuck?
-      continue-on-error: true
+      timeout-minutes: 5 # in case of stuck
 
     - name: tests
+      if: ${{success()}} || ${{failure()}}
       run: |
         cd $CDir/tests
         make check
-      timeout-minutes: 5 # why stuck?
-      continue-on-error: true
+      timeout-minutes: 5 # in case of stuck
 
     - uses: actions/upload-artifact@v2
+      if: ${{success()}} || ${{failure()}}
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}
         path: |
           build/${{env.build_type}}/${{env.mingw}}-config/src/wget.exe
 
     - uses: actions/upload-artifact@v2
+      if: ${{failure()}}
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}-logs
         # Can be stuck, and then timeout, so all `.log` files and sub-folders.
@@ -193,6 +195,7 @@ jobs:
       matrix:
         #os: [ubuntu-latest, windows-latest] # test
         bits: [32, 64]
+      fail-fast: false
     # https://github.com/actions/virtual-environments
     name: mingw${{matrix.bits}}-wintls-winhashes-static-lite
     runs-on: windows-latest
@@ -331,29 +334,30 @@ jobs:
       run: |
         cd $CDir/fuzz
         make check
-      continue-on-error: true
 
     - name: testenv
+      if: ${{success()}} || ${{failure()}}
       run: |
         cd $CDir/testenv
         make check
-      timeout-minutes: 5 # why stuck?
-      continue-on-error: true
+      timeout-minutes: 5 # in case of stuck
 
     - name: tests
+      if: ${{success()}} || ${{failure()}}
       run: |
         cd $CDir/tests
         make check
-      timeout-minutes: 5 # why stuck?
-      continue-on-error: true
+      timeout-minutes: 5 # in case of stuck
 
     - uses: actions/upload-artifact@v2
+      if: ${{success()}} || ${{failure()}}
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}
         path: |
           build/${{env.build_type}}/${{env.mingw}}-config/src/wget.exe
 
     - uses: actions/upload-artifact@v2
+      if: ${{failure()}}
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}-logs
         # Can be stuck, and then timeout, so all `.log` files and sub-folders.
