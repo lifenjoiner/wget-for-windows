@@ -30,7 +30,7 @@ jobs:
         esac
         #ORIGINAL_PATH="/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Program Files/Git/cmd"
         BRoot="$PWD"
-        BDir="$BRoot/build-root-${build_type}/$mingw"
+        BDir="$BRoot/build/${build_type}/$mingw"
         CDir="${BDir}-config"
         echo arch="$arch" >> $GITHUB_ENV
         #echo ORIGINAL_PATH="$ORIGINAL_PATH" >> $GITHUB_ENV
@@ -169,21 +169,21 @@ jobs:
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}
         path: |
-          build-root-${{env.build_type}}/${{env.mingw}}-config/src/wget.exe
+          build/${{env.build_type}}/${{env.mingw}}-config/src/wget.exe
 
     - uses: actions/upload-artifact@v2
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}-logs
         # Can be stuck, and then timeout, so all `.log` files and sub-folders.
         path: |
-          build-root-${{env.build_type}}/${{env.mingw}}-config/fuzz/*.log
-          build-root-${{env.build_type}}/${{env.mingw}}-config/testenv/
-          build-root-${{env.build_type}}/${{env.mingw}}-config/tests/*.log
-          build-root-${{env.build_type}}/${{env.mingw}}-config/tests/Makefile
-          build-root-${{env.build_type}}/${{env.mingw}}-config/tests/**/
-          !build-root-${{env.build_type}}/${{env.mingw}}-config/tests/.deps/
-          !build-root-${{env.build_type}}/${{env.mingw}}-config/tests/*.exe
-          !build-root-${{env.build_type}}/${{env.mingw}}-config/tests/*.o
+          build/${{env.build_type}}/${{env.mingw}}-config/fuzz/*.log
+          build/${{env.build_type}}/${{env.mingw}}-config/testenv/
+          build/${{env.build_type}}/${{env.mingw}}-config/tests/*.log
+          build/${{env.build_type}}/${{env.mingw}}-config/tests/Makefile
+          build/${{env.build_type}}/${{env.mingw}}-config/tests/**/
+          !build/${{env.build_type}}/${{env.mingw}}-config/tests/.deps/
+          !build/${{env.build_type}}/${{env.mingw}}-config/tests/*.exe
+          !build/${{env.build_type}}/${{env.mingw}}-config/tests/*.o
 
 
   # Customize the env and configure args
@@ -213,7 +213,7 @@ jobs:
         esac
         #ORIGINAL_PATH="/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Program Files/Git/cmd"
         BRoot="$PWD"
-        BDir="$BRoot/build-root-${build_type}/$mingw"
+        BDir="$BRoot/build/${build_type}/$mingw"
         CDir="${BDir}-config"
         echo arch="$arch" >> $GITHUB_ENV
         #echo ORIGINAL_PATH="$ORIGINAL_PATH" >> $GITHUB_ENV
@@ -351,18 +351,18 @@ jobs:
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}
         path: |
-          build-root-${{env.build_type}}/${{env.mingw}}-config/src/wget.exe
+          build/${{env.build_type}}/${{env.mingw}}-config/src/wget.exe
 
     - uses: actions/upload-artifact@v2
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}-logs
         # Can be stuck, and then timeout, so all `.log` files and sub-folders.
         path: |
-          build-root-${{env.build_type}}/${{env.mingw}}-config/fuzz/*.log
-          build-root-${{env.build_type}}/${{env.mingw}}-config/testenv/
-          build-root-${{env.build_type}}/${{env.mingw}}-config/tests/*.log
-          build-root-${{env.build_type}}/${{env.mingw}}-config/tests/Makefile
-          build-root-${{env.build_type}}/${{env.mingw}}-config/tests/**/
-          !build-root-${{env.build_type}}/${{env.mingw}}-config/tests/.deps/
-          !build-root-${{env.build_type}}/${{env.mingw}}-config/tests/*.exe
-          !build-root-${{env.build_type}}/${{env.mingw}}-config/tests/*.o
+          build/${{env.build_type}}/${{env.mingw}}-config/fuzz/*.log
+          build/${{env.build_type}}/${{env.mingw}}-config/testenv/
+          build/${{env.build_type}}/${{env.mingw}}-config/tests/*.log
+          build/${{env.build_type}}/${{env.mingw}}-config/tests/Makefile
+          build/${{env.build_type}}/${{env.mingw}}-config/tests/**/
+          !build/${{env.build_type}}/${{env.mingw}}-config/tests/.deps/
+          !build/${{env.build_type}}/${{env.mingw}}-config/tests/*.exe
+          !build/${{env.build_type}}/${{env.mingw}}-config/tests/*.o
