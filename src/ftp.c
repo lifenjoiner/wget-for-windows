@@ -757,12 +757,20 @@ Error in server response, closing control connection.\n"));
         {
           const char *targ = NULL;
           char *target = u->dir;
+          char *target_r = NULL;
           char targetbuf[1024];
           int cwd_count;
           int cwd_end;
           int cwd_start;
 
           DEBUGP (("changing working directory\n"));
+
+          if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
+            {
+              target_r = convert_fname (target, opt.locale, opt.encoding_remote);
+              xfree (target);
+              target = target_r;
+            }
 
           /* Change working directory.  To change to a non-absolute
              Unix directory, we need to prepend initial directory
@@ -946,6 +954,7 @@ Error in server response, closing control connection.\n"));
                     logprintf (LOG_ALWAYS, _("Logically impossible section reached in getftp()"));
                     logprintf (LOG_ALWAYS, _("cwd_count: %d\ncwd_start: %d\ncwd_end: %d\n"),
                                              cwd_count, cwd_start, cwd_end);
+                    xfree (target_r);
                     abort ();
                 }
 
@@ -953,14 +962,7 @@ Error in server response, closing control connection.\n"));
                 logprintf (LOG_VERBOSE, "==> CWD (%d) %s ... ", cwd_count,
                            quotearg_style (escape_quoting_style, target));
 
-              if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
-                {
-                  char *targ_remote = convert_fname (targ, opt.locale, opt.encoding_remote);
-                  err = ftp_cwd (csock, targ_remote);
-                  xfree (targ_remote);
-                }
-              else
-                err = ftp_cwd (csock, targ);
+              err = ftp_cwd (csock, targ);
 
               /* FTPRERR, WRITEFAILED, FTPNSFOD */
               switch (err)
@@ -969,6 +971,7 @@ Error in server response, closing control connection.\n"));
                     logputs (LOG_VERBOSE, "\n");
                     logputs (LOG_NOTQUIET, _("\
 Error in server response, closing control connection.\n"));
+                    xfree (target_r);
                     fd_close (csock);
                     con->csock = -1;
                     return err;
@@ -976,6 +979,7 @@ Error in server response, closing control connection.\n"));
                     logputs (LOG_VERBOSE, "\n");
                     logputs (LOG_NOTQUIET,
                              _("Write failed, closing control connection.\n"));
+                    xfree (target_r);
                     fd_close (csock);
                     con->csock = -1;
                     return err;
@@ -983,12 +987,14 @@ Error in server response, closing control connection.\n"));
                     logputs (LOG_VERBOSE, "\n");
                     logprintf (LOG_NOTQUIET, _("No such directory %s.\n\n"),
                                quote (u->dir));
+                    xfree (target_r);
                     fd_close (csock);
                     con->csock = -1;
                     return err;
                   case FTPOK:
                     break;
                   default:
+                    xfree (target_r);
                     abort ();
                 }
 
@@ -999,6 +1005,7 @@ Error in server response, closing control connection.\n"));
 
           /* 2004-09-20 SMS. */
 
+          xfree (target_r);
         } /* else */
     }
   else /* do not CWD */
