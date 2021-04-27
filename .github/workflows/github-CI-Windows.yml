@@ -103,16 +103,18 @@ jobs:
     - name: Generate configure
       run: |
         loc_ver=$(gettext -V | sed -n "s/gettext[^[:digit:]]\+\([0-9]\+\.[0-9]\+\).*/\1/p")
-        if [ ${loc_ver} \< $(sed -n "s/^\gettext\s\+\([0-9.]\+\)$/\1/mp" bootstrap.conf) ]; then
-          IS_GETTEXT_STALE=1
+        req_ver=$(sed -n "s/^\gettext\s\+\([0-9.]\+\)$/\1/mp" bootstrap.conf)
+        if [ -n "${req_ver}" ] && [ ${loc_ver} \< ${req_ver} ]; then
+          echo "gettext: bootstrap.conf requires "${req_ver}", local is "${loc_ver}
           sed -i "s/^\(gettext\s\+\)[0-9.]\+$/\1${loc_ver}/gm" bootstrap.conf
+        fi
+        req_ver=$(sed -n "s/^AM_GNU_GETTEXT_VERSION(\[\([0-9.]\+\)\])$/\1/mp" configure.ac)
+        if [ -n "${req_ver}" ] && [ ${loc_ver} \< ${req_ver} ]; then
+          echo "gettext: configure.ac requires "${req_ver}", local is "${loc_ver}
           sed -i "s/^\(AM_GNU_GETTEXT_VERSION(\[\)[0-9.]\+\(\])\)$/\1${loc_ver}\2/gm" configure.ac
-          echo IS_GETTEXT_STALE=$IS_GETTEXT_STALE >> $GITHUB_ENV
         fi
         ./bootstrap --skip-po
-        if [ $IS_GETTEXT_STALE ]; then
-          sed -i "s/-dirty\b//p" configure
-        fi
+        sed -i "s/-dirty\b//p" configure
 
 # -->
     - name: Install extra c-ares
@@ -132,13 +134,11 @@ jobs:
         $BRoot/configure --prefix=$BDir --disable-rpath --with-cares --with-winidn --enable-threads=windows CPPFLAGS=-D_WIN32_WINNT=0x0600
 # <--
 
-      # gnulib_po gettext
+      # gnulib_po gettext requires gettext version 0.20 higher than MSYS2 has!
     - name: Build
       run: |
         cd $CDir
-        if [ $IS_GETTEXT_STALE ]; then
-          echo -e "all:\n\n" > gnulib_po/Makefile
-        fi
+        echo -e "all:\n\n" > gnulib_po/Makefile
         make
 
     - name: Show compiled wget info
@@ -290,16 +290,18 @@ jobs:
     - name: Generate configure
       run: |
         loc_ver=$(gettext -V | sed -n "s/gettext[^[:digit:]]\+\([0-9]\+\.[0-9]\+\).*/\1/p")
-        if [ ${loc_ver} \< $(sed -n "s/^\gettext\s\+\([0-9.]\+\)$/\1/mp" bootstrap.conf) ]; then
-          IS_GETTEXT_STALE=1
+        req_ver=$(sed -n "s/^\gettext\s\+\([0-9.]\+\)$/\1/mp" bootstrap.conf)
+        if [ -n "${req_ver}" ] && [ ${loc_ver} \< ${req_ver} ]; then
+          echo "gettext: bootstrap.conf requires "${req_ver}", local is "${loc_ver}
           sed -i "s/^\(gettext\s\+\)[0-9.]\+$/\1${loc_ver}/gm" bootstrap.conf
+        fi
+        req_ver=$(sed -n "s/^AM_GNU_GETTEXT_VERSION(\[\([0-9.]\+\)\])$/\1/mp" configure.ac)
+        if [ -n "${req_ver}" ] && [ ${loc_ver} \< ${req_ver} ]; then
+          echo "gettext: configure.ac requires "${req_ver}", local is "${loc_ver}
           sed -i "s/^\(AM_GNU_GETTEXT_VERSION(\[\)[0-9.]\+\(\])\)$/\1${loc_ver}\2/gm" configure.ac
-          echo IS_GETTEXT_STALE=$IS_GETTEXT_STALE >> $GITHUB_ENV
         fi
         ./bootstrap --skip-po
-        if [ $IS_GETTEXT_STALE ]; then
-          sed -i "s/-dirty\b//p" configure
-        fi
+        sed -i "s/-dirty\b//p" configure
 
 # -->
     - name: Install win-iconv instead
@@ -318,13 +320,11 @@ jobs:
         $BRoot/configure --prefix=$BDir --disable-debug --disable-rpath --disable-nls --without-libpsl --without-metalink --disable-pcre --with-winidn --enable-threads=windows CFLAGS=-Os 'LDFLAGS=-static -s' CPPFLAGS=-D_WIN32_WINNT=0x0600
 # <--
 
-      # gnulib_po gettext
+      # gnulib_po gettext requires gettext version 0.20 higher than MSYS2 has!
     - name: Build
       run: |
         cd $CDir
-        if [ $IS_GETTEXT_STALE ]; then
-          echo -e "all:\n\n" > gnulib_po/Makefile
-        fi
+        echo -e "all:\n\n" > gnulib_po/Makefile
         make
 
     - name: Show compiled wget info
