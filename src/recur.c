@@ -387,6 +387,7 @@ retrieve_tree (struct url *start_url_parsed)
 
           if (opt.use_robots && meta_disallow_follow)
             {
+              logprintf(LOG_VERBOSE, _("nofollow attribute found in %s. Will not follow any links on this page\n"), file);
               free_urlpos (children);
               children = NULL;
             }

@@ -152,7 +152,7 @@ transcode (const char *tocode, const char *fromcode, char const *in, size_t inle
   if (cd == (iconv_t)(-1))
     {
       logprintf (LOG_VERBOSE, _("Conversion from %s to %s isn't supported\n"),
-                 quote (fromcode), quote (tocode));
+                 quote_n (0, fromcode), quote_n (1, tocode));
       *out = NULL;
       return ret;
     }

@@ -2489,8 +2489,8 @@ The sizes do not match (local %s) -- retrieving.\n\n"),
                             {
                               logprintf (LOG_VERBOSE, _("\
 Already have correct symlink %s -> %s\n\n"),
-                                         quote (target_locale),
-                                         quote (linkto_locale));
+                                         quote_n (0, target_locale),
+                                         quote_n (1, linkto_locale));
                               dlthis = false;
                               xfree (linkto_locale);
                               break;
@@ -2498,7 +2498,7 @@ Already have correct symlink %s -> %s\n\n"),
                         }
                     }
                   logprintf (LOG_VERBOSE, _("Creating symlink %s -> %s\n"),
-                             quote (target_locale), quote (linkto_locale));
+                             quote_n (0, target_locale), quote_n (1, linkto_locale));
                   /* Unlink before creating symlink!  */
                   unlink (target_locale);
                   if (symlink (linkto_locale, target_locale) == -1)
