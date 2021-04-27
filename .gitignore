@@ -3,6 +3,7 @@
 /.sc-start-sc_prohibit_HAVE_MBRTOWC
 /.version
 /ABOUT-NLS
+/aminclude_static.am
 /GNUmakefile
 /INSTALL
 /Makefile
