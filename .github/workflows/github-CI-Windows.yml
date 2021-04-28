@@ -10,13 +10,14 @@ jobs:
       matrix:
         #os: [ubuntu-latest, windows-latest] # run native test
         bits: [32, 64]
+        ftype: [shared-full, static-lite]
       fail-fast: false
     # https://github.com/actions/virtual-environments
-    name: mingw${{matrix.bits}}-wintls-winhashes-shared-full
+    name: mingw${{matrix.bits}}-wintls-winhashes-${{matrix.ftype}}
     runs-on: windows-latest
     env:
       mingw: mingw${{matrix.bits}}
-      build_type: wintls-winhashes-shared-full
+      build_type: wintls-winhashes-${{matrix.ftype}}
     defaults:
       run:
         shell: msys2 {0}
@@ -102,28 +103,35 @@ jobs:
       # wget => gnulib_po => gnulib/build-aux/po/Makefile.in.in, po/Makefile.in.in from MSYS2 gettext
     - name: Generate configure
       run: |
-        loc_ver=$(gettext -V | sed -n "s/gettext[^[:digit:]]\+\([0-9]\+\.[0-9]\+\).*/\1/p")
+        loc_ver=$(gettext -V | sed -n "s/gettext[^0-9]\+\([0-9.]\+\).*/\1/p")
         req_ver=$(sed -n "s/^\gettext\s\+\([0-9.]\+\)$/\1/mp" bootstrap.conf)
         if [ -n "${req_ver}" ] && [ ${loc_ver} \< ${req_ver} ]; then
-          echo "gettext: bootstrap.conf requires "${req_ver}", local is "${loc_ver}
+          echo "Reset gettext version: bootstrap.conf requires "${req_ver}", local is "${loc_ver}
           sed -i "s/^\(gettext\s\+\)[0-9.]\+$/\1${loc_ver}/gm" bootstrap.conf
         fi
         req_ver=$(sed -n "s/^AM_GNU_GETTEXT_VERSION(\[\([0-9.]\+\)\])$/\1/mp" configure.ac)
         if [ -n "${req_ver}" ] && [ ${loc_ver} \< ${req_ver} ]; then
-          echo "gettext: configure.ac requires "${req_ver}", local is "${loc_ver}
+          echo "Reset gettext version: configure.ac requires "${req_ver}", local is "${loc_ver}
           sed -i "s/^\(AM_GNU_GETTEXT_VERSION(\[\)[0-9.]\+\(\])\)$/\1${loc_ver}\2/gm" configure.ac
         fi
         ./bootstrap --skip-po
         sed -i "s/-dirty\b//p" configure
 
 # -->
-    - name: Install extra c-ares
+    - name: Install extra dependencies
       run: |
-        wget https://github.com/c-ares/c-ares/releases/download/cares-1_17_1/c-ares-1.17.1.tar.gz
-        tar -xvzf c-ares-1.17.1.tar.gz
-        cd c-ares-1.17.1
-        ./configure --disable-tests
-        make install
+        if [ "${{matrix.ftype}}" = "shared-full" ]; then
+          wget https://github.com/c-ares/c-ares/releases/download/cares-1_17_1/c-ares-1.17.1.tar.gz
+          tar -xvzf c-ares-1.17.1.tar.gz
+          cd c-ares-1.17.1
+          ./configure --disable-tests
+          make install
+        elif [ "${{matrix.ftype}}" = "static-lite" ]; then
+          wget https://github.com/win-iconv/win-iconv/archive/refs/tags/v0.0.8.tar.gz
+          tar -xvzf v0.0.8.tar.gz
+          cd win-iconv-0.0.8
+          make -E CFLAGS=-Os -E prefix=/$mingw install
+        fi
 
     - name: configure
       run: |
@@ -131,193 +139,11 @@ jobs:
         mkdir -p $CDir
         cd $CDir
         pwd
-        $BRoot/configure --prefix=$BDir --disable-rpath --with-cares --with-winidn --enable-threads=windows CPPFLAGS=-D_WIN32_WINNT=0x0600
-# <--
-
-      # gnulib_po gettext requires gettext version 0.20 higher than MSYS2 has!
-    - name: Build
-      run: |
-        cd $CDir
-        echo -e "all:\n\n" > gnulib_po/Makefile
-        make
-
-    - name: Show compiled wget info
-      run: |
-        ls -l $CDir/src/wget.exe
-        $CDir/src/wget -V
-
-    - name: fuzz
-      run: |
-        cd $CDir/fuzz
-        make check
-
-    - name: testenv
-      if: ${{success()}} || ${{failure()}}
-      run: |
-        cd $CDir/testenv
-        make check
-      timeout-minutes: 5 # in case of stuck
-
-    - name: tests
-      if: ${{success()}} || ${{failure()}}
-      run: |
-        cd $CDir/tests
-        make check
-      timeout-minutes: 5 # in case of stuck
-
-    - name: Upload wget
-      uses: actions/upload-artifact@v2
-      if: ${{success()}} || ${{failure()}}
-      with:
-        name: wget-${{env.mingw}}-${{env.build_type}}
-        path: |
-          build/${{env.build_type}}/${{env.mingw}}-config/src/wget.exe
-
-    - name: Upload test logs
-      uses: actions/upload-artifact@v2
-      if: ${{failure()}}
-      with:
-        name: wget-${{env.mingw}}-${{env.build_type}}-logs
-        # Can be stuck, and then timeout, so all `.log` files and sub-folders.
-        path: |
-          build/${{env.build_type}}/${{env.mingw}}-config/fuzz/*.log
-          build/${{env.build_type}}/${{env.mingw}}-config/testenv/
-          build/${{env.build_type}}/${{env.mingw}}-config/tests/*.log
-          build/${{env.build_type}}/${{env.mingw}}-config/tests/Makefile
-          build/${{env.build_type}}/${{env.mingw}}-config/tests/**/
-          !build/${{env.build_type}}/${{env.mingw}}-config/tests/.deps/
-          !build/${{env.build_type}}/${{env.mingw}}-config/tests/*.exe
-          !build/${{env.build_type}}/${{env.mingw}}-config/tests/*.o
-
-
-  # Customize the env and configure args
-  build-lite:
-    # https://docs.github.com/en/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
-    strategy:
-      matrix:
-        #os: [ubuntu-latest, windows-latest] # test
-        bits: [32, 64]
-      fail-fast: false
-    # https://github.com/actions/virtual-environments
-    name: mingw${{matrix.bits}}-wintls-winhashes-static-lite
-    runs-on: windows-latest
-    env:
-      mingw: mingw${{matrix.bits}}
-      build_type: wintls-winhashes-static-lite
-    defaults:
-      run:
-        shell: msys2 {0}
-    steps:
-    - name: Set up ENVs for MSYS2 to inherit
-      shell: bash
-      run: |
-        case $mingw in
-          mingw32) arch="i686" ;;
-          mingw64) arch="x86_64" ;;
-          *) exit 1 ;;
-        esac
-        #ORIGINAL_PATH="/c/Windows/System32:/c/Windows:/c/Windows/System32/Wbem:/c/Windows/System32/WindowsPowerShell/v1.0:/c/Program Files/Git/cmd"
-        BRoot="$PWD"
-        BDir="$BRoot/build/${build_type}/$mingw"
-        CDir="${BDir}-config"
-        echo arch="$arch" >> $GITHUB_ENV
-        #echo ORIGINAL_PATH="$ORIGINAL_PATH" >> $GITHUB_ENV
-        echo BRoot="$BRoot" >> $GITHUB_ENV
-        echo BDir="$BDir" >> $GITHUB_ENV
-        echo CDir="$CDir" >> $GITHUB_ENV
-
-      # https://github.com/msys2/setup-msys2
-    - name: Set up MSYS2
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: ${{env.mingw}}
-        release: false
-        #path-type: inherit
-        # `AX_CODE_COVERAGE` requires autoconf-archive: https://github.com/google/oss-fuzz/pull/5379/files
-        # gpgme for metalink, but depends on many others, that's not preferred on windows
-        # gettext for NLS, expat for metalink, libidn2 and libunistring for libpsl
-        install: >-
-          autoconf-archive
-          mingw-w64-${{env.arch}}-libmetalink
-          mingw-w64-${{env.arch}}-expat
-          mingw-w64-${{env.arch}}-gpgme
-          mingw-w64-${{env.arch}}-libpsl
-          mingw-w64-${{env.arch}}-libidn2
-          mingw-w64-${{env.arch}}-libunistring
-          mingw-w64-${{env.arch}}-gettext
-          git
-          python
-
-      # In here, test requires linux flavor python!
-    - name: Hack python
-      run: |
-        python -V
-        python -c "import sys; print(sys.executable)"
-        python3 -V
-        python3 -c "import sys; print(sys.executable)"
-        rm /$mingw/bin/python* 2>/dev/null
-        #pacman -R -dd --noconfirm mingw-w64-${{env.arch}}-python 2>/dev/null
-
-      # MinGW-w64 pre-installed
-    - name: Show setup result
-      run: |
-        echo "ls /"
-        ls /
-        echo "bash --version"
-        bash --version
-        echo "gcc -v"
-        gcc -v
-        git --version
-        python -V
-        python -c "import sys; print(sys.executable)"
-        python3 -V
-        python3 -c "import sys; print(sys.executable)"
-        pwd
-        echo "PATH"
-        echo "$PATH"
-        echo "$BRoot"
-        echo "$BDir"
-        echo "$CDir"
-
-    - uses: actions/checkout@v2
-      # Shallow fetch makes version unknown: git describe --abbrev=4 --match="$prefix*" HEAD
-      with:
-        fetch-depth: 0
-
-      # gettext-0.20 issue: https://github.com/coreutils/gnulib/blob/master/build-aux/po/Makefile.in.in#L11
-      # gettext and gettext-devel v0.20 is not available on MSYS2
-      # wget => gnulib_po => gnulib/build-aux/po/Makefile.in.in, po/Makefile.in.in from MSYS2 gettext
-    - name: Generate configure
-      run: |
-        loc_ver=$(gettext -V | sed -n "s/gettext[^[:digit:]]\+\([0-9]\+\.[0-9]\+\).*/\1/p")
-        req_ver=$(sed -n "s/^\gettext\s\+\([0-9.]\+\)$/\1/mp" bootstrap.conf)
-        if [ -n "${req_ver}" ] && [ ${loc_ver} \< ${req_ver} ]; then
-          echo "gettext: bootstrap.conf requires "${req_ver}", local is "${loc_ver}
-          sed -i "s/^\(gettext\s\+\)[0-9.]\+$/\1${loc_ver}/gm" bootstrap.conf
+        if [ "${{matrix.ftype}}" = "shared-full" ]; then
+          $BRoot/configure --prefix=$BDir --disable-rpath --with-cares --with-winidn --enable-threads=windows CPPFLAGS=-D_WIN32_WINNT=0x0600
+        elif [ "${{matrix.ftype}}" = "static-lite" ]; then
+          $BRoot/configure --prefix=$BDir --disable-debug --disable-rpath --disable-nls --without-libpsl --without-metalink --disable-pcre --with-winidn --enable-threads=windows CFLAGS=-Os 'LDFLAGS=-static -s' CPPFLAGS=-D_WIN32_WINNT=0x0600
         fi
-        req_ver=$(sed -n "s/^AM_GNU_GETTEXT_VERSION(\[\([0-9.]\+\)\])$/\1/mp" configure.ac)
-        if [ -n "${req_ver}" ] && [ ${loc_ver} \< ${req_ver} ]; then
-          echo "gettext: configure.ac requires "${req_ver}", local is "${loc_ver}
-          sed -i "s/^\(AM_GNU_GETTEXT_VERSION(\[\)[0-9.]\+\(\])\)$/\1${loc_ver}\2/gm" configure.ac
-        fi
-        ./bootstrap --skip-po
-        sed -i "s/-dirty\b//p" configure
-
-# -->
-    - name: Install win-iconv instead
-      run: |
-        wget https://github.com/win-iconv/win-iconv/archive/refs/tags/v0.0.8.tar.gz
-        tar -xvzf v0.0.8.tar.gz
-        cd win-iconv-0.0.8
-        make -E CFLAGS=-Os -E prefix=/$mingw install
-
-    - name: configure
-      run: |
-        mkdir -p $BDir
-        mkdir -p $CDir
-        cd $CDir
-        pwd
-        $BRoot/configure --prefix=$BDir --disable-debug --disable-rpath --disable-nls --without-libpsl --without-metalink --disable-pcre --with-winidn --enable-threads=windows CFLAGS=-Os 'LDFLAGS=-static -s' CPPFLAGS=-D_WIN32_WINNT=0x0600
 # <--
 
       # gnulib_po gettext requires gettext version 0.20 higher than MSYS2 has!
