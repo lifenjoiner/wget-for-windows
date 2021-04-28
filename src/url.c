@@ -1725,7 +1725,8 @@ append_dir_structure (const struct url *u, struct growable *dest)
 
 /* Return a unique file name that matches the given URL as well as
    possible.  Does not create directories on the file system.  */
-/* Result is with url encoding. */
+/* Result is with url encoding, as ftp server would use it besides local.
+   local <-=> UTF-8 <=-> remote */
 
 char *
 url_file_name (const struct url *u, char *replaced_filename)
@@ -1753,7 +1754,18 @@ url_file_name (const struct url *u, char *replaced_filename)
 
   /* Start with the directory prefix, if specified. */
   if (opt.dir_prefix)
-    append_string (opt.dir_prefix, &fnres);
+    {
+      char *url_enc, *prefix_local;
+      url_enc = u->enc_type == ENC_IRI ? "UTF-8" : u->ori_enc;
+      if (strcasecmp (url_enc, opt.locale))
+        {
+          prefix_local = convert_fname (opt.dir_prefix, opt.locale, url_enc);
+          append_string (prefix_local, &fnres);
+          xfree (prefix_local);
+        }
+      else
+        append_string (opt.dir_prefix, &fnres);
+    }
 
   /* If "dirstruct" is turned on (typically the case with -r), add
      the host and port (unless those have been turned off) and
