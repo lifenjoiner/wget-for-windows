@@ -548,8 +548,8 @@ tag_handle_link (int tagid _GL_UNUSED, struct taginfo *tag, struct map_context *
   /* All <link href="..."> link references are external, except those
      known not to be, such as style sheet and shortcut icon:
 
-     <link rel="stylesheet" href="...">
-     <link rel="shortcut icon" href="...">
+     <link rel="stylesheet" href="..."> or <link rel="alternate stylesheet" href="...">
+     <link rel="shortcut icon" href="..."> or <link rel="icon" href="...">
   */
   if (href)
     {
@@ -560,12 +560,16 @@ tag_handle_link (int tagid _GL_UNUSED, struct taginfo *tag, struct map_context *
           char *rel = find_attr (tag, "rel", NULL);
           if (rel)
             {
-              if (0 == c_strcasecmp (rel, "stylesheet"))
+              if (0 == c_strcasecmp (rel, "stylesheet") || 0 == c_strcasecmp (rel, "alternate stylesheet"))
                 {
                   up->link_inline_p = 1;
                   up->link_expect_css = 1;
                 }
-              else if (0 == c_strcasecmp (rel, "shortcut icon"))
+              else if (0 == c_strcasecmp (rel, "shortcut icon") || 0 == c_strcasecmp (rel, "icon"))
+                {
+                  up->link_inline_p = 1;
+                }
+              else if (0 == c_strcasecmp (rel, "manifest"))
                 {
                   up->link_inline_p = 1;
                 }
@@ -608,16 +612,16 @@ tag_handle_meta (int tagid _GL_UNUSED, struct taginfo *tag, struct map_context *
 
       struct urlpos *entry;
       int attrind;
-      int timeout = 0;
+      int timeout;
       char *p;
 
       char *refresh = find_attr (tag, "content", &attrind);
       if (!refresh)
         return;
 
-      for (p = refresh; c_isdigit (*p); p++)
-        timeout = 10 * timeout + *p - '0';
-      if (*p++ != ';')
+      timeout = strtol(refresh, &p, 10);
+
+      if (timeout < 0 || *p++ != ';')
         return;
 
       while (c_isspace (*p))

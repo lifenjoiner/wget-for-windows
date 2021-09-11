@@ -1882,6 +1882,27 @@ initialize_request (const struct url *u, struct http_stat *hs, int *dt, struct u
     req = request_new (meth, meth_arg);
   }
 
+  /* Generate the Host header, HOST:PORT.  Take into account that:
+
+     - Broken server-side software often doesn't recognize the PORT
+       argument, so we must generate "Host: www.server.com" instead of
+       "Host: www.server.com:80" (and likewise for https port).
+
+     - IPv6 addresses contain ":", so "Host: 3ffe:8100:200:2::2:1234"
+       becomes ambiguous and needs to be rewritten as "Host:
+       [3ffe:8100:200:2::2]:1234".  */
+  {
+    /* Formats arranged for hfmt[add_port][add_squares].  */
+    static const char *hfmt[][2] = {
+      { "%s", "[%s]" }, { "%s:%d", "[%s]:%d" }
+    };
+    int add_port = u->port != scheme_default_port (u->scheme);
+    int add_squares = strchr (u->host, ':') != NULL;
+    request_set_header (req, "Host",
+                        aprintf (hfmt[add_port][add_squares], u->host, u->port),
+                        rel_value);
+  }
+
   request_set_header (req, "Referer", hs->referer, rel_none);
   if (*dt & SEND_NOCACHE)
     {
@@ -1956,27 +1977,6 @@ initialize_request (const struct url *u, struct http_stat *hs, int *dt, struct u
        * challenge, we'll go ahead and send Basic authentication creds. */
       *basic_auth_finished = maybe_send_basic_creds (u->host, *user, *passwd, req);
     }
-
-  /* Generate the Host header, HOST:PORT.  Take into account that:
-
-     - Broken server-side software often doesn't recognize the PORT
-       argument, so we must generate "Host: www.server.com" instead of
-       "Host: www.server.com:80" (and likewise for https port).
-
-     - IPv6 addresses contain ":", so "Host: 3ffe:8100:200:2::2:1234"
-       becomes ambiguous and needs to be rewritten as "Host:
-       [3ffe:8100:200:2::2]:1234".  */
-  {
-    /* Formats arranged for hfmt[add_port][add_squares].  */
-    static const char *hfmt[][2] = {
-      { "%s", "[%s]" }, { "%s:%d", "[%s]:%d" }
-    };
-    int add_port = u->port != scheme_default_port (u->scheme);
-    int add_squares = strchr (u->host, ':') != NULL;
-    request_set_header (req, "Host",
-                        aprintf (hfmt[add_port][add_squares], u->host, u->port),
-                        rel_value);
-  }
 
   if (inhibit_keep_alive)
     request_set_header (req, "Connection", "Close", rel_none);
@@ -3723,7 +3723,7 @@ gethttp (struct url *u, struct url *original_url, struct http_stat *hs,
   xfree (hs->error);
   if (statcode == -1)
     hs->error = xstrdup (_("Malformed status line"));
-  else if (!*message)
+  else if (!message || !*message)
     hs->error = xstrdup (_("(no description)"));
   else
     hs->error = xstrdup (message);
