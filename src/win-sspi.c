@@ -40,12 +40,10 @@ as that of the covered work.  */
     https://www.iana.org/assignments/http-authschemes/http-authschemes.xhtml
 */
 
-#include <stdlib.h>
+#include "wget.h"
+
 #include <winsock2.h>
 #include <windows.h>
-
-#include "wget.h"
-#include "log.h"
 
 #include "win-sspi.h"
 
