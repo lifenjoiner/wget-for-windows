@@ -118,6 +118,7 @@ jobs:
         sed -i "s/-dirty\b//p" configure
 
 # -->
+      # gnulib requires `-D__MINGW_USE_VC2005_COMPAT` for `time_t` from `year2038.m4`, or `--disable-year2038`!
     - name: Install extra dependencies
       run: |
         if [ "${{matrix.ftype}}" = "shared-full" ]; then
@@ -129,7 +130,7 @@ jobs:
           wget https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.gz
           tar -xvzf libmetalink-0.1.3.tar.gz
           cd libmetalink-0.1.3
-          ./configure --disable-tests
+          ./configure CFLAGS=-D__MINGW_USE_VC2005_COMPAT --disable-xmltest
           make install
         elif [ "${{matrix.ftype}}" = "static-lite" ]; then
           wget https://github.com/win-iconv/win-iconv/archive/refs/tags/v0.0.8.tar.gz
