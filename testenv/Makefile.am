@@ -1,5 +1,5 @@
 # Makefile for `wget' utility
-# Copyright (C) 2013, 2015, 2018-2021 Free Software Foundation, Inc.
+# Copyright (C) 2013, 2015, 2018-2022 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -110,7 +110,7 @@ METALINK_TESTS = \
 
 AUTOMAKE_OPTIONS = parallel-tests
 AM_TESTS_ENVIRONMENT = export WGETRC=/dev/null; MAKE_CHECK=True; export MAKE_CHECK;\
- export PYTHONPATH=$$PYTHONPATH:$(srcdir); export VALGRIND_TESTS="@VALGRIND_TESTS@";
+ export PYTHONPATH=$$PYTHONPATH$(PATH_SEPARATOR)$(srcdir); export VALGRIND_TESTS="@VALGRIND_TESTS@";
 
 if WITH_SSL
   AM_TESTS_ENVIRONMENT += export SSL_TESTS=1;
@@ -123,7 +123,7 @@ endif
 
 if HAVE_PYTHON3
 TESTS = $(DEFAULT_TESTS)
-if METALINK_IS_ENABLED
+if WITH_METALINK
   TESTS += $(METALINK_TESTS)
 endif
 endif

@@ -1,5 +1,5 @@
 /* HTTP support.
-   Copyright (C) 1996-2012, 2014-2015, 2018-2021 Free Software
+   Copyright (C) 1996-2012, 2014-2015, 2018-2022 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -1347,7 +1347,7 @@ parse_strict_transport_security (const char *header, time_t *max_age, bool *incl
       else
         {
           /* something weird happened */
-          logprintf (LOG_VERBOSE, "Could not parse String-Transport-Security header\n");
+          logprintf (LOG_VERBOSE, "Could not parse Strict-Transport-Security header\n");
           success = false;
         }
     }

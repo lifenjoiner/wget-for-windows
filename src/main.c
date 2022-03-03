@@ -1,5 +1,5 @@
 /* Command line parsing.
-   Copyright (C) 1996-2015, 2018-2021 Free Software Foundation, Inc.
+   Copyright (C) 1996-2015, 2018-2022 Free Software Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -1988,6 +1988,11 @@ for details.\n\n"));
 #else /* def __VMS */
 # define FOPEN_OPT_ARGS
 #endif /* def __VMS [else] */
+
+          if (opt.unlink_requested)
+            {
+              unlink(opt.output_document);
+            }
 
           output_stream = fopen (opt.output_document,
                                  opt.always_rest ? "ab" : "wb"
