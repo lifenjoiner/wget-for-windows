@@ -4,7 +4,10 @@ on: [push, pull_request]
 
 jobs:
   # Customize the env and configure args
-  build-full:
+  # windows-2022 installs only pure MSYS2: https://github.com/actions/virtual-environments/issues/1572#issuecomment-908941444
+  # https://github.com/actions/virtual-environments/blob/main/images/win/scripts/Installers/Install-Msys2.ps1
+  # https://github.com/actions/virtual-environments/tree/main/images/win/toolsets
+  build:
     # https://docs.github.com/en/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     strategy:
       matrix:
@@ -14,7 +17,7 @@ jobs:
       fail-fast: false
     # https://github.com/actions/virtual-environments
     name: mingw${{matrix.bits}}-wintls-winhashes-${{matrix.ftype}}
-    runs-on: windows-latest
+    runs-on: windows-2019
     env:
       mingw: mingw${{matrix.bits}}
       build_type: wintls-winhashes-${{matrix.ftype}}
