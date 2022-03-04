@@ -54,7 +54,10 @@ jobs:
         # gpgme for metalink, but depends on many others, that's not preferred on windows
         # gettext for NLS, expat for metalink, libidn2 and libunistring for libpsl
         # mingw-w64-${{env.arch}}-libmetalink is removed from MSYS2 repo, compile and install it ourself.
+        # pacman group: https://packages.msys2.org/group/
         install: >-
+          autoconf
+          automake
           autoconf-archive
           mingw-w64-${{env.arch}}-expat
           mingw-w64-${{env.arch}}-gpgme
