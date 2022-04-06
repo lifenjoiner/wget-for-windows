@@ -530,8 +530,8 @@ test_parse_netrc(void)
 
       free_netrc(acc);
     }
-#endif
 
+#endif // HAVE_FMEMOPEN
   return NULL;
 }
 #endif
