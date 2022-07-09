@@ -453,7 +453,7 @@ void
 ws_startup (void)
 {
   WSADATA data;
-  WORD requested = MAKEWORD (1, 1);
+  WORD requested = MAKEWORD (2, 2);
   int err = WSAStartup (requested, &data);
   if (err != 0)
     {
