@@ -63,9 +63,6 @@ as that of the covered work.  */
 
 #define PATH_SEPARATOR '\\'
 
-/* ioctl needed by set_windows_fd_as_blocking_socket() */
-#include <sys/ioctl.h>
-
 /* Public functions.  */
 
 void ws_startup (void);

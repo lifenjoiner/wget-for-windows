@@ -628,7 +628,7 @@ set_windows_fd_as_blocking_socket (int fd)
     */
     int ret = 0;
     int wsagle = 0;
-    const int zero = 0;
+    unsigned long zero = 0;
 
     do
     {
@@ -636,7 +636,7 @@ set_windows_fd_as_blocking_socket (int fd)
           Sleep(1);  /* use windows sleep */
 
         WSASetLastError (0);
-        ret = ioctl (fd, FIONBIO, &zero);
+        ret = ioctlsocket (fd, FIONBIO, &zero);
         wsagle = WSAGetLastError ();
     }
   while (ret && (wsagle == WSAEINPROGRESS));
