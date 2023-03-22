@@ -1,5 +1,5 @@
 /* Command line parsing.
-   Copyright (C) 1996-2015, 2018-2022 Free Software Foundation, Inc.
+   Copyright (C) 1996-2015, 2018-2023 Free Software Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -2134,9 +2134,7 @@ only if outputting to a regular file.\n"));
       url_err = url_parse (url, true, true);
       if (url_err)
         {
-          char *error = url_error (t, url_err);
-          logprintf (LOG_NOTQUIET, "%s: %s.\n",t, error);
-          xfree (error);
+          logprintf (LOG_NOTQUIET, "%s: %s.\n", t, url_error (url_err));
           inform_exit_status (URLERROR);
         }
       else

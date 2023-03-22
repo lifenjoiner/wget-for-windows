@@ -1,5 +1,5 @@
 /* File retrieval.
-   Copyright (C) 1996-2011, 2014-2015, 2018-2022 Free Software
+   Copyright (C) 1996-2011, 2014-2015, 2018-2023 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -54,7 +54,6 @@ as that of the covered work.  */
 #include "http.h"
 #include "host.h"
 #include "connect.h"
-#include "hash.h"
 #include "convert.h"
 #include "ptimer.h"
 #include "html-url.h"
@@ -255,9 +254,7 @@ fd_read_body (const char *downloaded_filename, int fd, FILE *out, wgint toread, 
               FILE *out2)
 {
   int ret = 0;
-#undef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
-  int dlbufsize = max (BUFSIZ, 8 * 1024);
+  int dlbufsize = MAX (BUFSIZ, 64 * 1024);
   char *dlbuf = xmalloc (dlbufsize);
 
   struct ptimer *timer = NULL;
@@ -293,28 +290,19 @@ fd_read_body (const char *downloaded_filename, int fd, FILE *out, wgint toread, 
   if (flags & rb_compressed_gzip)
     {
       gzbuf = xmalloc (gzbufsize);
-      if (gzbuf != NULL)
-        {
-          gzstream.zalloc = zalloc;
-          gzstream.zfree = zfree;
-          gzstream.opaque = Z_NULL;
-          gzstream.next_in = Z_NULL;
-          gzstream.avail_in = 0;
+      gzstream.zalloc = zalloc;
+      gzstream.zfree = zfree;
+      gzstream.opaque = Z_NULL;
+      gzstream.next_in = Z_NULL;
+      gzstream.avail_in = 0;
 
-          #define GZIP_DETECT 32 /* gzip format detection */
-          #define GZIP_WINDOW 15 /* logarithmic window size (default: 15) */
-          ret = inflateInit2 (&gzstream, GZIP_DETECT | GZIP_WINDOW);
-          if (ret != Z_OK)
-            {
-              xfree (gzbuf);
-              errno = (ret == Z_MEM_ERROR) ? ENOMEM : EINVAL;
-              ret = -1;
-              goto out;
-            }
-        }
-      else
+      #define GZIP_DETECT 32 /* gzip format detection */
+      #define GZIP_WINDOW 15 /* logarithmic window size (default: 15) */
+      ret = inflateInit2 (&gzstream, GZIP_DETECT | GZIP_WINDOW);
+      if (ret != Z_OK)
         {
-          errno = ENOMEM;
+          xfree (gzbuf);
+          errno = (ret == Z_MEM_ERROR) ? ENOMEM : EINVAL;
           ret = -1;
           goto out;
         }
@@ -458,7 +446,7 @@ fd_read_body (const char *downloaded_filename, int fd, FILE *out, wgint toread, 
           sum_read += ret;
 
 #ifdef HAVE_LIBZ
-          if (gzbuf != NULL)
+          if (gzbuf)
             {
               int err;
               int towrite;
@@ -570,7 +558,7 @@ fd_read_body (const char *downloaded_filename, int fd, FILE *out, wgint toread, 
     }
 
 #ifdef HAVE_LIBZ
-  if (gzbuf != NULL)
+  if (gzbuf)
     {
       int err = inflateEnd (&gzstream);
       if (ret >= 0)
@@ -929,10 +917,8 @@ retrieve_url (struct url * orig_parsed, char **file,
       up_error_code = url_parse (proxy_url, true, true);
       if (up_error_code)
         {
-          char *error = url_error (proxy, up_error_code);
           logprintf (LOG_NOTQUIET, _("Error parsing proxy URL %s: %s.\n"),
-                     proxy, error);
-          xfree (error);
+                     proxy, url_error (up_error_code));
           url_free (proxy_url);
           xfree (proxy);
           xfree (url);
@@ -1036,10 +1022,8 @@ retrieve_url (struct url * orig_parsed, char **file,
       up_error_code = url_parse (newloc_parsed, true, true);
       if (up_error_code)
         {
-          char *error = url_error (mynewloc, up_error_code);
           logprintf (LOG_NOTQUIET, "%s: %s.\n", escnonprint_uri (mynewloc),
-                     error);
-          xfree (error);
+                     url_error (up_error_code));
           url_free (newloc_parsed);
           xfree (mynewloc);
           xfree (url);
@@ -1195,9 +1179,7 @@ retrieve_from_file (const char *file, bool html, int *count)
       url_err = url_parse (url_parsed, true, true);
       if (url_err)
         {
-          char *error = url_error (url, url_err);
-          logprintf (LOG_NOTQUIET, "%s: %s.\n", url, error);
-          xfree (error);
+          logprintf (LOG_NOTQUIET, "%s: %s.\n", url, url_error (url_err));
           url_free (url_parsed);
           return URLERROR;
         }

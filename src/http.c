@@ -1,5 +1,5 @@
 /* HTTP support.
-   Copyright (C) 1996-2012, 2014-2015, 2018-2022 Free Software
+   Copyright (C) 1996-2012, 2014-2015, 2018-2023 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -2855,10 +2855,8 @@ skip_content_type:
 
               if (url_err)
                 {
-                  char *error = url_error (urlstr, url_err);
                   logprintf (LOG_NOTQUIET, _("When downloading signature:\n"
-                                             "%s: %s.\n"), urlstr, error);
-                  xfree (error);
+                                             "%s: %s.\n"), urlstr, url_error (url_err));
                   url_free (url);
                 }
               else

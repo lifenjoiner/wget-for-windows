@@ -1,5 +1,5 @@
 /* Reading/parsing the initialization file.
-   Copyright (C) 1996-2012, 2014-2015, 2018-2022 Free Software
+   Copyright (C) 1996-2012, 2014-2015, 2018-2023 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -1757,6 +1757,7 @@ cmd_spec_secure_protocol (const char *com, const char *val, void *place)
     { "tlsv1_3", secure_protocol_tlsv1_3 },
     { "pfs", secure_protocol_pfs },
   };
+  snprintf (opt.secure_protocol_name, sizeof (opt.secure_protocol_name), "%s", val);
   int ok = decode_string (val, choices, countof (choices), place);
   if (!ok)
     fprintf (stderr, _("%s: %s: Invalid value %s.\n"), exec_name, com, quote (val));

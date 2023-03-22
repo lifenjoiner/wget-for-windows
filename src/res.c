@@ -1,5 +1,5 @@
 /* Support for Robot Exclusion Standard (RES).
-   Copyright (C) 2001, 2006-2011, 2015, 2018-2022 Free Software
+   Copyright (C) 2001, 2006-2011, 2015, 2018-2023 Free Software
    Foundation, Inc.
 
 This file is part of Wget.
@@ -557,9 +557,7 @@ res_retrieve_file (struct url *url, char **file)
   url_err = url_parse (url_parsed, true, true);
   if (url_err)
     {
-      char *error = url_error (robots_url, url_err);
-      logprintf (LOG_NOTQUIET, "%s: %s.\n", robots_url, error);
-      xfree (error);
+      logprintf (LOG_NOTQUIET, "%s: %s.\n", robots_url, url_error (url_err));
       err = URLERROR;
     }
   else
