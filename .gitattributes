@@ -3,6 +3,6 @@
 # https://git-scm.com/docs/gitattributes#_text
 # https://git-scm.com/docs/gitattributes#_end_of_line_conversion
 # https://git-scm.com/docs/git-config#Documentation/git-config.txt-coreautocrlf
-* text=auto
+* text eol=lf
 
 # other specific rules
