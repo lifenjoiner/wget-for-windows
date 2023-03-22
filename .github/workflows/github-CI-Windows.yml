@@ -190,7 +190,7 @@ jobs:
       timeout-minutes: 5 # in case of stuck
 
     - name: Upload wget
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: ${{success()}} || ${{failure()}}
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}
@@ -198,7 +198,7 @@ jobs:
           build/${{env.build_type}}/${{env.mingw}}-config/src/wget.exe
 
     - name: Upload test logs
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       if: ${{failure()}}
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}-logs
