@@ -601,7 +601,7 @@ set_windows_fd_as_blocking_socket (int fd)
     {
       fprintf (stderr,
                _("ioctl() failed.  The socket could not be set as blocking.\n") );
-      DEBUGP (("Winsock error: %d\n", WSAGetLastError ()));
+      DEBUGP (("Winsock error: %d\n", wsagle));
       abort ();
     }
   return;
