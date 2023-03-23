@@ -155,7 +155,7 @@ jobs:
         if [ "${{matrix.ftype}}" = "shared-full" ]; then
           $BRoot/configure --prefix=$BDir --disable-rpath --with-cares --with-winidn --enable-threads=windows 'CPPFLAGS=-D_WIN32_WINNT=0x0600 -DGNULIB_defined_ESOCK'
         elif [ "${{matrix.ftype}}" = "static-lite" ]; then
-          $BRoot/configure --prefix=$BDir --disable-debug --disable-rpath --disable-nls --without-libpsl --without-metalink --disable-pcre --with-winidn --enable-threads=windows CFLAGS=-Os 'LDFLAGS=-static -s' 'CPPFLAGS=-D_WIN32_WINNT=0x0600 -DGNULIB_defined_ESOCK'
+          $BRoot/configure --prefix=$BDir --disable-debug --disable-rpath --disable-nls --without-libpsl --without-metalink --disable-pcre --disable-pcre2 --with-winidn --enable-threads=windows CFLAGS=-Os 'LDFLAGS=-static -s' 'CPPFLAGS=-D_WIN32_WINNT=0x0600 -DGNULIB_defined_ESOCK'
         fi
 # <--
 
