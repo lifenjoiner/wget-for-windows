@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
     # https://github.com/actions/virtual-environments
     name: mingw${{matrix.bits}}-wintls-winhashes-${{matrix.ftype}}
-    runs-on: windows-2019
+    runs-on: windows-latest
     env:
       mingw: mingw${{matrix.bits}}
       build_type: wintls-winhashes-${{matrix.ftype}}
@@ -57,18 +57,21 @@ jobs:
         # mingw-w64-${{env.arch}}-libmetalink is removed from MSYS2 repo, compile and install it ourself.
         # pacman group: https://packages.msys2.org/group/
         install: >-
+          base-devel
           gperf
           autoconf
           automake
           autoconf-archive
+          git
+          python
+          libcares-devel
+          mingw-w64-${{env.arch}}-gcc
           mingw-w64-${{env.arch}}-expat
           mingw-w64-${{env.arch}}-gpgme
           mingw-w64-${{env.arch}}-libpsl
           mingw-w64-${{env.arch}}-libidn2
           mingw-w64-${{env.arch}}-libunistring
           mingw-w64-${{env.arch}}-gettext
-          git
-          python
 
       # In here, test requires linux flavor python!
     - name: Hack python
