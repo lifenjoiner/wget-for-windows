@@ -2944,7 +2944,7 @@ ftp_loop (struct url *u, struct url *original_url, char **local_file, int *dt,
                                       ? convert_fname (con.target, opt.encoding_remote, opt.locale)
                                       : xstrdup (con.target)
                                    : NULL));
-              if (filename = NULL)
+              if (filename == NULL)
                 {
                   char *str_u = url_file_name (url_file, NULL);
                   char *url_enc = url_file->enc_type == ENC_IRI ? "UTF-8" : url_file->ori_enc;
