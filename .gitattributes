@@ -4,5 +4,6 @@
 # https://git-scm.com/docs/gitattributes#_end_of_line_conversion
 # https://git-scm.com/docs/git-config#Documentation/git-config.txt-coreautocrlf
 * text eol=lf
+fuzz/** -text
 
 # other specific rules
