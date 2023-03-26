@@ -59,9 +59,8 @@ wget_SOURCES = connect.c convert.c cookies.c ftp.c	\
 		spider.h ssl.h sysdep.h url.h warc.h utils.h wget.h	\
 		exits.h version.h
 
-if WITH_IRI
+# Escaping path and parameters is required. Punycode is optional.
 wget_SOURCES += iri.c iri.h
-endif
 
 if WITH_XATTR
 wget_SOURCES += xattr.c xattr.h
