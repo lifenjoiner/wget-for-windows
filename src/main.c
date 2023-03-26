@@ -1256,7 +1256,9 @@ _Noreturn static void
 print_version (void)
 {
   const char *wgetrc_title  = _("Wgetrc: ");
+#ifdef ENABLE_NLS
   const char *locale_title  = _("Locale: ");
+#endif
   const char *compile_title = _("Compile: ");
   const char *link_title    = _("Link: ");
   char *env_wgetrc, *user_wgetrc;

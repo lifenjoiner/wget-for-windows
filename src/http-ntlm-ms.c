@@ -144,11 +144,11 @@ SSPI take in charge the whole MESSAGE.
 
 // https://docs.microsoft.com/en-us/windows/win32/api/sspi/ns-sspi-sec_winnt_auth_identity_a
 static void ntlm_gen_identity(char *domain, char *user, char *passwd, SEC_WINNT_AUTH_IDENTITY *pId) {
-    pId->User = user;
+    pId->User = (unsigned char *)user;
     pId->UserLength = strlen(user);
-    pId->Domain = domain;
+    pId->Domain = (unsigned char *)domain;
     pId->DomainLength = strlen(domain);
-    pId->Password = passwd;
+    pId->Password = (unsigned char *)passwd;
     pId->PasswordLength = strlen(passwd);
     pId->Flags = SEC_WINNT_AUTH_IDENTITY_ANSI;
 }

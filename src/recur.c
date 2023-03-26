@@ -397,7 +397,6 @@ retrieve_tree (struct url *start_url_parsed)
               struct urlpos *child = children;
               char *referer_url = url->url;
               bool strip_auth;
-              int err;
 
               strip_auth = (!!url->user);
 

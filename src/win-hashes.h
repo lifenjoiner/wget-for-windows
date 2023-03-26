@@ -107,12 +107,12 @@ typedef struct _CRYPT_CTX {
 } CRYPT_CTX, *P_CRYPT_CTX;
 
 void hash_init(ALG_ID id, CRYPT_CTX *ctx);
-void hash_update(CRYPT_CTX *ctx, const unsigned char *data, unsigned int len);
-void * hash_final(CRYPT_CTX *ctx, unsigned char *digest);
-void * hash_buffer(ALG_ID id, const char *buffer, size_t len, unsigned char *digest);
+void hash_update(CRYPT_CTX *ctx, const void *data, unsigned int len);
+void * hash_final(CRYPT_CTX *ctx, void *digest);
+void * hash_buffer(ALG_ID id, const void *buffer, unsigned int len, void *digest);
 
 
-// the following needs gnulib
+// the following needs gnulib (af_alg.h)
 
 #define BLOCKSIZE 32768
 #if BLOCKSIZE % 64 != 0
@@ -127,6 +127,6 @@ void * hash_buffer(ALG_ID id, const char *buffer, size_t len, unsigned char *dig
 #define sha384_stream(stream, digest)   hash_stream(CALG_SHA_384, "sha384", stream, digest, SHA384_DIGEST_SIZE)
 #define sha512_stream(stream, digest)   hash_stream(CALG_SHA_512, "sha512", stream, digest, SHA512_DIGEST_SIZE)
 
-int hash_stream(ALG_ID id, char *alg, FILE *stream, unsigned char *digest, size_t hashlen);
+int hash_stream(ALG_ID id, char *alg, FILE *stream, void *digest, size_t hashlen);
 
 #endif

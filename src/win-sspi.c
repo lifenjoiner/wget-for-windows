@@ -135,7 +135,7 @@ char *sspi_strerror(SECURITY_STATUS err) {
     ERR2TXT(SEC_E_CERT_EXPIRED);
     ERR2TXT(SEC_E_UNTRUSTED_ROOT);
     ERR2TXT(SEC_E_WRONG_PRINCIPAL);
-    default: sprintf(hex, "0x%08X", err); txt = hex; break;
+    default: sprintf(hex, "0x%08lX", err); txt = hex; break;
     }
     return txt;
 }

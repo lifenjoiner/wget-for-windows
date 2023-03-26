@@ -478,61 +478,61 @@ static bool set_ciphers(SCHANNEL_CRED *schannel_cred, char *ciphers) {
         ALG_ID id;
     } ALG_ID_MAP;
     ALG_ID_MAP alg_id_map[] = { // wincrypt.h
-        ID2MAP_ITEM(CALG_MD2),
-        ID2MAP_ITEM(CALG_MD4),
-        ID2MAP_ITEM(CALG_MD5),
-        ID2MAP_ITEM(CALG_SHA),
-        ID2MAP_ITEM(CALG_SHA1),
-        ID2MAP_ITEM(CALG_MAC),
-        ID2MAP_ITEM(CALG_RSA_SIGN),
-        ID2MAP_ITEM(CALG_DSS_SIGN),
-        ID2MAP_ITEM(CALG_NO_SIGN),
-        ID2MAP_ITEM(CALG_RSA_KEYX),
-        ID2MAP_ITEM(CALG_DES),
-        ID2MAP_ITEM(CALG_3DES_112), // Key length: 112 bits, 2-key
-        ID2MAP_ITEM(CALG_3DES),     // Key length: 168 bits, 3-key
-        ID2MAP_ITEM(CALG_DESX), // https://en.wikipedia.org/wiki/DES-X
-        ID2MAP_ITEM(CALG_RC2),
-        ID2MAP_ITEM(CALG_RC4),
-        ID2MAP_ITEM(CALG_SEAL),
-        ID2MAP_ITEM(CALG_DH_SF),
-        ID2MAP_ITEM(CALG_DH_EPHEM),
-        ID2MAP_ITEM(CALG_AGREEDKEY_ANY),
-        ID2MAP_ITEM(CALG_KEA_KEYX),
-        ID2MAP_ITEM(CALG_HUGHES_MD5),
-        ID2MAP_ITEM(CALG_SKIPJACK),
-        ID2MAP_ITEM(CALG_TEK),
-        ID2MAP_ITEM(CALG_CYLINK_MEK),
-        ID2MAP_ITEM(CALG_SSL3_SHAMD5),
-        ID2MAP_ITEM(CALG_SSL3_MASTER),
-        ID2MAP_ITEM(CALG_SCHANNEL_MASTER_HASH),
-        ID2MAP_ITEM(CALG_SCHANNEL_MAC_KEY),
-        ID2MAP_ITEM(CALG_SCHANNEL_ENC_KEY),
-        ID2MAP_ITEM(CALG_PCT1_MASTER),
-        ID2MAP_ITEM(CALG_SSL2_MASTER),
-        ID2MAP_ITEM(CALG_TLS1_MASTER),
-        ID2MAP_ITEM(CALG_RC5),
-        ID2MAP_ITEM(CALG_HMAC),
-        ID2MAP_ITEM(CALG_TLS1PRF),
-        ID2MAP_ITEM(CALG_HASH_REPLACE_OWF),
-        ID2MAP_ITEM(CALG_AES_128),
-        ID2MAP_ITEM(CALG_AES_192),
-        ID2MAP_ITEM(CALG_AES_256),
-        ID2MAP_ITEM(CALG_AES),
-        ID2MAP_ITEM(CALG_SHA_256),
-        ID2MAP_ITEM(CALG_SHA_384),
-        ID2MAP_ITEM(CALG_SHA_512),
+        {ID2MAP_ITEM(CALG_MD2)},
+        {ID2MAP_ITEM(CALG_MD4)},
+        {ID2MAP_ITEM(CALG_MD5)},
+        {ID2MAP_ITEM(CALG_SHA)},
+        {ID2MAP_ITEM(CALG_SHA1)},
+        {ID2MAP_ITEM(CALG_MAC)},
+        {ID2MAP_ITEM(CALG_RSA_SIGN)},
+        {ID2MAP_ITEM(CALG_DSS_SIGN)},
+        {ID2MAP_ITEM(CALG_NO_SIGN)},
+        {ID2MAP_ITEM(CALG_RSA_KEYX)},
+        {ID2MAP_ITEM(CALG_DES)},
+        {ID2MAP_ITEM(CALG_3DES_112)},   // Key length: 112 bits, 2-key
+        {ID2MAP_ITEM(CALG_3DES)},       // Key length: 168 bits, 3-key
+        {ID2MAP_ITEM(CALG_DESX)},       // https://en.wikipedia.org/wiki/DES-X
+        {ID2MAP_ITEM(CALG_RC2)},
+        {ID2MAP_ITEM(CALG_RC4)},
+        {ID2MAP_ITEM(CALG_SEAL)},
+        {ID2MAP_ITEM(CALG_DH_SF)},
+        {ID2MAP_ITEM(CALG_DH_EPHEM)},
+        {ID2MAP_ITEM(CALG_AGREEDKEY_ANY)},
+        {ID2MAP_ITEM(CALG_KEA_KEYX)},
+        {ID2MAP_ITEM(CALG_HUGHES_MD5)},
+        {ID2MAP_ITEM(CALG_SKIPJACK)},
+        {ID2MAP_ITEM(CALG_TEK)},
+        {ID2MAP_ITEM(CALG_CYLINK_MEK)},
+        {ID2MAP_ITEM(CALG_SSL3_SHAMD5)},
+        {ID2MAP_ITEM(CALG_SSL3_MASTER)},
+        {ID2MAP_ITEM(CALG_SCHANNEL_MASTER_HASH)},
+        {ID2MAP_ITEM(CALG_SCHANNEL_MAC_KEY)},
+        {ID2MAP_ITEM(CALG_SCHANNEL_ENC_KEY)},
+        {ID2MAP_ITEM(CALG_PCT1_MASTER)},
+        {ID2MAP_ITEM(CALG_SSL2_MASTER)},
+        {ID2MAP_ITEM(CALG_TLS1_MASTER)},
+        {ID2MAP_ITEM(CALG_RC5)},
+        {ID2MAP_ITEM(CALG_HMAC)},
+        {ID2MAP_ITEM(CALG_TLS1PRF)},
+        {ID2MAP_ITEM(CALG_HASH_REPLACE_OWF)},
+        {ID2MAP_ITEM(CALG_AES_128)},
+        {ID2MAP_ITEM(CALG_AES_192)},
+        {ID2MAP_ITEM(CALG_AES_256)},
+        {ID2MAP_ITEM(CALG_AES)},
+        {ID2MAP_ITEM(CALG_SHA_256)},
+        {ID2MAP_ITEM(CALG_SHA_384)},
+        {ID2MAP_ITEM(CALG_SHA_512)},
 #if NTDDI_VERSION >= 0x06000000
-        ID2MAP_ITEM(CALG_ECDH),
+        {ID2MAP_ITEM(CALG_ECDH)},
 #ifndef CALG_ECDH_EPHEM // for mingw
 #define CALG_ECDH_EPHEM 0x0000ae06
 #endif
-        ID2MAP_ITEM(CALG_ECDH_EPHEM),
-        ID2MAP_ITEM(CALG_ECMQV),
-        ID2MAP_ITEM(CALG_ECDSA),
+        {ID2MAP_ITEM(CALG_ECDH_EPHEM)},
+        {ID2MAP_ITEM(CALG_ECMQV)},
+        {ID2MAP_ITEM(CALG_ECDSA)},
 #endif
-        ID2MAP_ITEM(CALG_OID_INFO_CNG_ONLY),
-        ID2MAP_ITEM(CALG_OID_INFO_PARAMETERS)
+        {ID2MAP_ITEM(CALG_OID_INFO_CNG_ONLY)},
+        {ID2MAP_ITEM(CALG_OID_INFO_PARAMETERS)}
     };
 
     int num_ids = sizeof(alg_id_map)/sizeof(ALG_ID_MAP);
@@ -703,7 +703,6 @@ static SECURITY_STATUS PerformHandshake(WINTLS_TRANSPORT_CONTEXT *ctx) {
     //
     SecBuffer       InBuffers[2];
     SecBufferDesc   InBufferDesc;
-    SecBuffer       ExtraData;
     //
     INT             i;
 
@@ -730,7 +729,7 @@ static SECURITY_STATUS PerformHandshake(WINTLS_TRANSPORT_CONTEXT *ctx) {
                     &ctx->hContext, &OutBufferDesc, &dwSSPIOutFlags, &tsExpiry);
     //
     if (Status != SEC_I_CONTINUE_NEEDED) {
-        logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08X\n", Status);
+        logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08lX\n", Status);
         return Status;
     }
 
@@ -740,7 +739,7 @@ static SECURITY_STATUS PerformHandshake(WINTLS_TRANSPORT_CONTEXT *ctx) {
         cbData = send(ctx->socket, OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
         ctx->err_no = errno;
         //
-        DEBUGP(("WinTLS: client hello sent %d\n", cbData));
+        DEBUGP(("WinTLS: client hello sent %lu\n", cbData));
         //
         g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
         OutBuffers[0].pvBuffer = NULL;
@@ -789,7 +788,7 @@ HANDSHAKE_LOOP:
                         0,
                         NULL, &OutBufferDesc, &dwSSPIOutFlags, &tsExpiry);
 
-        DEBUGP(("WinTLS: Status %#08X: rcv_buff.used %d\n", Status, rcv_buff->used));
+        DEBUGP(("WinTLS: Status %#08lX: rcv_buff.used %d\n", Status, rcv_buff->used));
 
         if (Status == SEC_I_CONTINUE_NEEDED || Status == SEC_E_OK || (FAILED(Status) && (dwSSPIOutFlags & ISC_RET_EXTENDED_ERROR))) {
             for (i = 0; i < 3; i++) {
@@ -799,7 +798,7 @@ HANDSHAKE_LOOP:
                     cbData = send(ctx->socket, OutBuffers[i].pvBuffer, OutBuffers[i].cbBuffer, 0);
                     ctx->err_no = errno;
                     //
-                    DEBUGP(("WinTLS: next handshake data sent %d\n", cbData));
+                    DEBUGP(("WinTLS: next handshake data sent %lu\n", cbData));
                     //
                     if (cbData == SOCKET_ERROR || cbData == 0) {
                         g_pSSPI->FreeContextBuffer(OutBuffers[i].pvBuffer);
@@ -834,7 +833,7 @@ HANDSHAKE_LOOP:
 
         // handshake succeeds ==>
         if (Status == SEC_E_OK) {
-            DEBUGP(("WinTLS: handshake succeeded. phContext: %#08X\n", &ctx->hContext));
+            DEBUGP(("WinTLS: handshake succeeded. phContext: 0x%p\n", &ctx->hContext));
             break;
         }
 
@@ -863,7 +862,7 @@ HANDSHAKE_LOOP:
         case SEC_E_SECPKG_NOT_FOUND:
         case SEC_E_UNKNOWN_CREDENTIALS:
             // fatal
-            logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08X\n", Status);
+            logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08lX\n", Status);
             break;
         default:
             // other nonfatal issues
@@ -902,7 +901,7 @@ static SECURITY_STATUS DisconnectFromServer(WINTLS_TRANSPORT_CONTEXT *ctx) {
     Status = g_pSSPI->ApplyControlToken(&ctx->hContext, &OutBufferDesc);
 
     if (FAILED(Status)) {
-        logprintf(LOG_NOTQUIET, "WinTLS: ApplyControlToken failed: %#08X\n", Status);
+        logprintf(LOG_NOTQUIET, "WinTLS: ApplyControlToken failed: %#08lX\n", Status);
         return Status;
     }
 
@@ -917,7 +916,7 @@ static SECURITY_STATUS DisconnectFromServer(WINTLS_TRANSPORT_CONTEXT *ctx) {
                     &ctx->hContext, &OutBufferDesc, &dwSSPIOutFlags, &tsExpiry);
 
     if (FAILED(Status)) {
-        logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08X\n", Status);
+        logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08lX\n", Status);
         return Status;
     }
 
@@ -929,7 +928,7 @@ static SECURITY_STATUS DisconnectFromServer(WINTLS_TRANSPORT_CONTEXT *ctx) {
         if (cbData == SOCKET_ERROR || cbData == 0) {
             return SEC_E_INTERNAL_ERROR;
         }
-        DEBUGP(("WinTLS: shutdown data sent %d\n", cbData));
+        DEBUGP(("WinTLS: shutdown data sent %lu\n", cbData));
         //
         g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
     }
@@ -1042,7 +1041,7 @@ static int schannel_send(WINTLS_TRANSPORT_CONTEXT *ctx, char *buf, int len) {
 
     Status = g_pSSPI->EncryptMessage(&ctx->hContext, 0, &Message, 0);
     if (FAILED(Status)) {
-        logprintf(LOG_NOTQUIET, "error: EncryptMessage: %#08X\n", Status);
+        logprintf(LOG_NOTQUIET, "error: EncryptMessage: %#08lX\n", Status);
         n = 0;
         goto CLEANUP;
     }
@@ -1094,7 +1093,7 @@ static SECURITY_STATUS decrypt_data(WINTLS_TRANSPORT_CONTEXT *ctx) {
         //
         Status = g_pSSPI->DecryptMessage(&ctx->hContext, &Message, 0, NULL);
         //
-        DEBUGP(("WinTLS: Status %#08X\n", Status));
+        DEBUGP(("WinTLS: Status %#08lX\n", Status));
         //
         if (Status != SEC_E_OK && Status != SEC_I_RENEGOTIATE && Status != SEC_I_CONTEXT_EXPIRED) {
             break;
@@ -1195,7 +1194,7 @@ static int schannel_recv(WINTLS_TRANSPORT_CONTEXT *ctx, int len) {
             ctx->stage = HSK_ONGOING;
             Status = PerformHandshake(ctx);
             if (Status != SEC_E_OK) {
-                logprintf(LOG_NOTQUIET, "WinTLS: renegotiation failed %#08X\n", Status);
+                logprintf(LOG_NOTQUIET, "WinTLS: renegotiation failed %#08lX\n", Status);
                 ctx->can_recv = false;
                 return -2;
             }
@@ -1324,7 +1323,7 @@ bool ssl_connect_wget(int fd /*socket*/, const char *hostname, int *continue_ses
         logprintf(LOG_NOTQUIET, "WinTLS: calloc failed!\n");
         return false;
     }
-    DEBUGP(("WinTLS: socket %d, wintls_ctx @ %#08X\n", fd, wintls_ctx));
+    DEBUGP(("WinTLS: socket %d, wintls_ctx @ 0x%p\n", fd, wintls_ctx));
 
     // Obtain Schannel credentials
     if (CreateCredentials(&wintls_ctx->hCreds) != SEC_E_OK) return false;

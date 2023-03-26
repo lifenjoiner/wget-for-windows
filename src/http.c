@@ -2882,7 +2882,7 @@ skip_content_type:
                       siglen = ftell (output_stream);
                       fseek (output_stream, 0, SEEK_SET);
 
-                      DEBUGP (("siglen=%lu\n", siglen));
+                      DEBUGP (("siglen=%" PRIuPTR "\n", siglen));
 
                       msig.signature = xmalloc (siglen + 1);
                       if (fread (msig.signature, siglen, 1, output_stream) != 1)

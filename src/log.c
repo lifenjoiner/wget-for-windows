@@ -89,8 +89,10 @@ static FILE *filelogfp;
 /* Name of log file */
 static char *logfile;
 
+#ifndef WINDOWS
 /* Is interactive shell ? */
 static int shell_is_interactive;
+#endif
 
 /* A second file descriptor pointing to the temporary log file for the
    WARC writer.  If WARC writing is disabled, this is NULL.  */

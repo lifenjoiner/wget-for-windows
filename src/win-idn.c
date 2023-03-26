@@ -54,7 +54,7 @@ char *idn_encode(const char *encoding, const char *host) {
     }
 
     if (IdnToAscii(IDN_ALLOW_UNASSIGNED, host_w, -1, punycode_w, IDN_MAX_LENGTH) == 0) {
-        logprintf (LOG_VERBOSE, "IdnToAscii failed: 0x%08X\n", GetLastError());
+        logprintf (LOG_VERBOSE, "IdnToAscii failed: 0x%08lX\n", GetLastError());
         goto cleanup;
     }
 

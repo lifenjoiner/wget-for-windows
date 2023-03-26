@@ -137,7 +137,7 @@ transcode (const char *tocode, const char *fromcode, char const *in, size_t inle
 {
   iconv_t cd;
   size_t len, done, outlen;
-  int invalid = 0, tooshort = 0;
+  int tooshort = 0;
   char *s;
   bool ret = false;
 

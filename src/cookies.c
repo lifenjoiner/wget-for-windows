@@ -1056,13 +1056,13 @@ cookie_header (struct cookie_jar *jar, const char *host,
                int port, const char *path, bool secflag)
 {
   struct cookie *chains[32];
-  int chain_count;
+  size_t chain_count;
 
   struct cookie *cookie;
   struct weighed_cookie *outgoing;
   size_t count, i, ocnt;
   char *result = NULL;
-  int result_size, pos;
+  size_t result_size, pos;
   char pathbuf[1024];
 
   /* First, find the cookie chains whose domains match HOST. */
@@ -1071,7 +1071,7 @@ cookie_header (struct cookie_jar *jar, const char *host,
      chains can at most equal the number of subdomains, hence
      1+<number of dots>.  We ignore cookies with more than 32 labels. */
   chain_count = 1 + count_char (host, '.');
-  if (chain_count > (int) countof (chains))
+  if (chain_count > countof (chains))
     return NULL;
   chain_count = find_chains_of_host (jar, host, chains);
 
@@ -1104,7 +1104,7 @@ cookie_header (struct cookie_jar *jar, const char *host,
 
   /* Count the number of matching cookies. */
   count = 0;
-  for (i = 0; i < (unsigned) chain_count; i++)
+  for (i = 0; i < chain_count; i++)
     for (cookie = chains[i]; cookie; cookie = cookie->next)
       if (cookie_matches_url (cookie, host, port, path, secflag, NULL))
         ++count;
@@ -1119,7 +1119,7 @@ cookie_header (struct cookie_jar *jar, const char *host,
   /* Fill the array with all the matching cookies from the chains that
      match HOST. */
   ocnt = 0;
-  for (i = 0; i < (unsigned) chain_count; i++)
+  for (i = 0; i < chain_count; i++)
     for (cookie = chains[i]; cookie; cookie = cookie->next)
       {
         int pg;
@@ -1159,8 +1159,8 @@ cookie_header (struct cookie_jar *jar, const char *host,
   for (i = 0; i < count; i++)
     {
       struct cookie *c = outgoing[i].cookie;
-      int namlen = strlen (c->attr);
-      int vallen = strlen (c->value);
+      size_t namlen = strlen (c->attr);
+      size_t vallen = strlen (c->value);
 
       memcpy (result + pos, c->attr, namlen);
       pos += namlen;
