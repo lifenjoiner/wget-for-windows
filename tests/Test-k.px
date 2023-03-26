@@ -10,9 +10,12 @@ use HTTPTest;
 my $osname = $^O;
 print "OS=$osname\n";
 
+# convert.c construct_relative("foo", "bar") -> "bar"
+# `:` is not valid on Windows and is escaped, but `construct_relative` detects it to add `./`.
+
 my $restrict = "unix";
 my $expected_f1 = "site;sub:.html";
-my $expected_l1 = "site;sub:.html";
+my $expected_l1 = "./site%3Bsub:.html";
 
 if ($osname eq "MSWin32" || $osname eq "msys" || $osname eq "cygwin") {
   $restrict = "windows";
@@ -31,7 +34,6 @@ my $index = <<EOF;
 </html>
 EOF
 
-# construct_relative("foo", "bar") -> "bar"
 my $converted = <<EOF;
 <html>
   <head>

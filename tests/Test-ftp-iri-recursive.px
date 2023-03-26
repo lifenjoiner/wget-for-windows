@@ -42,7 +42,7 @@ print "ENCODING_CONSOLE_IN: " . $ENCODING_CONSOLE_IN . "\n";
 print "ENCODING_CONSOLE_OUT: " . $ENCODING_CONSOLE_OUT . "\n";
 
 if ($^O eq "msys" || $^O eq "cygwin") {
-    use Win32;
+    require Win32;
     $native_encoding = "CP" . Win32::GetACP();
     print "native encoding: " . $native_encoding . "\n";
 }
