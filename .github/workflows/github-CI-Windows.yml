@@ -150,10 +150,11 @@ jobs:
         mkdir -p $CDir
         cd $CDir
         pwd
+        export CFLAGS+=" -Wall -D_WIN32_WINNT=0x0600 -DGNULIB_defined_ESOCK"
         if [ "${{matrix.ftype}}" = "shared-full" ]; then
-          CFLAGS+=" -O2 -Wall" CPPFLAGS="-D_WIN32_WINNT=0x0600 -DGNULIB_defined_ESOCK" $BRoot/configure --prefix=$BDir --disable-rpath --with-cares --with-winidn --enable-threads=windows
+          CFLAGS+=" -O2" $BRoot/configure --prefix=$BDir --disable-rpath --with-cares --with-winidn --enable-threads=windows
         elif [ "${{matrix.ftype}}" = "static-lite" ]; then
-          CFLAGS+=" -Os -Wall" LDFLAGS="-static -s" CPPFLAGS="-D_WIN32_WINNT=0x0600 -DGNULIB_defined_ESOCK" $BRoot/configure --prefix=$BDir --disable-debug --disable-rpath --disable-nls --without-libpsl --without-metalink --disable-pcre --disable-pcre2 --with-winidn --enable-threads=windows
+          CFLAGS+=" -Os" LDFLAGS="-static -s" $BRoot/configure --prefix=$BDir --disable-debug --disable-rpath --disable-nls --without-libpsl --without-metalink --disable-pcre --disable-pcre2 --with-winidn --enable-threads=windows
         fi
 # <--
 
