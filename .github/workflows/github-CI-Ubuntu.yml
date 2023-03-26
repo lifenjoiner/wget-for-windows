@@ -7,7 +7,7 @@ jobs:
     # https://docs.github.com/en/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     strategy:
       matrix:
-        ftype: [shared-full, static-lite]
+        ftype: [full, lite]
       fail-fast: false
     # https://github.com/actions/virtual-environments
     name: ${{matrix.ftype}}
@@ -86,7 +86,7 @@ jobs:
 # -->
     - name: Install extra dependencies
       run: |
-        if [ "${{matrix.ftype}}" = "shared-full" ]; then
+        if [ "${{matrix.ftype}}" = "full" ]; then
           wget https://github.com/c-ares/c-ares/releases/download/cares-1_17_2/c-ares-1.17.2.tar.gz
           tar -xvzf c-ares-1.17.2.tar.gz
           cd c-ares-1.17.2
@@ -107,9 +107,9 @@ jobs:
         cd $CDir
         pwd
         export CFLAGS+=" -Wall"
-        if [ "${{matrix.ftype}}" = "shared-full" ]; then
+        if [ "${{matrix.ftype}}" = "full" ]; then
           CFLAGS+=" -O2" $BRoot/configure --prefix=/usr --with-ssl=openssl --with-cares --with-metalink
-        elif [ "${{matrix.ftype}}" = "static-lite" ]; then
+        elif [ "${{matrix.ftype}}" = "lite" ]; then
           CFLAGS+=" -Os" LDFLAGS="-s" $BRoot/configure --prefix=/usr --with-ssl=openssl --disable-debug --without-libpsl --without-cares --without-metalink --disable-pcre --disable-pcre2
         fi
 # <--

@@ -69,7 +69,7 @@ if (can_transcode_to_locale($native_encoding, $ccedilla_expected, $native_encodi
 {
    $ccedilla_expected = Encode::encode(locale => Encode::decode($native_encoding, $ccedilla_expected));
 } else {
-    print "Skip: Windows can't transcode correctly with current codepage.\n";
+    print "Skip: OS can't transcode correctly with current codepage.\n";
     # example: 0xE7 as CP936 transcoded to utf8 results 0x3F.
     exit 77;
 }
