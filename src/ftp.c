@@ -2458,7 +2458,7 @@ The sizes do not match (local %s) -- retrieving.\n\n"),
                 {
                   char *linkto_locale = NULL;
                   if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
-                    linkto_locale = convert_fname (f->linkto, opt.encoding_remote, opt.locale);;
+                    linkto_locale = convert_fname (f->linkto, opt.encoding_remote, opt.locale);
                   else
                     linkto_locale = xstrdup (f->linkto);
                   struct stat st;
