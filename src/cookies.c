@@ -1153,7 +1153,9 @@ cookie_header (struct cookie_jar *jar, const char *host,
      name=value pairs -- result_size
      "; " separators  -- (count - 1) * 2
      \0 terminator    -- 1 */
-  result_size = result_size + (count - 1) * 2 + 1;
+  if (count > 0)  /* Always true here. Make `gcc -O2` happy. */
+    result_size += (count - 1) * 2;
+  result_size += 1;
   result = xmalloc (result_size);
   pos = 0;
   for (i = 0; i < count; i++)
