@@ -169,6 +169,8 @@ jobs:
     - name: Show compiled wget info
       run: |
         ls -l $CDir/src/wget.exe
+        SHA=$(sha1sum $CDir/src/wget.exe | cut -b 1-40)
+        echo SHA="$SHA" >> $GITHUB_ENV
         $CDir/src/wget -V
 
     - name: fuzz
@@ -194,7 +196,7 @@ jobs:
       uses: actions/upload-artifact@v3
       if: ${{success()}} || ${{failure()}}
       with:
-        name: wget-${{env.mingw}}-${{env.build_type}}
+        name: wget-${{env.mingw}}-${{env.build_type}}_${{env.SHA}}
         path: |
           ${{env.CDir}}/src/wget.exe
 
