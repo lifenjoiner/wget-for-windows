@@ -1153,7 +1153,7 @@ cookie_header (struct cookie_jar *jar, const char *host,
      name=value pairs -- result_size
      "; " separators  -- (count - 1) * 2
      \0 terminator    -- 1 */
-  if (count > 0)  /* Always true here. Make `gcc -O2` happy. */
+  if (count > 1)  /* Always `> 0` here. Make `gcc -O2` happy. */
     result_size += (count - 1) * 2;
   result_size += 1;
   result = xmalloc (result_size);
@@ -1183,7 +1183,7 @@ out:
   if (path != pathbuf)
     xfree (path);
 
-return result;
+  return result;
 }
 
 /* Support for loading and saving cookies.  The format used for
