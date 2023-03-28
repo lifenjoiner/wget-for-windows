@@ -426,11 +426,7 @@ print_address (const ip_address *addr)
   static char buf[64];
 
   if (!inet_ntop (addr->family, IP_INADDR_DATA (addr), buf, sizeof buf))
-#ifndef WINDOWS
     snprintf (buf, sizeof buf, "<error: %s>", strerror (errno));
-#else
-    snprintf (buf, sizeof buf, "<WSA error: %X>", WSAGetLastError());
-#endif
 
   return buf;
 }

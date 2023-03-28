@@ -56,6 +56,9 @@ as that of the covered work.  */
 /* Declares getpid(). */
 #include <process.h>
 
+/* Declares inet_ntop() and inet_pton(). */
+#include <arpa/inet.h>
+
 #include <stdio.h>
 
 #define PATH_SEPARATOR '\\'

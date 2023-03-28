@@ -571,6 +571,50 @@ run_with_timeout (double seconds, void (*fun) (void *), void *arg)
   return rc;
 }
 
+
+#ifdef ENABLE_IPV6
+/* An inet_ntop implementation that uses WSAAddressToString.
+   Prototype complies with POSIX 1003.1-2004.  This is only used under
+   IPv6 because Wget prints IPv4 addresses using inet_ntoa.  */
+
+const char *
+inet_ntop (int af, const void *src, char *dst, socklen_t cnt)
+{
+  /* struct sockaddr can't accommodate struct sockaddr_in6. */
+  union {
+    struct sockaddr_in6 sin6;
+    struct sockaddr_in sin;
+  } sa;
+  DWORD dstlen = cnt;
+  size_t srcsize;
+
+  xzero (sa);
+  switch (af)
+    {
+    case AF_INET:
+      sa.sin.sin_family = AF_INET;
+      sa.sin.sin_addr = *(struct in_addr *) src;
+      srcsize = sizeof (sa.sin);
+      break;
+    case AF_INET6:
+      sa.sin6.sin6_family = AF_INET6;
+      sa.sin6.sin6_addr = *(struct in6_addr *) src;
+      srcsize = sizeof (sa.sin6);
+      break;
+    default:
+      abort ();
+    }
+
+  if (WSAAddressToString ((struct sockaddr *) &sa, srcsize, NULL, dst, &dstlen) != 0)
+    {
+      errno = WSAGetLastError();
+      return NULL;
+    }
+  return (const char *) dst;
+}
+#endif
+
+
 void
 set_windows_fd_as_blocking_socket (int fd)
 {
