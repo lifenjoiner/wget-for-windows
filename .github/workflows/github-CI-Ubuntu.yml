@@ -39,6 +39,7 @@ jobs:
         python3 \
         gcc \
         libidn2-dev \
+        libgpgme-dev \
         libwww-perl \
         libio-socket-ssl-perl
 
