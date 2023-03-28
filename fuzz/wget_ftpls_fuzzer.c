@@ -59,8 +59,11 @@ FILE *fopen_wgetrc(const char *pathname, const char *mode)
 	return NULL;
 }
 
+#if defined FUZZING || defined HAVE_FMEMOPEN
 static int do_jump;
 static jmp_buf jmpbuf;
+#endif
+
 #ifdef FUZZING
 void exit_wget(int status)
 {

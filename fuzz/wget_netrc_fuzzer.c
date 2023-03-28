@@ -58,8 +58,11 @@ FILE *fopen_wgetrc(const char *pathname, const char *mode)
 	return NULL;
 }
 
+#if defined FUZZING || defined HAVE_FMEMOPEN
 static int do_jump;
 static jmp_buf jmpbuf;
+#endif
+
 #ifdef FUZZING
 void exit_wget(int status)
 {
@@ -85,7 +88,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 #ifdef HAVE_FMEMOPEN
 	FILE *fp;
-	struct fileinfo *fi;
 	const char *user = NULL, *pw = NULL;
 
 	if (size > 4096) // same as max_len = ... in .options file

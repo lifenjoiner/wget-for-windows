@@ -50,8 +50,10 @@
 
 #include "fuzzer.h"
 
+#ifdef HAVE_FMEMOPEN
 static const uint8_t *g_data;
 static size_t g_size;
+#endif
 
 FILE *fopen_wget(const char *pathname, const char *mode)
 {
