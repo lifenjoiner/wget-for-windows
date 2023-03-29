@@ -324,6 +324,12 @@ void fd_close (int);
 
 #include "wget.h"
 
+/* Explicit guarantee:
+    Use the Same gnulib socket wrappers like other parts, or it Fails!
+    `mswindows.h` introduces them.
+*/
+#include <arpa/inet.h>
+
 #include <errno.h>
 #include <stdbool.h>
 
@@ -699,7 +705,7 @@ static SECURITY_STATUS PerformHandshake(WINTLS_TRANSPORT_CONTEXT *ctx) {
     //
     SecBuffer       OutBuffers[3];
     SecBufferDesc   OutBufferDesc;
-    DWORD           cbData;
+    int             cbData;
     //
     SecBuffer       InBuffers[2];
     SecBufferDesc   InBufferDesc;
@@ -739,7 +745,7 @@ static SECURITY_STATUS PerformHandshake(WINTLS_TRANSPORT_CONTEXT *ctx) {
         cbData = send(ctx->socket, OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
         ctx->err_no = errno;
         //
-        DEBUGP(("WinTLS: client hello sent %lu\n", cbData));
+        DEBUGP(("WinTLS: client hello sent %d\n", cbData));
         //
         g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
         OutBuffers[0].pvBuffer = NULL;
@@ -798,7 +804,7 @@ HANDSHAKE_LOOP:
                     cbData = send(ctx->socket, OutBuffers[i].pvBuffer, OutBuffers[i].cbBuffer, 0);
                     ctx->err_no = errno;
                     //
-                    DEBUGP(("WinTLS: next handshake data sent %lu\n", cbData));
+                    DEBUGP(("WinTLS: next handshake data sent %d\n", cbData));
                     //
                     if (cbData == SOCKET_ERROR || cbData == 0) {
                         g_pSSPI->FreeContextBuffer(OutBuffers[i].pvBuffer);
@@ -886,7 +892,7 @@ HANDSHAKE_LOOP:
 */
 static SECURITY_STATUS DisconnectFromServer(WINTLS_TRANSPORT_CONTEXT *ctx) {
     DWORD           dwType;
-    DWORD           cbData;
+    int             cbData;
 
     SecBufferDesc   OutBufferDesc;
     SecBuffer       OutBuffers[1];
@@ -928,7 +934,7 @@ static SECURITY_STATUS DisconnectFromServer(WINTLS_TRANSPORT_CONTEXT *ctx) {
         if (cbData == SOCKET_ERROR || cbData == 0) {
             return SEC_E_INTERNAL_ERROR;
         }
-        DEBUGP(("WinTLS: shutdown data sent %lu\n", cbData));
+        DEBUGP(("WinTLS: shutdown data sent %d\n", cbData));
         //
         g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
     }
@@ -1336,6 +1342,7 @@ bool ssl_connect_wget(int fd /*socket*/, const char *hostname, int *continue_ses
     // store for renegotiation
     wintls_ctx->hostname = (char *)hostname;
     if (!perform_handshake_with_timeout(wintls_ctx, opt.read_timeout)) {
+        logprintf(LOG_NOTQUIET, "WinTLS: Handshake error: %d\n", wintls_ctx->err_no);
         g_pSSPI->FreeCredentialsHandle(&wintls_ctx->hCreds);
         return false;
     }
