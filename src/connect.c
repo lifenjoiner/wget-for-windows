@@ -313,6 +313,17 @@ connect_to_ip (const ip_address *ip, int port, const char *print)
       if (err < 0)
         DEBUGP (("Failed setting IPV6_V6ONLY: %s", strerror (errno)));
   }
+#ifdef WINDOWS
+  else if (sa->sa_family == AF_INET6) {
+    /* It makes support for IPv4-mapped IPv6 addresses.
+       default: true, on Windows Vista or later. */
+    int on = 0;
+    int err = setsockopt (sock, IPPROTO_IPV6, IPV6_V6ONLY, &on, sizeof (on));
+    IF_DEBUG
+      if (err < 0)
+        DEBUGP (("Failed disabling IPV6_V6ONLY: %s", strerror (errno)));
+  }
+#endif
 #endif
 
   /* For very small rate limits, set the buffer size (and hence,
