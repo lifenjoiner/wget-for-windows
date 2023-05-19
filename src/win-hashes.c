@@ -84,6 +84,8 @@ Not hash. We use native SSPI.
 */
 
 
+#include "wget.h"
+
 #include <stdio.h>
 #include <windows.h>
 #include <wincrypt.h>
