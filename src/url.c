@@ -2565,7 +2565,7 @@ test_are_urls_equal(void)
 }
 
 const char *
-test_uri_merge(void)
+test_url_merge(void)
 {
   static const struct test_data {
     const char *url;
@@ -2580,10 +2580,10 @@ test_uri_merge(void)
   for (unsigned i = 0; i < countof(test_data); ++i)
     {
       const struct test_data *t = &test_data[i];
-      char *result = uri_merge (t->url, t->link);
+      char *result = url_merge (t->url, t->link);
       bool ok = strcmp (result, t->expected) == 0;
       if (!ok)
-        return aprintf ("test_uri_merge [%u]: expected '%s', got '%s'", i, t->expected, result);
+        return aprintf ("test_url_merge [%u]: expected '%s', got '%s'", i, t->expected, result);
 
       xfree (result);
     }
