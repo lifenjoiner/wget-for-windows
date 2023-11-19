@@ -44,6 +44,10 @@ as that of the covered work.  */
 # include <zlib.h>
 #endif
 
+#ifdef HAVE_LIBPROXY
+# include "proxy.h"
+#endif
+
 #include "exits.h"
 #include "utils.h"
 #include "retr.h"
@@ -776,8 +780,8 @@ const char *
 retr_rate (wgint bytes, double secs)
 {
   static char res[20];
-  static const char *rate_names[] = {"B/s", "KB/s", "MB/s", "GB/s" };
-  static const char *rate_names_bits[] = {"b/s", "Kb/s", "Mb/s", "Gb/s" };
+  static const char *rate_names[] = {"B/s", "KB/s", "MB/s", "GB/s", "TB/s" };
+  static const char *rate_names_bits[] = {"b/s", "Kb/s", "Mb/s", "Gb/s", "Tb/s" };
   int units;
 
   double dlrate = calc_rate (bytes, secs, &units);
@@ -1453,7 +1457,39 @@ getproxy (struct url *u)
       break;
     }
   if (!proxy || !*proxy)
+#ifdef HAVE_LIBPROXY
+    {
+      pxProxyFactory *pf = px_proxy_factory_new ();
+      if (!pf)
+        {
+          debug_logprintf ("Allocating memory for libproxy failed");
+         return NULL;
+        }
+
+      debug_logprintf ("asking libproxy about url '%s'\n", u->url);
+      char **proxies = px_proxy_factory_get_proxies (pf, u->url);
+      if (proxies)
+        {
+          if (proxies[0])
+            {
+              debug_logprintf ("libproxy suggest to use '%s'\n", proxies[0]);
+              if (strcmp (proxies[0], "direct://") != 0)
+                {
+                  proxy = xstrdup (proxies[0]);
+                  debug_logprintf ("libproxy setting to use '%s'\n", proxy);
+                }
+            }
+
+           px_proxy_factory_free_proxies (proxies);
+        }
+        px_proxy_factory_free (pf);
+
+      if (!proxy || !*proxy)
+        return NULL;
+    }
+#else
     return NULL;
+#endif
 
   /* Handle shorthands.  `rewritten_storage' is a kludge to allow
      getproxy() to return static storage. */
@@ -1519,3 +1555,33 @@ input_file_url (const char *input_file)
   else
     return false;
 }
+
+#ifdef TESTING
+
+#include <stdint.h>
+#include "../tests/unit-tests.h"
+
+const char *
+test_retr_rate(void)
+{
+  static const struct test {
+    wgint bytes;
+    double secs;
+    const char *expected;
+  } tests[] = {
+    { 0, 1, "0.00 B/s" },
+    { INT64_MAX, 1, "100 TB/s" },
+  };
+
+  for (struct test *t = tests; t < tests+countof(tests); t++)
+    {
+      const char *result = retr_rate (t->bytes, t->secs);
+
+      if (strcmp(result,t->expected))
+        return aprintf("%s: Expected '%s', got '%s'", __func__, t->expected, result);
+    }
+
+  return NULL;
+}
+
+#endif /* TESTING */
