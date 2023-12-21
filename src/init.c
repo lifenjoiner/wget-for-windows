@@ -420,7 +420,9 @@ defaults (void)
   opt.allow_cache = true;
   opt.if_modified_since = true;
 
-  opt.read_timeout = 900;
+  opt.dns_timeout = 15;
+  opt.connect_timeout = 30;
+  opt.read_timeout = 150;
   opt.use_robots = true;
 
   opt.remove_listing = true;
