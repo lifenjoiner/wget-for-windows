@@ -900,6 +900,11 @@ static SECURITY_STATUS DisconnectFromServer(WINTLS_TRANSPORT_CONTEXT *ctx) {
     TimeStamp       tsExpiry;
     DWORD           Status;
 
+    if ((ctx->hContext.dwLower == 0 && ctx->hContext.dwUpper == 0)
+        || (ctx->hCreds.dwLower == 0 && ctx->hCreds.dwUpper == 0)) {
+        return SEC_E_OK;
+    }
+
     dwType = SCHANNEL_SHUTDOWN; // <--
     InitSecBuffer(&OutBuffers[0], sizeof(dwType), &dwType, SECBUFFER_TOKEN);
     InitSecBufferDesc(&OutBufferDesc, 1, OutBuffers);
@@ -921,22 +926,16 @@ static SECURITY_STATUS DisconnectFromServer(WINTLS_TRANSPORT_CONTEXT *ctx) {
                     0,
                     &ctx->hContext, &OutBufferDesc, &dwSSPIOutFlags, &tsExpiry);
 
-    if (FAILED(Status)) {
-        logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08lX\n", Status);
-        return Status;
-    }
-
-    // Send the close notify message to the server
-    if (OutBuffers[0].pvBuffer != NULL && OutBuffers[0].cbBuffer != 0) {
-        //
-        cbData = send(ctx->socket, OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
-        //
-        if (cbData == SOCKET_ERROR || cbData == 0) {
-            return SEC_E_INTERNAL_ERROR;
+    if (Status == SEC_E_OK || Status == SEC_I_CONTEXT_EXPIRED) {
+        // Send the close notify message to the server
+        if (OutBuffers[0].pvBuffer != NULL && OutBuffers[0].cbBuffer != 0) {
+            cbData = send(ctx->socket, OutBuffers[0].pvBuffer, OutBuffers[0].cbBuffer, 0);
+            g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
+            if (cbData == SOCKET_ERROR || cbData == 0) {
+                return SEC_E_INTERNAL_ERROR;
+            }
+            DEBUGP(("WinTLS: shutdown data sent %d\n", cbData));
         }
-        DEBUGP(("WinTLS: shutdown data sent %d\n", cbData));
-        //
-        g_pSSPI->FreeContextBuffer(OutBuffers[0].pvBuffer);
     }
 
     return Status;
@@ -1266,9 +1265,12 @@ static int wintls_poll(int fd, double timeout, int wait_for, void *arg) {
     // otherwise
     if (timeout == -1) timeout = opt.read_timeout;
     ret = select_fd(fd, timeout, wait_for);
-    ctx->err_no = errno;
-
-    if (ret == 0) ctx->err_no = ETIMEDOUT; // select_fd says
+    if (ret == 0) {
+        ctx->err_no = ETIMEDOUT; // select says
+    }
+    else {
+        ctx->err_no = errno;
+    }
 
     return ret;
 }
@@ -1288,11 +1290,11 @@ static void wintls_close(int fd, void *arg) {
     DisconnectFromServer(ctx);
     g_pSSPI->FreeCredentialsHandle(&ctx->hCreds);
     g_pSSPI->DeleteSecurityContext(&ctx->hContext);
+
     ez_buff_free(&ctx->rcv_buff);
-    ctx->rcv_buff.used = 0;
     ez_buff_free(&ctx->dec_buff);
-    ctx->dec_buff.used = 0;
     free(ctx);
+
     closesocket(fd);
 }
 
@@ -1331,6 +1333,10 @@ bool ssl_connect_wget(int fd /*socket*/, const char *hostname, int *continue_ses
     }
     DEBUGP(("WinTLS: socket %d, wintls_ctx @ 0x%p\n", fd, wintls_ctx));
 
+    /* connect.h: transport_implementation */
+    /* Partially created context also must be deleted! */
+    fd_register_transport (fd, &wintls_transport, wintls_ctx);
+
     // Obtain Schannel credentials
     if (CreateCredentials(&wintls_ctx->hCreds) != SEC_E_OK) return false;
     DEBUGP(("WinTLS: Credentials created.\n"));
@@ -1351,8 +1357,6 @@ bool ssl_connect_wget(int fd /*socket*/, const char *hostname, int *continue_ses
     // verified or `--no-check-certificate`
     wintls_ctx->stage = HSK_VERIFIED;
 
-    /* connect.h: transport_implementation */
-    fd_register_transport (fd, &wintls_transport, wintls_ctx);
     DEBUGP(("WinTLS: IO layer initialized.\n"));
 
     return true;
