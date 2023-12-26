@@ -89,12 +89,11 @@ bool LoadSecurityLibrary(void) {
         goto FAIL;
     }
 
-    atexit(UnloadSecurityLibrary);
     return true;
 
 FAIL:
-	UnloadSecurityLibrary();
-	return false;
+    UnloadSecurityLibrary();
+    return false;
 }
 
 void UnloadSecurityLibrary(void) {

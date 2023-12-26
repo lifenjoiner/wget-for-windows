@@ -1971,7 +1971,7 @@ cleanup (void)
   host_cleanup ();
   log_cleanup ();
   netrc_cleanup ();
-#if defined HAVE_SSL && !defined HAVE_WINTLS
+#if defined HAVE_SSL
   ssl_cleanup ();
 #endif
   connect_cleanup ();

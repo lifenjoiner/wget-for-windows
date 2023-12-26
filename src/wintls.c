@@ -1320,6 +1320,10 @@ bool ssl_init(void) {
     return true;
 }
 
+void ssl_cleanup (void) {
+    UnloadSecurityLibrary();
+}
+
 /* Perform the SSL/TLS handshake and wrap the connection handle reader and writer
     connection-oriented sockets (type SOCK_STREAM)
 */
