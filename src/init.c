@@ -1943,7 +1943,7 @@ cleanup (void)
 
   log_close ();
 
-  if (output_stream && output_stream != stderr)
+  if (output_stream && (output_stream != stdout || output_stream != stderr))
     {
       FILE *fp = output_stream;
       output_stream = NULL;
