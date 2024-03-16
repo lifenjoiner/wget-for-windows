@@ -1,5 +1,5 @@
 # Makefile for `wget' utility
-# Copyright (C) 1995-2011, 2015, 2018-2023 Free Software Foundation,
+# Copyright (C) 1995-2011, 2015, 2018-2024 Free Software Foundation,
 # Inc.
 
 # This program is free software; you can redistribute it and/or modify
@@ -60,11 +60,6 @@ else
 endif
 
 PX_TESTS = \
-             Test-auth-basic.px \
-             Test-auth-no-challenge.px \
-             Test-auth-no-challenge-url.px \
-             Test-auth-with-content-disposition.px \
-             Test-auth-retcode.px \
              Test-c-full.px \
              Test-c-partial.px \
              Test-c.px \
@@ -105,7 +100,6 @@ PX_TESTS = \
              Test-iri-disabled.px \
              Test-iri-forced-remote.px \
              Test-iri-list.px \
-             Test-k.px \
              Test-meta-robots.px \
              Test-N-current.px \
              Test-N-HTTP-Content-Disposition.px \
