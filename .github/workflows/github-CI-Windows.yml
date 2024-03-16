@@ -105,7 +105,7 @@ jobs:
         echo "$BDir"
         echo "$CDir"
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       # Shallow fetch makes version unknown: git describe --abbrev=4 --match="$prefix*" HEAD
       with:
         fetch-depth: 0
@@ -193,7 +193,7 @@ jobs:
       timeout-minutes: 5 # in case of stuck
 
     - name: Upload wget
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{success()}} || ${{failure()}}
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}_${{env.SHA}}
@@ -201,7 +201,7 @@ jobs:
           ${{env.CDir}}/src/wget.exe
 
     - name: Upload logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       if: ${{failure()}}
       with:
         name: wget-${{env.mingw}}-${{env.build_type}}-logs
