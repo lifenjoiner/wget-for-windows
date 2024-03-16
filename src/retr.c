@@ -1573,7 +1573,7 @@ test_retr_rate(void)
     { INT64_MAX, 1, "100 TB/s" },
   };
 
-  for (struct test *t = tests; t < tests+countof(tests); t++)
+  for (const struct test *t = tests; t < tests+countof(tests); t++)
     {
       const char *result = retr_rate (t->bytes, t->secs);
 
