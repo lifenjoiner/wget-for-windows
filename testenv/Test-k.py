@@ -14,6 +14,14 @@ filename with restricted characters and ensuring that it uses the correct
 characterset based on the current OS
 """
 
+# MINGW32_NT-10.0-20348/MINGW64_NT-10.0-20348: requires Linux flavor
+if platform.system()[0:10] in ["MINGW32_NT", "MINGW64_NT", "Windows"]:
+    converted_filename = "site;sub%3A.html"
+    converted_linkpath = "site%3Bsub%253A.html"
+else:
+    converted_filename = "site;sub:.html"
+    converted_linkpath = "./site%3Bsub:.html"
+
 ############################## File Definitions ##############################
 index = """
 <html>
@@ -26,16 +34,16 @@ index = """
 </html>
 """
 
-converted = """
+converted = '''
 <html>
   <head>
     <title>Index</title>
   </head>
   <body>
-    <a href="./site%3Bsub:.html">Site</a>
+    <a href="''' + converted_linkpath + '''">Site</a>
   </body>
 </html>
-"""
+'''
 
 site = """
 <html>
@@ -50,6 +58,7 @@ site = """
 
 IndexPage = WgetFile("index.html", index)
 SubSite = WgetFile("site;sub:.html", site)
+LocalSubSite = WgetFile(converted_filename, site)
 LocalIndexPage = WgetFile("index.html", converted)
 
 print(platform.system())
@@ -61,7 +70,7 @@ WGET_URLS = [["index.html"]]
 Files = [[IndexPage, SubSite]]
 
 ExpectedReturnCode = 0
-ExpectedDownloadedFiles = [LocalIndexPage, SubSite]
+ExpectedDownloadedFiles = [LocalIndexPage, LocalSubSite]
 
 ########################### Pre and Post Test Hooks ##########################
 pre_test = {

@@ -51,7 +51,6 @@ DEFAULT_TESTS = \
   Test-cookie-expires.py                          \
   Test-cookie.py                                  \
   Test-Head.py                                    \
-  Test-https-k.py                                 \
   Test-k.py                                       \
   Test-missing-scheme-retval.py                   \
   Test-O.py                                       \
@@ -68,6 +67,7 @@ DEFAULT_TESTS = \
 
 HTTPS_TESTS = \
   Test-hsts.py                                    \
+  Test-https-k.py                                 \
   Test--https.py                                  \
   Test--https-crl.py                              \
   Test-pinnedpubkey-der-https.py                  \

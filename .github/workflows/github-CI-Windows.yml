@@ -82,6 +82,8 @@ jobs:
         python3 -c "import sys; print(sys.executable)"
         rm /$mingw/bin/python* 2>/dev/null
         #pacman -R -dd --noconfirm mingw-w64-${{env.arch}}-python 2>/dev/null
+        python.exe -V
+        python.exe -c "import sys; print(sys.executable)"
 
       # MinGW-w64 pre-installed
     - name: Show setup result
