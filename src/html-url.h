@@ -52,7 +52,7 @@ struct map_context {
 };
 
 bool set_map_context_by_url (struct map_context *ctx, struct url *url);
-struct urlpos *get_urls_file (const char *, const char *);
+struct urlpos *get_urls_file (const char *, const char *, bool *);
 struct urlpos *get_urls_html (const char *, struct url *, bool *);
 struct urlpos *get_urls_html_fm (const char *, const struct file_memory *, struct url *, bool *);
 struct urlpos *append_url (const char *, int, int, struct map_context *);

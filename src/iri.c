@@ -177,7 +177,13 @@ transcode (const char *tocode, const char *fromcode, char const *in, size_t inle
           tooshort++;
           done = len;
           len = done + inlen * 2;
-          s = xrealloc (s, len + 1);
+          char *s_new = xrealloc (s, len + 1);
+          if (s_new != s)
+            {
+              /* Help valgrind by initializing additional memory. */
+              s = s_new;
+              memset(s + done, 0, inlen * 2 + 1);
+            }
           *out = s + done - outlen;
           outlen += inlen * 2;
         }

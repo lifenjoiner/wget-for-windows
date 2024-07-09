@@ -4271,19 +4271,19 @@ http_loop (struct url *u, struct url *original_url, char **newloc,
   struct stat st;
   bool send_head_first = true;
   bool force_full_retrieve = false;
-
+  bool return_local_file;
 
   /* If we are writing to a WARC file: always retrieve the whole file. */
   if (opt.warc_filename != NULL)
     force_full_retrieve = true;
 
-
   /* Assert that no value for *LOCAL_FILE was passed. */
   assert (local_file == NULL || *local_file == NULL);
 
   /* Set LOCAL_FILE parameter. */
-  if (local_file && opt.output_document)
-    *local_file = HYPHENP (opt.output_document) ? NULL : xstrdup (opt.output_document);
+  return_local_file = local_file && opt.output_document && !HYPHENP (opt.output_document);
+
+//    return_local_file = (local_file && opt.output_document && !HYPHENP (opt.output_document));
 
   /* Reset NEWLOC parameter. */
   *newloc = NULL;
@@ -4360,11 +4360,12 @@ http_loop (struct url *u, struct url *original_url, char **newloc,
       if (opt.if_modified_since && !send_head_first && got_name && file_exists_p (hstat.local_file, NULL))
         {
           *dt |= IF_MODIFIED_SINCE;
-          {
-            uerr_t timestamp_err = set_file_timestamp (&hstat);
-            if (timestamp_err != RETROK)
-              return timestamp_err;
-          }
+          uerr_t timestamp_err = set_file_timestamp (&hstat);
+          if (timestamp_err != RETROK)
+            {
+              ret = timestamp_err;
+              goto exit;
+            }
         }
         /* Send preliminary HEAD request if -N is given and we have existing
          * destination file or content disposition is enabled.  */
@@ -4903,7 +4904,6 @@ Remote file exists.\n\n"));
 exit:
   if ((ret == RETROK || opt.content_on_error) && local_file)
     {
-      xfree (*local_file);
       /* Bugfix: Prevent SIGSEGV when hstat.local_file was left NULL
          (i.e. due to opt.content_disposition).  */
       if (hstat.local_file)

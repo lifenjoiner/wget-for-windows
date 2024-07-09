@@ -943,20 +943,21 @@ get_urls_html (const char *file, struct url *url, bool *meta_disallow_follow)
    to get_urls_html, so we put it here.  */
 
 struct urlpos *
-get_urls_file (const char *file, const char *text_enc)
+get_urls_file (const char *file, const char *text_enc, bool *read_again)
 {
   struct file_memory *fm;
   struct urlpos *head, *tail;
   const char *text, *text_end;
 
   /* Load the file.  */
-  fm = wget_read_file (file);
+  fm = wget_read_from_file (file, read_again);
   if (!fm)
     {
       logprintf (LOG_NOTQUIET, "%s: %s\n", file, strerror (errno));
       return NULL;
     }
-  DEBUGP (("Loaded %s (size %s).\n", file, number_to_static_string (fm->length)));
+  if (fm->length)
+    DEBUGP (("Loaded %s (size %s).\n", file, number_to_static_string (fm->length)));
 
   head = tail = NULL;
   text = fm->content;

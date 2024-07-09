@@ -1157,67 +1157,10 @@ bail:
   return result;
 }
 
-/* Find the URLs in the file and call retrieve_url() for each of them.
-   If HTML is true, treat the file as HTML, and construct the URLs
-   accordingly.
-
-   If opt.recursive is set, call retrieve_tree() for each file.  */
-
-uerr_t
-retrieve_from_file (const char *file, bool html, int *count)
+static uerr_t retrieve_from_url_list(struct urlpos *url_list, int *count)
 {
-  uerr_t status;
-  struct urlpos *url_list, *cur_url;
-  struct url *url_parsed = url_new_init ();
-
-  char *input_file, *url_file = NULL;
-  const char *url = file;
-
-  status = RETROK;             /* Suppose everything is OK.  */
-  *count = 0;                  /* Reset the URL count.  */
-
-  if (url_valid_scheme (url))
-    {
-      int dt,url_err;
-      url_parsed->ori_url = xstrdup (url);
-      url_err = url_parse (url_parsed, true, true);
-      if (url_err)
-        {
-          logprintf (LOG_NOTQUIET, "%s: %s.\n", url, url_error (url_err));
-          url_free (url_parsed);
-          return URLERROR;
-        }
-
-      if (!opt.base_href)
-        opt.base_href = xstrdup (url);
-
-      status = retrieve_url (url_parsed, &url_file, NULL, NULL, &dt,
-                             false, true);
-
-      if (!url_file || (status != RETROK))
-        {
-          return status;
-        }
-
-      if (dt & TEXTHTML)
-        html = true;
-
-      input_file = url_file;
-    }
-  else
-    {
-      /* Local input uses opt.encoding_local. */
-      xfree (url_parsed->content_enc);
-      url_parsed->content_enc = xstrdup (opt.encoding_local);
-
-      input_file = (char *) file;
-    }
-
-  url_list = (html ? get_urls_html (input_file, url_parsed, false)
-              : get_urls_file (input_file, url_parsed->content_enc));
-
-  url_free (url_parsed);
-  xfree (url_file);
+  struct urlpos *cur_url;
+  uerr_t status = RETROK;
 
   for (cur_url = url_list; cur_url; cur_url = cur_url->next, ++*count)
     {
@@ -1276,6 +1219,75 @@ Removing file due to --delete-after in retrieve_from_file():\n"));
       xfree (new_file);
       xfree (filename);
     }
+  return status;
+}
+
+/* Find the URLs in the file and call retrieve_url() for each of them.
+   If HTML is true, treat the file as HTML, and construct the URLs
+   accordingly.
+
+   If opt.recursive is set, call retrieve_tree() for each file.  */
+
+uerr_t
+retrieve_from_file (const char *file, bool html, int *count)
+{
+  uerr_t status;
+  struct urlpos *url_list;
+  struct url *url_parsed = url_new_init ();
+
+  char *input_file, *url_file = NULL;
+  const char *url = file;
+
+  status = RETROK;             /* Suppose everything is OK.  */
+  *count = 0;                  /* Reset the URL count.  */
+
+  if (url_valid_scheme (url))
+    {
+      int dt,url_err;
+      url_parsed->ori_url = xstrdup (url);
+      url_err = url_parse (url_parsed, true, true);
+      if (url_err)
+        {
+          logprintf (LOG_NOTQUIET, "%s: %s.\n", url, url_error (url_err));
+          url_free (url_parsed);
+          return URLERROR;
+        }
+
+      if (!opt.base_href)
+        opt.base_href = xstrdup (url);
+
+      status = retrieve_url (url_parsed, &url_file, NULL, NULL, &dt,
+                             false, true);
+
+      if (!url_file || (status != RETROK))
+        {
+          return status;
+        }
+
+      if (dt & TEXTHTML)
+        html = true;
+
+      input_file = url_file;
+    }
+  else
+    {
+      /* Local input uses opt.encoding_local. */
+      xfree (url_parsed->content_enc);
+      url_parsed->content_enc = xstrdup (opt.encoding_local);
+
+      input_file = (char *) file;
+    }
+
+  bool read_again = false;
+  do {
+    url_list = (html ? get_urls_html (input_file, url_parsed, false)
+                : get_urls_file (input_file, url_parsed->content_enc, &read_again));
+
+    status = retrieve_from_url_list(url_list, count);
+  } while (read_again);
+
+  url_free (url_parsed);
+  xfree (url_file);
 
   /* Free the linked list of URL-s.  */
   free_urlpos (url_list);
