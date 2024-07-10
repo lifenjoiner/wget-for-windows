@@ -1307,8 +1307,10 @@ wget_read_from_file (const char *file, bool *left_open)
   if (HYPHENP (file))
     {
       fd = fileno (stdin);
+# ifndef WINDOWS
       int flags = fcntl(fd, F_GETFL, 0);
       fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+# endif
       inhibit_close = true;
       /* Note that we don't inhibit mmap() in this case.  If stdin is
          redirected from a regular file, mmap() will still work.  */
