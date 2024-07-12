@@ -210,7 +210,10 @@ jobs:
         # Previous steps can be stuck and then timeout, so all `.log` files and sub-folders.
         path: |
           ${{env.CDir}}/config.log
+          ${{env.CDir}}/lib/libgnu.a
+          ${{env.CDir}}/src/libunittest.a
           ${{env.CDir}}/fuzz/*.log
+          ${{env.CDir}}/fuzz/Makefile
           ${{env.CDir}}/testenv/
           ${{env.CDir}}/tests/*.log
           ${{env.CDir}}/tests/Makefile
