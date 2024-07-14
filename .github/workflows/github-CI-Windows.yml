@@ -153,7 +153,7 @@ jobs:
         mkdir -p $CDir
         cd $CDir
         pwd
-        export CFLAGS+=" -Wall -D_WIN32_WINNT=0x0600 -DGNULIB_defined_ESOCK"
+        export CFLAGS+=" -Wall -D_WIN32_WINNT=0x0600 -DGNULIB_defined_ESOCK -DSite=https://github.com/lifenjoiner/wget-for-windows"
         if [ "${{matrix.ftype}}" = "shared-full" ]; then
           CFLAGS+=" -O2" $BRoot/configure --prefix=$BRoot/$BDir --disable-rpath --with-cares --with-winidn --enable-threads=windows
         elif [ "${{matrix.ftype}}" = "static-lite" ]; then
@@ -198,7 +198,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: ${{success()}} || ${{failure()}}
       with:
-        name: wget-${{env.mingw}}-${{env.build_type}}_${{env.SHA}}
+        name: wget-${{env.mingw}}-${{env.build_type}}_${{github.head_ref || github.ref_name}}_${{env.SHA}}
         path: |
           ${{env.CDir}}/src/wget.exe
 
@@ -221,3 +221,16 @@ jobs:
           !${{env.CDir}}/tests/.deps/
           !${{env.CDir}}/tests/*.exe
           !${{env.CDir}}/tests/*.o
+
+    - name: Package release assets
+      if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.ftype == 'static-lite' }}
+      run: |
+        "/C/Program Files/7-Zip/7z" a wget-${{env.mingw}}-${{env.build_type}}_${{github.head_ref || github.ref_name}}_${{env.SHA}}.7z ${{env.CDir}}/src/wget.exe
+
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v2
+      if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.ftype == 'static-lite' }}
+      with:
+        draft: true
+        files: |
+          wget-${{env.mingw}}-${{env.build_type}}_${{github.head_ref || github.ref_name}}_${{env.SHA}}.7z
