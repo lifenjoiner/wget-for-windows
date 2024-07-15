@@ -605,6 +605,14 @@ AS_IF([test x"$with_ssl" = xopenssl], [
       fi
     ])
   fi
+  if [test x"$ssl_found" = xyes]; then
+    case $host_os in
+      *mingw32* )
+        dnl Use native cert store
+        LIBS+=' -lcrypt32'
+        ;;
+    esac
+  fi
 ], [test x"$with_ssl" = xgnutls], [
   dnl Now actually check for -lgnutls
   if [test x"$with_libgnutls_prefix" = x]; then
