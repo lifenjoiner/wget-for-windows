@@ -859,21 +859,23 @@ HANDSHAKE_LOOP:
         }
 
         // function failures:
-        // https://docs.microsoft.com/en-us/windows/win32/api/sspi/nf-sspi-acquirecredentialshandlea
+        // https://docs.microsoft.com/en-us/windows/win32/api/sspi/nf-sspi-initializesecuritycontexta
         switch (Status) {
         case SEC_E_INSUFFICIENT_MEMORY:
         case SEC_E_INTERNAL_ERROR:
+        case SEC_E_INVALID_HANDLE:
+        case SEC_E_INVALID_TOKEN:
+        case SEC_E_LOGON_DENIED:
         case SEC_E_NO_CREDENTIALS:
-        case SEC_E_NOT_OWNER:
-        case SEC_E_SECPKG_NOT_FOUND:
-        case SEC_E_UNKNOWN_CREDENTIALS:
+        case SEC_E_TARGET_UNKNOWN:
+        case SEC_E_UNSUPPORTED_FUNCTION:
             // fatal
             logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08lX\n", Status);
             break;
         default:
             // other nonfatal issues
-            logprintf(LOG_NOTQUIET, "WinTLS: Certificate error: %s\n", sspi_strerror(Status));
-            logprintf(LOG_NOTQUIET, "WinTLS: To connect insecurely, use `--no-check-certificate'.\n");
+            logprintf(LOG_NOTQUIET, "WinTLS: handshake error: %s\n", sspi_strerror(Status));
+            logprintf(LOG_NOTQUIET, "WinTLS: To connect insecurely, try `--no-check-certificate'.\n");
         }
 
         break;
