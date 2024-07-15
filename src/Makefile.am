@@ -79,7 +79,7 @@ wget_SOURCES += mswindows.c mswindows.h
 endif
 
 if WITH_NTLM
-if OS_MSWINDOWS
+if WITH_WINTLS
 wget_SOURCES += http-ntlm-ms.c http-ntlm.h
 else
 wget_SOURCES += http-ntlm.c http-ntlm.h
@@ -95,21 +95,11 @@ wget_SOURCES += gnutls.c
 endif
 
 if WITH_WINTLS
-wget_SOURCES += wintls.c
+wget_SOURCES += win-sspi.c win-sspi.h wintls.c
 endif
 
 if WITH_WINHASHES
 wget_SOURCES += win-hashes.c win-hashes.h
-endif
-
-if OS_MSWINDOWS
-if WITH_NTLM
-wget_SOURCES += win-sspi.c win-sspi.h
-else
-if WITH_WINTLS
-wget_SOURCES += win-sspi.c win-sspi.h
-endif
-endif
 endif
 
 nodist_wget_SOURCES = version.c
