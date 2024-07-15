@@ -96,10 +96,15 @@ class BaseTest:
             self.ports.append(domain[1])
 
     def exec_wget(self):
+        import platform
         cmd_line = self.gen_cmd_line()
         params = shlex.split(cmd_line)
         print(params)
         envs = {"HOME": os.getcwd(), "PATH": os.environ["PATH"]}
+        # Windows apps require `SystemRoot` to resolve `localhost`!
+        # MSYS python in MinGW will automatically add it. But MinGW python doesn't.
+        if platform.system()[0:10] in ["Windows", "MINGW64_NT", "MINGW32_NT"]:
+            envs['SystemRoot'] = os.environ["SystemRoot"]
         envs.update(**self.envs)
         print(envs)
 

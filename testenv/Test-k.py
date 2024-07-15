@@ -14,8 +14,8 @@ filename with restricted characters and ensuring that it uses the correct
 characterset based on the current OS
 """
 
-# MINGW32_NT-10.0-20348/MINGW64_NT-10.0-20348: requires Linux flavor
-if platform.system()[0:10] in ["MINGW32_NT", "MINGW64_NT", "Windows"]:
+# MINGW32_NT-10.0-20348/MINGW64_NT-10.0-20348: MSYS python in MinGW
+if platform.system()[0:10] in ["Windows", "MINGW64_NT", "MINGW32_NT"]:
     converted_filename = "site;sub%3A.html"
     converted_linkpath = "site%3Bsub%253A.html"
 else:
