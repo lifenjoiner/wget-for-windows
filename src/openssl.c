@@ -374,7 +374,7 @@ ssl_init (void)
   if (!opt.ca_cert)
   {
     /* Open the default Windows cert store */
-    void* hStore = CertOpenSystemStoreA(NULL, "ROOT");
+    void* hStore = CertOpenSystemStoreA(0, "ROOT");
     if (hStore)
     {
       /* And then open the OpenSSL store */
@@ -397,6 +397,7 @@ ssl_init (void)
       }
     }
   }
+  else
 #endif
   /* End: Windows SSL Cert Changes */
 
@@ -821,7 +822,7 @@ openssl_close (int fd, void *arg)
 
   close (fd);
 
-  DEBUGP (("Closed %d/SSL 0x%0*lx\n", fd, PTR_FORMAT (conn)));
+  DEBUGP (("Closed %d/SSL 0x%0*" PRIxPTR "\n", fd, PTR_FORMAT (conn)));
 }
 
 /* openssl_transport is the singleton that describes the SSL transport
@@ -923,7 +924,7 @@ ssl_connect_wget (int fd, const char *hostname, int *continue_session)
   /* Register FD with Wget's transport layer, i.e. arrange that our
      functions are used for reading, writing, and polling.  */
   fd_register_transport (fd, &openssl_transport, ctx);
-  DEBUGP (("Handshake successful; connected socket %d to SSL handle 0x%0*lx\n",
+  DEBUGP (("Handshake successful; connected socket %d to SSL handle 0x%0*" PRIxPTR "\n",
            fd, PTR_FORMAT (conn)));
 
   ERR_clear_error ();
