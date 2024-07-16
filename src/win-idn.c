@@ -37,11 +37,18 @@ as that of the covered work.  */
 */
 #define IDN_MAX_LENGTH 254 // https://en.wikipedia.org/wiki/Hostname
 
+#ifndef IDN_ALLOW_UNASSIGNED
+#define IDN_ALLOW_UNASSIGNED 0x01
+#endif
+
+typedef int (WINAPI *IdnToAsciiFuncType) (DWORD dwFlags, LPCWSTR lpUnicodeCharStr, int cchUnicodeChar, LPWSTR lpASCIICharStr, int cchASCIIChar);
+static HMODULE hNormaliz = NULL;
+static IdnToAsciiFuncType IdnToAsciiFunc = NULL;
+
 char *idn_encode(const char *encoding, const char *host) {
     wchar_t *host_w = NULL;
     wchar_t *punycode_w = NULL;
     char *punycode = NULL;
-
 
     if (!transcode("UTF-16LE", encoding, host, strlen(host), (char**) &host_w)) {
         goto cleanup;
@@ -53,7 +60,20 @@ char *idn_encode(const char *encoding, const char *host) {
         goto cleanup;
     }
 
-    if (IdnToAscii(IDN_ALLOW_UNASSIGNED, host_w, -1, punycode_w, IDN_MAX_LENGTH) == 0) {
+    // XP SP2+ has `IdnToAscii`, but Mingw-w64 may require `WINVER >= 0x0600`
+    // https://learn.microsoft.com/en-us/windows/win32/api/winnls/nf-winnls-idntoascii
+    if (hNormaliz == NULL) {
+        hNormaliz = LoadLibrary("normaliz");
+    }
+    if (hNormaliz != NULL && IdnToAsciiFunc == NULL) {
+        IdnToAsciiFunc = (IdnToAsciiFuncType)GetProcAddress(hNormaliz, "IdnToAscii");
+    }
+    if (IdnToAsciiFunc == NULL) {
+        logprintf(LOG_NOTQUIET, "Loading IdnToAscii from normaliz.dll failed!\n");
+        goto cleanup;
+    }
+
+    if (IdnToAsciiFunc(IDN_ALLOW_UNASSIGNED, host_w, -1, punycode_w, IDN_MAX_LENGTH) == 0) {
         logprintf (LOG_VERBOSE, "IdnToAscii failed: 0x%08lX\n", GetLastError());
         goto cleanup;
     }
