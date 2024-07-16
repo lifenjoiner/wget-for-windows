@@ -869,6 +869,7 @@ HANDSHAKE_LOOP:
         case SEC_E_NO_CREDENTIALS:
         case SEC_E_TARGET_UNKNOWN:
         case SEC_E_UNSUPPORTED_FUNCTION:
+        case SEC_E_ILLEGAL_MESSAGE: // issue 7: server refused handshake with alert
             // fatal
             logprintf(LOG_NOTQUIET, "WinTLS: InitializeSecurityContext failed: %#08lX\n", Status);
             break;
