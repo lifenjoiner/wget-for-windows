@@ -13,14 +13,14 @@ jobs:
       matrix:
         #os: [ubuntu-latest, windows-latest] # run native test
         bits: [32, 64]
-        ftype: [shared-full, static-lite]
+        ftype: [vista-wintls-winhashes-shared-full, vista-wintls-winhashes-static-lite, xp-openssl-lite]
       fail-fast: false
     # https://github.com/actions/virtual-environments
-    name: mingw${{matrix.bits}}-wintls-winhashes-${{matrix.ftype}}
+    name: mingw${{matrix.bits}}-${{matrix.ftype}}
     runs-on: windows-latest
     env:
       mingw: mingw${{matrix.bits}}
-      build_type: wintls-winhashes-${{matrix.ftype}}
+      build_type: ${{matrix.ftype}}
     defaults:
       run:
         shell: msys2 {0}
@@ -122,17 +122,38 @@ jobs:
 # -->
     - name: Install extra dependencies
       run: |
-        if [ "${{matrix.ftype}}" = "shared-full" ]; then
+        if [ "${{matrix.ftype}}" = "vista-wintls-winhashes-shared-full" ]; then
           wget https://github.com/metalink-dev/libmetalink/releases/download/release-0.1.3/libmetalink-0.1.3.tar.gz
           tar -xvzf libmetalink-0.1.3.tar.gz
           cd libmetalink-0.1.3
           ./configure --disable-xmltest
           make install
-        elif [ "${{matrix.ftype}}" = "static-lite" ]; then
+        else
           wget https://github.com/win-iconv/win-iconv/archive/refs/tags/v0.0.8.tar.gz
           tar -xvzf v0.0.8.tar.gz
           cd win-iconv-0.0.8
           make -E CFLAGS=-Os -E prefix=/$mingw install
+          if [ "${{matrix.ftype}}" = "xp-openssl-lite" ]; then
+            cd ..
+            wget https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz
+            tar -xvzf openssl-1.1.1w.tar.gz
+            cd openssl-1.1.1w
+            CFLAGS='-Wall -Os -fomit-frame-pointer' LDFLAGS=-s ./config --api=1.1.0 --prefix=/$mingw -static \
+              -no-shared --release \
+              enable-aria enable-asm enable-async enable-camellia enable-chacha enable-ct enable-deprecated \
+              enable-des enable-dh enable-ec enable-ecdh enable-ecdsa enable-gost enable-md4 enable-multiblock \
+              enable-pinshared enable-poly1305 enable-psk enable-rfc3779 enable-sock enable-srp enable-sse2 \
+              enable-stdio enable-tls enable-ts enable-ui-console \
+              no-afalgeng no-asan no-autoalginit no-autoerrinit no-autoload-config no-bf no-blake2 no-buildtest-c++ \
+              no-capieng no-cast no-cmac no-cms no-comp no-crypto-mdebug no-crypto-mdebug-backtrace no-devcryptoeng \
+              no-dgram no-dsa no-dtls no-dynamic-engine no-ec2m no-ec_nistp_64_gcc_128 no-egd no-engine no-err \
+              no-external-tests no-filenames no-fuzz-afl no-fuzz-libfuzzer no-heartbeats no-hw no-idea no-makedepend \
+              no-md2 no-mdc2 no-msan no-nextprotoneg no-ocb no-ocsp no-pic no-posix-io no-rc2 no-rc4 no-rc5 no-rdrand \
+              no-rmd160 no-scrypt no-sctp no-seed no-shared no-siphash no-sm2 no-sm3 no-sm4 no-srtp no-ssl \
+              no-ssl-trace no-static-engine no-tests no-threads no-ubsan no-unit-test no-weak-ssl-ciphers no-whirlpool \
+              no-zlib no-zlib-dynamic
+            make install_dev
+          fi
         fi
 
     - name: configure
@@ -141,11 +162,20 @@ jobs:
         mkdir -p $CDir
         cd $CDir
         pwd
-        export CFLAGS+=" -Wall -D_WIN32_WINNT=0x0600 -DGNULIB_defined_ESOCK -DSite=https://github.com/lifenjoiner/wget-for-windows"
-        if [ "${{matrix.ftype}}" = "shared-full" ]; then
-          CFLAGS+=" -O2" $BRoot/configure --prefix=$BRoot/$BDir --disable-rpath --with-cares --with-winidn --enable-threads=windows
-        elif [ "${{matrix.ftype}}" = "static-lite" ]; then
-          CFLAGS+=" -Os" LDFLAGS="-static -s" $BRoot/configure --prefix=$BRoot/$BDir --disable-debug --disable-rpath --disable-nls --without-libpsl --without-metalink --disable-pcre --disable-pcre2 --with-winidn --enable-threads=windows
+        export CFLAGS+=" -Wall -DGNULIB_defined_ESOCK -DSite=https://github.com/lifenjoiner/wget-for-windows"
+        if [ "${{matrix.ftype}}" = "vista-wintls-winhashes-shared-full" ]; then
+          CFLAGS+=" -D_WIN32_WINNT=0x0600 -O2" $BRoot/configure --prefix=$BRoot/$BDir --disable-rpath --with-cares \
+            --with-winidn --enable-threads=windows
+        elif [ "${{matrix.ftype}}" = "vista-wintls-winhashes-static-lite" ]; then
+          CFLAGS+=" -D_WIN32_WINNT=0x0600 -Os" LDFLAGS="-static -s" $BRoot/configure --prefix=$BRoot/$BDir \
+            --disable-debug --disable-rpath --disable-nls --without-libpsl --without-metalink --disable-pcre \
+            --disable-pcre2 --with-winidn --enable-threads=windows
+        elif [ "${{matrix.ftype}}" = "xp-openssl-lite" ]; then
+          # -DNTDDI_VERSION=NTDDI_WINXPSP3 for winhashes
+          CFLAGS+=" -D_WIN32_WINNT=0x0501 -Os" LDFLAGS="-static -s" $BRoot/configure --prefix=$BRoot/$BDir \
+            --with-ssl=openssl --without-winhashes \
+            --disable-debug --disable-rpath --disable-nls --without-libpsl --without-metalink --disable-pcre \
+            --disable-pcre2 --with-winidn --enable-threads=windows
         fi
 # <--
 
@@ -211,13 +241,13 @@ jobs:
           !${{env.CDir}}/tests/*.o
 
     - name: Package release assets
-      if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.ftype == 'static-lite' }}
+      if: ${{ startsWith(github.ref, 'refs/tags/') && endsWith(matrix.ftype, '-lite') }}
       run: |
         "/C/Program Files/7-Zip/7z" a wget-${{env.mingw}}-${{env.build_type}}_${{github.head_ref || github.ref_name}}_${{env.SHA}}.7z ${{env.CDir}}/src/wget.exe
 
     - name: Upload release assets
       uses: softprops/action-gh-release@v2
-      if: ${{ startsWith(github.ref, 'refs/tags/') && matrix.ftype == 'static-lite' }}
+      if: ${{ startsWith(github.ref, 'refs/tags/') && endsWith(matrix.ftype, '-lite') }}
       with:
         draft: true
         files: |
