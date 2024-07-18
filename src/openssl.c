@@ -94,7 +94,7 @@ static SSL_CTX *ssl_ctx;
 
 /* Initialize the SSL's PRNG using various methods. */
 
-static void
+static int
 init_prng (void)
 {
   char namebuf[256];
@@ -131,34 +131,8 @@ init_prng (void)
     RAND_egd (opt.egd_file);
 #endif
 
-#ifdef WINDOWS
-  /* Under Windows, we can try to seed the PRNG using screen content.
-     This may or may not work, depending on whether we'll calling Wget
-     interactively.  */
-
-  RAND_screen ();
-  if (RAND_status ())
-    return;
-#endif
-
-#if 0 /* don't do this by default */
-  {
-    int maxrand = 500;
-
-    /* Still not random enough, presumably because neither /dev/random
-       nor EGD were available.  Try to seed OpenSSL's PRNG with libc
-       PRNG.  This is cryptographically weak and defeats the purpose
-       of using OpenSSL, which is why it is highly discouraged.  */
-
-    logprintf (LOG_NOTQUIET, _("WARNING: using a weak random seed.\n"));
-
-    while (RAND_status () == 0 && maxrand-- > 0)
-      {
-        unsigned char rnd = random_number (256);
-        RAND_seed (&rnd, sizeof (rnd));
-      }
-  }
-#endif
+  RAND_poll ();
+  return RAND_status ();
 }
 
 /* Print errors in the OpenSSL error stack. */
@@ -226,8 +200,7 @@ ssl_init (void)
     return true;
 
   /* Init the PRNG.  If that fails, bail out.  */
-  init_prng ();
-  if (RAND_status () != 1)
+  if (init_prng () != 1)
     {
       logprintf (LOG_NOTQUIET,
                  _("Could not seed PRNG; consider using --random-file.\n"));
@@ -903,8 +876,7 @@ ssl_connect_wget (int fd, const char *hostname, int *continue_session)
   SSL_set_connect_state (conn);
 
   /* Re-seed the PRNG before the SSL handshake */
-  init_prng ();
-  if (RAND_status () != 1)
+  if (init_prng () != 1)
     {
       logprintf(LOG_NOTQUIET,
 		_("WARNING: Could not seed PRNG. Consider using --random-file.\n"));
