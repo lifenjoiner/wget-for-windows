@@ -609,6 +609,7 @@ static SECURITY_STATUS CreateCredentials(PCredHandle phCreds) {
                                                                     ":CALG_SHA"
     ;
 
+/*
 #define UNIMP_OPT(p, s) if (opt.p) {logprintf(LOG_NOTQUIET, "WinTLS: unimplemented: %s\n", s); return SEC_E_INTERNAL_ERROR;}
     UNIMP_OPT(ca_cert,      "--ca-certificate")
     UNIMP_OPT(ca_directory, "--ca-directory")
@@ -619,6 +620,8 @@ static SECURITY_STATUS CreateCredentials(PCredHandle phCreds) {
     UNIMP_OPT(private_key_type, "--private-key-type")
     UNIMP_OPT(pinnedpubkey, "-pinnedpubkey")
     UNIMP_OPT(random_file,  "--random-file")
+    UNIMP_OPT(egd_file,  "--random-file")
+*/
 
     schannel_cred.dwVersion = SCHANNEL_CRED_VERSION;
     switch (opt.secure_protocol) {

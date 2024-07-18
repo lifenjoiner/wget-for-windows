@@ -857,6 +857,7 @@ HTTPS (SSL/TLS) options:\n"),
        --https-only                only follow secure HTTPS links\n"),
     N_("\
        --no-check-certificate      don't validate the server's certificate\n"),
+#ifndef HAVE_WINTLS
     N_("\
        --certificate=FILE          client certificate file\n"),
     N_("\
@@ -883,6 +884,7 @@ HTTPS (SSL/TLS) options:\n"),
 #if (defined(HAVE_LIBSSL) || defined(HAVE_LIBSSL32)) && defined(HAVE_RAND_EGD)
     N_("\
        --egd-file=FILE             file naming the EGD socket with random data\n"),
+#endif
 #endif
     "\n",
     N_("\

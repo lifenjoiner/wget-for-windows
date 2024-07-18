@@ -82,7 +82,7 @@ as that of the covered work.  */
 CMD_DECLARE (cmd_boolean);
 CMD_DECLARE (cmd_bytes);
 CMD_DECLARE (cmd_bytes_sum);
-#ifdef HAVE_SSL
+#if defined HAVE_SSL && !HAVE_WINTLS
 CMD_DECLARE (cmd_cert_type);
 #endif
 CMD_DECLARE (cmd_directory_vector);
@@ -152,11 +152,11 @@ static const struct {
 #endif
   { "bodydata",         &opt.body_data,         cmd_string },
   { "bodyfile",         &opt.body_file,         cmd_string },
-#ifdef HAVE_SSL
+#if defined HAVE_SSL && !HAVE_WINTLS
   { "cacertificate",    &opt.ca_cert,           cmd_file },
 #endif
   { "cache",            &opt.allow_cache,       cmd_boolean },
-#ifdef HAVE_SSL
+#if defined HAVE_SSL && !HAVE_WINTLS
   { "cadirectory",      &opt.ca_directory,      cmd_directory },
   { "certificate",      &opt.cert_file,         cmd_file },
   { "certificatetype",  &opt.cert_type,         cmd_cert_type },
@@ -176,7 +176,7 @@ static const struct {
   { "convertfileonly",  &opt.convert_file_only, cmd_boolean },
   { "convertlinks",     &opt.convert_links,     cmd_boolean },
   { "cookies",          &opt.cookies,           cmd_boolean },
-#ifdef HAVE_SSL
+#if defined HAVE_SSL && !HAVE_WINTLS
   { "crlfile",          &opt.crl_file,          cmd_file_once },
 #endif
   { "cutdirs",          &opt.cut_dirs,          cmd_number },
@@ -195,7 +195,7 @@ static const struct {
   { "dotsinline",       &opt.dots_in_line,      cmd_number },
   { "dotspacing",       &opt.dot_spacing,       cmd_number },
   { "dotstyle",         &opt.dot_style,         cmd_string }, /* deprecated */
-#ifdef HAVE_SSL
+#if defined HAVE_SSL && !HAVE_WINTLS
   { "egdfile",          &opt.egd_file,          cmd_file },
 #endif
   { "excludedirectories", &opt.excludes,        cmd_directory_vector },
@@ -272,7 +272,7 @@ static const struct {
   { "passiveftp",       &opt.ftp_pasv,          cmd_boolean },
   { "passwd",           &opt.ftp_passwd,        cmd_string },/* deprecated*/
   { "password",         &opt.passwd,            cmd_string },
-#ifdef HAVE_SSL
+#if defined HAVE_SSL && !HAVE_WINTLS
   { "pinnedpubkey",     &opt.pinnedpubkey,      cmd_string },
 #endif
   { "postdata",         &opt.post_data,         cmd_string },
@@ -282,7 +282,7 @@ static const struct {
   { "preferredlocation", &opt.preferred_location, cmd_string },
 #endif
   { "preservepermissions", &opt.preserve_perm,  cmd_boolean },
-#ifdef HAVE_SSL
+#if defined HAVE_SSL && !HAVE_WINTLS
   { "privatekey",       &opt.private_key,       cmd_file },
   { "privatekeytype",   &opt.private_key_type,  cmd_cert_type },
 #endif
@@ -293,7 +293,7 @@ static const struct {
   { "proxyuser",        &opt.proxy_user,        cmd_string },
   { "quiet",            &opt.quiet,             cmd_boolean },
   { "quota",            &opt.quota,             cmd_bytes_sum },
-#ifdef HAVE_SSL
+#if defined HAVE_SSL && !HAVE_WINTLS
   { "randomfile",       &opt.random_file,       cmd_file },
 #endif
   { "randomwait",       &opt.random_wait,       cmd_boolean },
@@ -1480,7 +1480,7 @@ cmd_use_askpass (const char *com _GL_UNUSED, const char *val, void *place)
   return cmd_string (com, env, place);
 }
 
-#ifdef HAVE_SSL
+#if defined HAVE_SSL && !HAVE_WINTLS
 static bool
 cmd_cert_type (const char *com, const char *val, void *place)
 {
@@ -2024,7 +2024,7 @@ cleanup (void)
   xfree (opt.dot_style);
   free_vec (opt.user_headers);
   free_vec (opt.warc_user_headers);
-# ifdef HAVE_SSL
+# if defined HAVE_SSL && !HAVE_WINTLS
   xfree (opt.cert_file);
   xfree (opt.private_key);
   xfree (opt.ca_directory);

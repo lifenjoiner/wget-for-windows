@@ -235,6 +235,8 @@ struct options
   } secure_protocol;            /* type of secure protocol to use. */
   char secure_protocol_name[8]; /* name of secure protocol to use. */
   int check_cert;               /* whether to validate the server's cert */
+
+# ifndef HAVE_WINTLS
   char *cert_file;              /* external client certificate to use. */
   char *private_key;            /* private key file (if not internal). */
   enum keyfile_type {
@@ -255,6 +257,8 @@ struct options
 
   char *random_file;            /* file with random data to seed the PRNG */
   char *egd_file;               /* file name of the egd daemon socket */
+# endif
+
   bool https_only;              /* whether to follow HTTPS only */
   bool ftps_resume_ssl;
   bool ftps_fallback_to_ftp;
