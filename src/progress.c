@@ -191,7 +191,7 @@ progress_update (void *progress, wgint howmuch, double dltime)
     dltime = 0;
 
   if (howmuch < 0)
-	  howmuch = 0;
+    howmuch = 0;
 
   current_impl->update (progress, howmuch, dltime);
   current_impl->draw (progress);
@@ -398,7 +398,7 @@ dot_update (void *progress, wgint howmuch, double dltime)
     dltime = 0;
 
   if (howmuch < 0)
-	  howmuch = 0;
+    howmuch = 0;
 
   struct dot_progress *dp = progress;
   dp->accumulated += howmuch;
@@ -992,7 +992,19 @@ static int
 cols_to_bytes (const char *mbs, const int cols, int *ncols)
 {
   int len = count_cols (mbs);
-  *ncols = len < cols ? len : cols;
+  if (len <= cols)
+    *ncols = len;
+  else
+    {
+# ifdef WINDOWS
+      /* act like rounding down */
+      int mbx = CharPrev (mbs, mbs + cols + 1) - mbs;
+      if (mbx < cols)
+        *ncols = mbx;
+      else
+# endif
+        *ncols = cols;
+    }
   return *ncols;
 }
 #endif
