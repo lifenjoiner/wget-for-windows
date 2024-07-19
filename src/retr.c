@@ -955,11 +955,11 @@ retrieve_url (struct url * orig_parsed, char **file,
       extern hsts_store_t hsts_store;
 #endif
 
-      if (opt.hsts && hsts_store)
-	{
-	  if (hsts_match (hsts_store, u))
-	    logprintf (LOG_VERBOSE, "URL transformed to HTTPS due to an HSTS policy\n");
-	}
+      if (u->scheme == SCHEME_HTTP && hsts_store)
+        {
+          if (hsts_match (hsts_store, u))
+            logprintf (LOG_VERBOSE, "URL transformed to HTTPS due to an HSTS policy\n");
+        }
 #endif
       result = http_loop (u, orig_parsed, &mynewloc, &local_file, refurl, dt,
                           proxy_url);

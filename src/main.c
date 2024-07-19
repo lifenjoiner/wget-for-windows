@@ -172,7 +172,7 @@ i18n_initialize (void)
 
 #ifdef HAVE_HSTS
 /* make the HSTS store global */
-hsts_store_t hsts_store;
+hsts_store_t hsts_store = NULL;
 
 static char*
 get_hsts_database (void)
