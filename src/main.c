@@ -284,11 +284,15 @@ static struct cmdline_option option_data[] =
 #endif
     { "body-data", 0, OPT_VALUE, "bodydata", -1 },
     { "body-file", 0, OPT_VALUE, "bodyfile", -1 },
+#ifndef HAVE_WINTLS
     IF_SSL ( "ca-certificate", 0, OPT_VALUE, "cacertificate", -1 )
     IF_SSL ( "ca-directory", 0, OPT_VALUE, "cadirectory", -1 )
+#endif
     { "cache", 0, OPT_BOOLEAN, "cache", -1 },
+#ifndef HAVE_WINTLS
     IF_SSL ( "certificate", 0, OPT_VALUE, "certificate", -1 )
     IF_SSL ( "certificate-type", 0, OPT_VALUE, "certificatetype", -1 )
+#endif
     IF_SSL ( "check-certificate", 0, OPT_BOOLEAN, "checkcertificate", -1 )
     { "clobber", 0, OPT__CLOBBER, NULL, optional_argument },
 #ifdef HAVE_LIBZ
@@ -302,7 +306,9 @@ static struct cmdline_option option_data[] =
     { "content-disposition", 0, OPT_BOOLEAN, "contentdisposition", -1 },
     { "content-on-error", 0, OPT_BOOLEAN, "contentonerror", -1 },
     { "cookies", 0, OPT_BOOLEAN, "cookies", -1 },
+#ifndef HAVE_WINTLS
     IF_SSL ( "crl-file", 0, OPT_VALUE, "crlfile", -1 )
+#endif
     { "cut-dirs", 0, OPT_VALUE, "cutdirs", -1 },
     { "debug", 'd', OPT_BOOLEAN, "debug", -1 },
     { "default-page", 0, OPT_VALUE, "defaultpage", -1 },
@@ -317,7 +323,9 @@ static struct cmdline_option option_data[] =
     { "domains", 'D', OPT_VALUE, "domains", -1 },
     { "dont-remove-listing", 0, OPT__DONT_REMOVE_LISTING, NULL, no_argument },
     { "dot-style", 0, OPT_VALUE, "dotstyle", -1 }, /* deprecated */
-    { "egd-file", 0, OPT_VALUE, "egdfile", -1 },
+#ifndef HAVE_WINTLS
+    IF_SSL ( "egd-file", 0, OPT_VALUE, "egdfile", -1 )
+#endif
     { "exclude-directories", 'X', OPT_VALUE, "excludedirectories", -1 },
     { "exclude-domains", 0, OPT_VALUE, "excludedomains", -1 },
     { "execute", 'e', OPT__EXECUTE, NULL, required_argument },
@@ -387,7 +395,9 @@ static struct cmdline_option option_data[] =
     { "parent", 0, OPT__PARENT, NULL, optional_argument },
     { "passive-ftp", 0, OPT_BOOLEAN, "passiveftp", -1 },
     { "password", 0, OPT_VALUE, "password", -1 },
+#ifndef HAVE_WINTLS
     IF_SSL ( "pinnedpubkey", 0, OPT_VALUE, "pinnedpubkey", -1 )
+#endif
     { "post-data", 0, OPT_VALUE, "postdata", -1 },
     { "post-file", 0, OPT_VALUE, "postfile", -1 },
     { "prefer-family", 0, OPT_VALUE, "preferfamily", -1 },
@@ -396,8 +406,10 @@ static struct cmdline_option option_data[] =
 #endif
     { "preserve-permissions", 0, OPT_BOOLEAN, "preservepermissions", -1 },
     IF_SSL ( "ciphers", 0, OPT_VALUE, "ciphers", -1 )
+#ifndef HAVE_WINTLS
     IF_SSL ( "private-key", 0, OPT_VALUE, "privatekey", -1 )
     IF_SSL ( "private-key-type", 0, OPT_VALUE, "privatekeytype", -1 )
+#endif
     { "progress", 0, OPT_VALUE, "progress", -1 },
     { "show-progress", 0, OPT_BOOLEAN, "showprogress", -1 },
     { "protocol-directories", 0, OPT_BOOLEAN, "protocoldirectories", -1 },
@@ -408,7 +420,9 @@ static struct cmdline_option option_data[] =
     { "proxy-user", 0, OPT_VALUE, "proxyuser", -1 },
     { "quiet", 'q', OPT_BOOLEAN, "quiet", -1 },
     { "quota", 'Q', OPT_VALUE, "quota", -1 },
+#ifndef HAVE_WINTLS
     IF_SSL ( "random-file", 0, OPT_VALUE, "randomfile", -1 )
+#endif
     { "random-wait", 0, OPT_BOOLEAN, "randomwait", -1 },
     { "read-timeout", 0, OPT_VALUE, "readtimeout", -1 },
     { "recursive", 'r', OPT_BOOLEAN, "recursive", -1 },

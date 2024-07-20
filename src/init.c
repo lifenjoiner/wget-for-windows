@@ -160,6 +160,8 @@ static const struct {
   { "cadirectory",      &opt.ca_directory,      cmd_directory },
   { "certificate",      &opt.cert_file,         cmd_file },
   { "certificatetype",  &opt.cert_type,         cmd_cert_type },
+#endif
+#ifdef HAVE_SSL
   { "checkcertificate", &opt.check_cert,        cmd_check_cert },
 #endif
   { "chooseconfig",     &opt.choose_config,     cmd_file },
