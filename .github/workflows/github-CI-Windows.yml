@@ -243,7 +243,8 @@ jobs:
     - name: Package release assets
       if: ${{ startsWith(github.ref, 'refs/tags/') && endsWith(matrix.ftype, '-lite') }}
       run: |
-        "/C/Program Files/7-Zip/7z" a wget-${{env.mingw}}-${{env.build_type}}_${{github.head_ref || github.ref_name}}_${{env.SHA}}.7z ${{env.CDir}}/src/wget.exe
+        cd ${{env.CDir}}/src
+        "/C/Program Files/7-Zip/7z" a wget-${{env.mingw}}-${{env.build_type}}_${{github.head_ref || github.ref_name}}_${{env.SHA}}.7z wget.exe
 
     - name: Upload release assets
       uses: softprops/action-gh-release@v2
@@ -251,4 +252,4 @@ jobs:
       with:
         draft: true
         files: |
-          wget-${{env.mingw}}-${{env.build_type}}_${{github.head_ref || github.ref_name}}_${{env.SHA}}.7z
+          ${{env.CDir}}/src/wget-${{env.mingw}}-${{env.build_type}}_${{github.head_ref || github.ref_name}}_${{env.SHA}}.7z
