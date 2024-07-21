@@ -1,5 +1,5 @@
 /* Windows hashes wrapper.
-   Copyright (C) 2020-2020 Free Software Foundation,
+   Copyright (C) 2020-now Free Software Foundation,
    Inc.
    Originally contributed by YX Hao.
 

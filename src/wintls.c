@@ -1,5 +1,5 @@
 /* SSL support via Schannel on Windows.
-   Copyright (C) 2020-2020 Free Software Foundation,
+   Copyright (C) 2020-now Free Software Foundation,
    Inc.
    Originally contributed by YX Hao.
 
