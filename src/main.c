@@ -1351,6 +1351,8 @@ print_version (void)
   if (printf ("\n") < 0)
     exit (WGET_EXIT_IO_FAIL);
 
+  printf ("Fork: https://github.com/lifenjoiner/wget-for-windows\n\n");
+
   /* TRANSLATORS: When available, an actual copyright character
      (circle-c) should be used in preference to "(C)". */
   if (printf (_("\
