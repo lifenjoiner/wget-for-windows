@@ -162,7 +162,7 @@ jobs:
         mkdir -p $CDir
         cd $CDir
         pwd
-        export CFLAGS+=" -Wall -DGNULIB_defined_ESOCK -DSite=https://github.com/lifenjoiner/wget-for-windows"
+        export CFLAGS+=" -Wall -DGNULIB_defined_ESOCK"
         if [ "${{matrix.ftype}}" = "vista-wintls-winhashes-shared-full" ]; then
           CFLAGS+=" -D_WIN32_WINNT=0x0600 -O2" $BRoot/configure --prefix=$BRoot/$BDir --disable-rpath --with-cares \
             --with-winidn --enable-threads=windows
