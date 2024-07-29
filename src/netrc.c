@@ -402,10 +402,10 @@ parse_netrc_fp (const char *path, FILE *fp)
               else if (!strcmp (tok, "password") || !strcmp (tok, "passwd"))
                 last_token = tok_password;
 
-				  /* GNU extensions 'port' and 'force', not operational
-					* see https://www.gnu.org/software/emacs/manual/html_node/gnus/NNTP.html#index-nntp_002dauthinfo_002dfunction-2003
-					* see https://savannah.gnu.org/bugs/index.php?52066
-					*/
+              /* GNU extensions 'port' and 'force', not operational
+              * see https://www.gnu.org/software/emacs/manual/html_node/gnus/NNTP.html#index-nntp_002dauthinfo_002dfunction-2003
+              * see https://savannah.gnu.org/bugs/index.php?52066
+              */
               else if (!strcmp (tok, "port"))
                 last_token = tok_port;
 

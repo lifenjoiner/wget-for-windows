@@ -135,7 +135,7 @@ my %urls = (
         },
         content => "",
     },
-    '/p1_fran%C3%A7ais.html' => {	# UTF-8 encoded
+    '/p1_fran%C3%A7ais.html' => {   # UTF-8 encoded
         code => "200",
         msg => "Ok",
         headers => {
@@ -144,7 +144,7 @@ my %urls = (
         },
         content => $pagefrancais,
     },
-    '/p2_%C3%A9%C3%A9n.html' => {	# UTF-8 encoded
+    '/p2_%C3%A9%C3%A9n.html' => {   # UTF-8 encoded
         code => "200",
         msg => "Ok",
         request_headers => {
@@ -155,7 +155,7 @@ my %urls = (
         },
         content => $pageeen,
     },
-    '/p3_%E2%82%AC%E2%82%AC%E2%82%AC.html' => {	# UTF-8 encoded
+    '/p3_%E2%82%AC%E2%82%AC%E2%82%AC.html' => { # UTF-8 encoded
         code => "200",
         msg => "Ok",
         headers => {

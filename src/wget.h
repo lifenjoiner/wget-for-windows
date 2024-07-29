@@ -181,7 +181,7 @@ typedef int64_t wgint;
    otherwise, the result is undefined.  */
 static inline unsigned char _unhex(unsigned char c)
 {
-	return c <= '9' ? c - '0' : (c <= 'F' ? c - 'A' + 10 : c - 'a' + 10);
+   return c <= '9' ? c - '0' : (c <= 'F' ? c - 'A' + 10 : c - 'a' + 10);
 }
 #define X2DIGITS_TO_NUM(h1, h2) ((_unhex (h1) << 4) + _unhex (h2))
 

@@ -857,7 +857,7 @@ ftp_parse_vms_ls (FILE *fp)
             {
               /* Date. */
               DEBUGP (("Date.\n"));
-				  snprintf(date_str, sizeof(date_str), "%s ", tok);
+              snprintf(date_str, sizeof(date_str), "%s ", tok);
             }
           else if ((strlen (tok) < 12) && (strchr( tok, ':') != NULL))
             {
@@ -967,7 +967,7 @@ ftp_parse_vms_ls (FILE *fp)
       else
         {
           cur.prev = l;
-			 cur.next = NULL;
+          cur.next = NULL;
           l->next = xmalloc (sizeof (struct fileinfo));
           l = l->next;
           memcpy (l, &cur, sizeof (cur));

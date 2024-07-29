@@ -324,9 +324,9 @@ ssl_init (void)
   if (!opt.tls_ciphers_string)
     {
       if (opt.secure_protocol == secure_protocol_auto)
-	      ciphers_string = "HIGH:!aNULL:!RC4:!MD5:!SRP:!PSK";
+        ciphers_string = "HIGH:!aNULL:!RC4:!MD5:!SRP:!PSK";
       else if (opt.secure_protocol == secure_protocol_pfs)
-	      ciphers_string = "HIGH:!aNULL:!RC4:!MD5:!SRP:!PSK:!kRSA";
+        ciphers_string = "HIGH:!aNULL:!RC4:!MD5:!SRP:!PSK:!kRSA";
     }
   else
     {
@@ -879,7 +879,7 @@ ssl_connect_wget (int fd, const char *hostname, int *continue_session)
   if (init_prng () != 1)
     {
       logprintf(LOG_NOTQUIET,
-		_("WARNING: Could not seed PRNG. Consider using --random-file.\n"));
+      _("WARNING: Could not seed PRNG. Consider using --random-file.\n"));
       goto error;
     }
 

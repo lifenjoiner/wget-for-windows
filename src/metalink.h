@@ -27,7 +27,7 @@ Corresponding Source for a non-source form of such a combination
 shall include the source code for the parts of OpenSSL used as well
 as that of the covered work.  */
 #if ! defined METALINK_H && defined HAVE_METALINK
-#define	METALINK_H
+#define METALINK_H
 
 #include <metalink/metalink_types.h>
 #include "dirname.h"
@@ -72,4 +72,4 @@ const char *find_key_values (const char *start,
                              char **key,
                              char **value);
 
-#endif	/* METALINK_H */
+#endif  /* METALINK_H */

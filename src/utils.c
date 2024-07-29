@@ -565,7 +565,7 @@ file_exists_p (const char *filename, file_stats_t *fstats)
   struct stat buf;
 
   if (!filename)
-	  return false;
+    return false;
 
 #if defined(WINDOWS) || defined(__VMS)
     int ret = stat (filename, &buf);
@@ -976,7 +976,7 @@ make_directory (const char *directory)
     {
       memcpy(buf, directory, len + 1);
       dir = buf;
-	}
+    }
   else
     dir = xstrdup(directory);
 
@@ -1003,7 +1003,7 @@ make_directory (const char *directory)
     }
 
   if (dir != buf)
-	  xfree (dir);
+    xfree (dir);
 
   return ret;
 }
@@ -2534,7 +2534,7 @@ match_pcre2_regex (const void *regex, const char *str)
       pcre2_match_data_free(match_data);
     }
   else
-	  rc = PCRE2_ERROR_NOMEMORY;
+    rc = PCRE2_ERROR_NOMEMORY;
 
   if (rc < 0 && rc != PCRE2_ERROR_NOMATCH)
     {

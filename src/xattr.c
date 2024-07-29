@@ -79,9 +79,9 @@ set_file_metadata (const struct url *origin_url, const struct url *referrer_url,
 
   if (!retval && referrer_url)
     {
-	  struct url u;
+      struct url u;
 
-	  memset(&u, 0, sizeof(u));
+      memset(&u, 0, sizeof(u));
       u.scheme = referrer_url->scheme;
       u.host = referrer_url->host;
       u.port = referrer_url->port;

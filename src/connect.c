@@ -380,11 +380,11 @@ connect_to_ip (const ip_address *ip, int port, const char *print)
     if (sock >= 0)
       {
 #ifdef WIN32
-	/* If the connection timed out, fd_close will hang in Gnulib's
-	   close_fd_maybe_socket, inside the call to WSAEnumNetworkEvents.  */
-	if (errno != ETIMEDOUT)
+        /* If the connection timed out, fd_close will hang in Gnulib's
+           close_fd_maybe_socket, inside the call to WSAEnumNetworkEvents.  */
+        if (errno != ETIMEDOUT)
 #endif
-	  fd_close (sock);
+        fd_close (sock);
       }
     errno = save_errno;
     return -1;

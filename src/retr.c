@@ -832,7 +832,7 @@ calc_rate (wgint bytes, double secs, int *units)
   else {
     *units = 4, dlrate /= (bibyte * bibyte * bibyte * bibyte);
     if (dlrate > 99.99)
-		 dlrate = 99.99; // upper limit 99.99TB/s
+      dlrate = 99.99; // upper limit 99.99TB/s
   }
 
   return dlrate;

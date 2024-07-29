@@ -395,7 +395,7 @@ if test -n "$WARN_CFLAGS"; then
     nw="$nw -Wcast-function-type" # gcc 8, very noisy
     nw="$nw -Wabi" # gcc 8, very noisy
     nw="$nw -Wunused-macros" # triggers in auto-generated lex css parser, #pragma doesn't work, conflicts with -Werror
-	nw="$nw -Wchkp" # Deprecated option
+    nw="$nw -Wchkp" # Deprecated option
     nw="$nw -Wswitch-enum" # Too noisy
     nw="$nw -Wswitch-default" # TODO: Enable someday. Too noisy for now
     nw="$nw -Wpedantic" # GCC 11. Too noisy, will never be supported

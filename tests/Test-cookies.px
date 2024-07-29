@@ -76,7 +76,7 @@ my %urls = (
 my $cmdline = $WgetTest::WGETPATH . " http://localhost:{{port}}/one.txt"
     . " http://localhost:{{port}}/two.txt" . " http://localhost:{{port}}/three.txt"
     . " http://localhost:{{port}}/four.txt" . " http://localhost:{{port}}/five.txt"
-	 . " http://localhost:{{port}}/six.txt";
+    . " http://localhost:{{port}}/six.txt";
 
 my $expected_error_code = 0;
 

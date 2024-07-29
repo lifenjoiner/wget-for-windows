@@ -703,20 +703,20 @@ windows_uuid_str (char *urn_str, size_t urn_size)
       HMODULE hm_rpcrt4 = LoadLibrary ("Rpcrt4.dll");
 
       if (hm_rpcrt4)
-	{
-	  pfn_UuidCreate =
-	    (UuidCreate_proc) GetProcAddress (hm_rpcrt4, "UuidCreate");
-	  pfn_UuidToString =
-	    (UuidToString_proc) GetProcAddress (hm_rpcrt4, "UuidToStringA");
-	  pfn_RpcStringFree =
-	    (RpcStringFree_proc) GetProcAddress (hm_rpcrt4, "RpcStringFreeA");
-	  if (pfn_UuidCreate && pfn_UuidToString && pfn_RpcStringFree)
-	    rpc_uuid_avail = 1;
-	  else
-	    rpc_uuid_avail = 0;
-	}
+      {
+        pfn_UuidCreate =
+          (UuidCreate_proc) GetProcAddress (hm_rpcrt4, "UuidCreate");
+        pfn_UuidToString =
+          (UuidToString_proc) GetProcAddress (hm_rpcrt4, "UuidToStringA");
+        pfn_RpcStringFree =
+          (RpcStringFree_proc) GetProcAddress (hm_rpcrt4, "RpcStringFreeA");
+        if (pfn_UuidCreate && pfn_UuidToString && pfn_RpcStringFree)
+          rpc_uuid_avail = 1;
+        else
+          rpc_uuid_avail = 0;
+      }
       else
-	rpc_uuid_avail = 0;
+        rpc_uuid_avail = 0;
     }
 
   if (rpc_uuid_avail)
@@ -725,14 +725,14 @@ windows_uuid_str (char *urn_str, size_t urn_size)
       UUID  uuid;
 
       if (pfn_UuidCreate (&uuid) == RPC_S_OK)
-	{
-	  if (pfn_UuidToString (&uuid, &uuid_str) == RPC_S_OK)
-	    {
-	      snprintf (urn_str, urn_size, "<urn:uuid:%s>", uuid_str);
-	      pfn_RpcStringFree (&uuid_str);
-	      return 1;
-	    }
-	}
+      {
+        if (pfn_UuidToString (&uuid, &uuid_str) == RPC_S_OK)
+          {
+            snprintf (urn_str, urn_size, "<urn:uuid:%s>", uuid_str);
+            pfn_RpcStringFree (&uuid_str);
+            return 1;
+          }
+      }
     }
   return 0;
 }
@@ -764,11 +764,11 @@ warc_uuid_str (char *urn_str, size_t urn_size)
     uuid_data[i] = random_number (255);
 
   /* Set the four most significant bits (bits 12 through 15) of the
-	*  time_hi_and_version field to the 4-bit version number */
+  *  time_hi_and_version field to the 4-bit version number */
   uuid_data[6] = (uuid_data[6] & 0x0F) | 0x40;
 
   /* Set the two most significant bits (bits 6 and 7) of the
-	*  clock_seq_hi_and_reserved to zero and one, respectively. */
+  *  clock_seq_hi_and_reserved to zero and one, respectively. */
   uuid_data[8] = (uuid_data[8] & 0xBF) | 0x80;
 
   snprintf (urn_str, urn_size,
