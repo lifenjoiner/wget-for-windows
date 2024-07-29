@@ -91,7 +91,9 @@ CMD_DECLARE (cmd_number_inf);
 CMD_DECLARE (cmd_string);
 CMD_DECLARE (cmd_string_uppercase);
 CMD_DECLARE (cmd_file);
+#if defined HAVE_SSL && !HAVE_WINTLS
 CMD_DECLARE (cmd_file_once);
+#endif
 CMD_DECLARE (cmd_directory);
 CMD_DECLARE (cmd_time);
 CMD_DECLARE (cmd_vector);
@@ -1199,6 +1201,7 @@ cmd_file (const char *com _GL_UNUSED, const char *val, void *place)
   return true;
 }
 
+#if defined HAVE_SSL && !HAVE_WINTLS
 /* like cmd_file, but insist on just a single option usage */
 static bool
 cmd_file_once (const char *com _GL_UNUSED, const char *val, void *place)
@@ -1212,6 +1215,7 @@ cmd_file_once (const char *com _GL_UNUSED, const char *val, void *place)
 
   return cmd_file(com, val, place);
 }
+#endif
 
 /* Like cmd_file, but strips trailing '/' characters.  */
 static bool
