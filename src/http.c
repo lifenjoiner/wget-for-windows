@@ -4388,28 +4388,36 @@ http_loop (struct url *u, struct url *original_url, char **newloc,
 			  _("Spider mode enabled. Check if remote file exists.\n"));
 
       /* Print fetch message, if opt.verbose.  */
-      if (opt.verbose)
-        {
-          char *hurl = url_string (u, URL_AUTH_HIDE_PASSWD);
-
-          if (count > 1)
-            {
-              char tmp[256];
-              sprintf (tmp, _("(try:%2d)"), count);
-              logprintf (LOG_NOTQUIET, "--%s--  %s  %s\n",
-                         tms, tmp, hurl);
-            }
-          else
-            {
-              logprintf (LOG_NOTQUIET, "--%s--  %s\n",
-                         tms, hurl);
-            }
-
+#ifdef WINDOWS
+      {
+        char *hurl = url_string (u, URL_AUTH_HIDE_PASSWD);
+#endif
+        if (opt.verbose)
+          {
+#ifndef WINDOWS
+            char *hurl = url_string (u, URL_AUTH_HIDE_PASSWD);
+#endif
+            if (count > 1)
+              {
+                char tmp[256];
+                sprintf (tmp, _("(try:%2d)"), count);
+                logprintf (LOG_NOTQUIET, "--%s--  %s  %s\n",
+                           tms, tmp, hurl);
+              }
+            else
+              {
+                logprintf (LOG_NOTQUIET, "--%s--  %s\n",
+                           tms, hurl);
+              }
+#ifndef WINDOWS
+            xfree (hurl);
+#endif
+          }
 #ifdef WINDOWS
           ws_changetitle (hurl);
-#endif
           xfree (hurl);
-        }
+      }
+#endif
 
       /* Default document type is empty.  However, if spider mode is
          on or time-stamping is employed, HEAD_ONLY commands is
