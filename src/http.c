@@ -3810,8 +3810,7 @@ gethttp (struct url *u, struct url *original_url, struct http_stat *hs,
           hs->local_encoding = ENC_NONE;
         }
 #ifdef HAVE_LIBZ
-      else if (hs->local_encoding == ENC_GZIP
-               && opt.compression != compression_none)
+      else if (hs->local_encoding == ENC_GZIP)
         {
           const char *p;
 

@@ -253,7 +253,6 @@ write_data (FILE *out, FILE *out2, const char *buf, int bufsize,
 
 int
 fd_read_body (const char *downloaded_filename, int fd, FILE *out, wgint toread, wgint startpos,
-
               wgint *qtyread, wgint *qtywritten, double *elapsed, int flags,
               FILE *out2)
 {
