@@ -932,7 +932,7 @@ get_urls_file (const char *file, bool *read_again)
           url_text = merged;
         }
 
-      new_url = rewrite_shorthand_url (url_text);
+      new_url = maybe_prepend_scheme (url_text);
       if (new_url)
         {
           xfree (url_text);

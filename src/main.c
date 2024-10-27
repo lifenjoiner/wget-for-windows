@@ -2126,7 +2126,7 @@ only if outputting to a regular file.\n"));
       struct iri *iri = iri_new ();
       struct url *url_parsed;
 
-      t = rewrite_shorthand_url (argv[optind]);
+      t = maybe_prepend_scheme (argv[optind]);
       if (!t)
         t = argv[optind];
 

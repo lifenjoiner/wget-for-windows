@@ -1546,7 +1546,7 @@ getproxy (struct url *u)
 
   /* Handle shorthands.  `rewritten_storage' is a kludge to allow
      getproxy() to return static storage. */
-  rewritten_url = rewrite_shorthand_url (proxy);
+  rewritten_url = maybe_prepend_scheme (proxy);
   if (rewritten_url)
     return rewritten_url;
 
