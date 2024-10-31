@@ -2496,12 +2496,12 @@ compile_posix_regex (const char *str)
    *  see https://sourceware.org/glibc/wiki/Security%20Exceptions */
   str = "a";
 #endif
-  int errcode = regcomp ((regex_t *) regex, str, REG_EXTENDED | REG_NOSUB);
+  int errcode = regcomp (regex, str, REG_EXTENDED | REG_NOSUB);
   if (errcode != 0)
     {
-      size_t errbuf_size = regerror (errcode, (regex_t *) regex, NULL, 0);
+      size_t errbuf_size = regerror (errcode, regex, NULL, 0);
       char *errbuf = xmalloc (errbuf_size);
-      regerror (errcode, (regex_t *) regex, errbuf, errbuf_size);
+      regerror (errcode, regex, errbuf, errbuf_size);
       fprintf (stderr, _("Invalid regular expression %s, %s\n"),
                quote (str), errbuf);
       xfree (errbuf);
