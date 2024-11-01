@@ -357,8 +357,8 @@ CoverageReports:
         paths:
             - test-coverage/
             - fuzz-coverage/
-    only:
-        - master
+#    only:
+#        - master
 
 MinGW64:
     stage: test-from-tarball
