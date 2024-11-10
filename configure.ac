@@ -398,6 +398,8 @@ if test -n "$WARN_CFLAGS"; then
     nw="$nw -Wnested-externs" # Stylistic choice and we do use it in hsts code
     nw="$nw -Wc90-c99-compat" # gcc-12, we use C99
     nw="$nw -Wlong-long" # gcc-12, we use C99
+    nw="$nw -Wc99-c11-compat" # gnulib is at C11
+    nw="$nw -Wuseless-cast" # gcc-14 warns about it (pretty useless for portable code)
     if test "$cross_compiling" = yes; then
       nw="$nw -Wformat"
     fi
