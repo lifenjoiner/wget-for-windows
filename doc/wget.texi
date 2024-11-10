@@ -513,6 +513,13 @@ treated as @samp{html} if the Content-Type matches @samp{text/html}.
 Furthermore, the @var{file}'s location will be implicitly used as base
 href if none was specified.
 
+If the @var{file} is a local file, on systems that support it, it will be
+opened with the @code{O_NONBLOCK} flag to allow non-blocking reads from the
+file. @samp{Wget} will attempt to continue reading from the file until
+EOF is reached or it is closed. This allows one to stream a list of files
+for retrieval where the list is dynamically generated during the execution
+of the process. Currently, this feature is not available on Windows platforms.
+
 @cindex input-metalink
 @item --input-metalink=@var{file}
 Downloads files covered in local Metalink @var{file}. Metalink version 3
