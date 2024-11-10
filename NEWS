@@ -1,6 +1,6 @@
 GNU Wget NEWS -- history of user-visible changes.
 
-* Noteworthy changes in release ?.? (????-??-??) [?]
+* Noteworthy changes in release 1.25.0 (2024-11-10) [stable]
 
 ** [Breaking change] Drop support for shorthand FTP URLs (CVE-2024-10524)
 
