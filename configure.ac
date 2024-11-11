@@ -778,6 +778,16 @@ elif test "x$force_ipv6" = "xyes"; then
 fi
 
 dnl
+dnl Find makeinfo.  We used to provide support for Emacs processing
+dnl Texinfo using 'emacs -batch -eval ...' where makeinfo is
+dnl unavailable, but that broke with the addition of makeinfo-specific
+dnl command-line options, such as '-I'.  Now we depend on makeinfo to
+dnl build the Info documentation.
+dnl
+
+AC_CHECK_PROGS(MAKEINFO, [makeinfo], [true])
+
+dnl
 dnl Find perl and pod2man
 dnl
 

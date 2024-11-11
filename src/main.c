@@ -2145,7 +2145,7 @@ only if outputting to a regular file.\n"));
       /* If url enqueued by retrieve_tree, free after dequeued */
       struct url *url = url_new_init ();
 
-      t = rewrite_shorthand_url (argv[optind]);
+      t = maybe_prepend_scheme (argv[optind]);
       if (!t)
         t = argv[optind];
 
