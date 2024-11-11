@@ -1161,6 +1161,8 @@ static uerr_t retrieve_from_url_list(struct urlpos *url_list, int *count)
   struct urlpos *cur_url;
   uerr_t status = RETROK;
 
+  status = RETROK;             /* Suppose everything is OK.  */
+
   for (cur_url = url_list; cur_url; cur_url = cur_url->next, ++*count)
     {
       char *filename = NULL, *new_file = NULL, *proxy;
@@ -1237,7 +1239,6 @@ retrieve_from_file (const char *file, bool html, int *count)
   char *input_file, *url_file = NULL;
   const char *url = file;
 
-  status = RETROK;             /* Suppose everything is OK.  */
   *count = 0;                  /* Reset the URL count.  */
 
   if (url_valid_scheme (url))

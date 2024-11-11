@@ -4270,7 +4270,6 @@ http_loop (struct url *u, struct url *original_url, char **newloc,
   struct stat st;
   bool send_head_first = true;
   bool force_full_retrieve = false;
-  bool return_local_file;
 
   /* If we are writing to a WARC file: always retrieve the whole file. */
   if (opt.warc_filename != NULL)
@@ -4278,11 +4277,6 @@ http_loop (struct url *u, struct url *original_url, char **newloc,
 
   /* Assert that no value for *LOCAL_FILE was passed. */
   assert (local_file == NULL || *local_file == NULL);
-
-  /* Set LOCAL_FILE parameter. */
-  return_local_file = local_file && opt.output_document && !HYPHENP (opt.output_document);
-
-//    return_local_file = (local_file && opt.output_document && !HYPHENP (opt.output_document));
 
   /* Reset NEWLOC parameter. */
   *newloc = NULL;

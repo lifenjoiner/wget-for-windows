@@ -402,6 +402,8 @@ if test -n "$WARN_CFLAGS"; then
     nw="$nw -Wnested-externs" # Stylistic choice and we do use it in hsts code
     nw="$nw -Wc90-c99-compat" # gcc-12, we use C99
     nw="$nw -Wlong-long" # gcc-12, we use C99
+    nw="$nw -Wc99-c11-compat" # gnulib is at C11
+    nw="$nw -Wuseless-cast" # gcc-14 warns about it (pretty useless for portable code)
     if test "$cross_compiling" = yes; then
       nw="$nw -Wformat"
     fi
@@ -774,16 +776,6 @@ if test "X$ipv6" = "Xyes"; then
 elif test "x$force_ipv6" = "xyes"; then
   AC_MSG_ERROR([IPv6 support requested but not found; aborting])
 fi
-
-dnl
-dnl Find makeinfo.  We used to provide support for Emacs processing
-dnl Texinfo using 'emacs -batch -eval ...' where makeinfo is
-dnl unavailable, but that broke with the addition of makeinfo-specific
-dnl command-line options, such as '-I'.  Now we depend on makeinfo to
-dnl build the Info documentation.
-dnl
-
-AC_CHECK_PROGS(MAKEINFO, [makeinfo], [true])
 
 dnl
 dnl Find perl and pod2man

@@ -946,9 +946,9 @@ setval_internal_tilde (int comind, const char *com, const char *val)
   ret = setval_internal (comind, com, val);
 
   /* We make tilde expansion for cmd_file and cmd_directory */
-  if (((commands[comind].action == cmd_file) ||
+  if (ret && ((commands[comind].action == cmd_file) ||
        (commands[comind].action == cmd_directory))
-      && ret && (*val == '~' && ISSEP (val[1])))
+      && (*val == '~' && ISSEP (val[1])))
     {
       pstring = commands[comind].place;
       if (opt.homedir)

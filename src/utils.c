@@ -1277,6 +1277,21 @@ wget_read_file (const char *file)
   return wget_read_from_file(file, &left_open);
 }
 
+/*
+ * Set a file-descriptor to be non-blocking.
+ * Since the needed fcntl flags are not implemented in gnulib
+ * for Windows, we will provide an alternate stub implementation
+ * in mswindows.c. The stub will be a no-op and will prevent
+ * asynchronous file operations on Windows, but such is life
+ */
+#if !defined(WINDOWS) && !defined(MSDOS)
+static void set_fd_nonblocking(const int fd)
+{
+  int flags = fcntl(fd, F_GETFL, 0);
+  fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+}
+#endif
+
 /* Read FILE into memory.  A pointer to `struct file_memory' are
    returned; use struct element `content' to access file contents, and
    the element `length' to know the file length.  `content' is *not*
@@ -1307,10 +1322,6 @@ wget_read_from_file (const char *file, bool *left_open)
   if (HYPHENP (file))
     {
       fd = fileno (stdin);
-# ifndef WINDOWS
-      int flags = fcntl(fd, F_GETFL, 0);
-      fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-# endif
       inhibit_close = true;
       /* Note that we don't inhibit mmap() in this case.  If stdin is
          redirected from a regular file, mmap() will still work.  */
@@ -1320,6 +1331,7 @@ wget_read_from_file (const char *file, bool *left_open)
     fd = open (file, O_RDONLY);
   if (fd < 0)
     return NULL;
+  set_fd_nonblocking(fd);
   fm = xnew (struct file_memory);
 
 #ifdef HAVE_MMAP
@@ -2502,12 +2514,12 @@ compile_posix_regex (const char *str)
    *  see https://sourceware.org/glibc/wiki/Security%20Exceptions */
   str = "a";
 #endif
-  int errcode = regcomp ((regex_t *) regex, str, REG_EXTENDED | REG_NOSUB);
+  int errcode = regcomp (regex, str, REG_EXTENDED | REG_NOSUB);
   if (errcode != 0)
     {
-      size_t errbuf_size = regerror (errcode, (regex_t *) regex, NULL, 0);
+      size_t errbuf_size = regerror (errcode, regex, NULL, 0);
       char *errbuf = xmalloc (errbuf_size);
-      regerror (errcode, (regex_t *) regex, errbuf, errbuf_size);
+      regerror (errcode, regex, errbuf, errbuf_size);
       fprintf (stderr, _("Invalid regular expression %s, %s\n"),
                quote (str), errbuf);
       xfree (errbuf);
