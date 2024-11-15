@@ -634,7 +634,7 @@ Wget needs to be built with libcares for this option to be available.
 @item -t @var{number}
 @itemx --tries=@var{number}
 Set number of tries to @var{number}. Specify 0 or @samp{inf} for
-infinite retrying.  The default is to retry 20 times, with the exception
+infinite retrying.  The default is to try 20 times, with the exception
 of fatal errors like ``connection refused'' or ``not found'' (404),
 which are not retried.
 
