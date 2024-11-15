@@ -15,7 +15,7 @@ jobs:
         bits: [32, 64]
         ftype: [vista-wintls-winhashes-shared-full, vista-wintls-winhashes-static-lite, xp-openssl-lite]
       fail-fast: false
-    # https://github.com/actions/virtual-environments
+    # https://github.com/actions/runner-images
     name: mingw${{matrix.bits}}-${{matrix.ftype}}
     runs-on: windows-latest
     env:
@@ -94,6 +94,9 @@ jobs:
         echo "$BRoot"
         echo "$BDir"
         echo "$CDir"
+
+    - name: autocrlf false
+      run: git config --global core.autocrlf false
 
     - uses: actions/checkout@v4
       # Shallow fetch makes version unknown: git describe --abbrev=4 --match="$prefix*" HEAD

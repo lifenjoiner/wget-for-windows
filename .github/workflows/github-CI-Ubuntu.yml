@@ -9,7 +9,7 @@ jobs:
       matrix:
         ftype: [full, lite]
       fail-fast: false
-    # https://github.com/actions/virtual-environments
+    # https://github.com/actions/runner-images
     name: ${{matrix.ftype}}
     runs-on: ubuntu-latest
     steps:
