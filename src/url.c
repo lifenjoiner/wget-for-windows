@@ -625,7 +625,7 @@ maybe_prepend_scheme (const char *url)
     return NULL;
 
 
-  fprintf(stderr, "Prepended http:// to '%s'\n", url);
+  logprintf (LOG_VERBOSE, _ ("Prepended http:// to '%s'\n"), url);
   return aprintf ("http://%s", url);
 }
 
