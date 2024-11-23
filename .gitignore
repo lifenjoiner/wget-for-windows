@@ -1,6 +1,7 @@
 /ABOUT-NLS~
 # Project Root
 /.sc-start-*
+/.tarball-version
 /.version
 /ABOUT-NLS
 /aminclude_static.am
