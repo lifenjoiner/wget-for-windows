@@ -119,6 +119,7 @@ jobs:
           echo "Reset gettext version: configure.ac requires "${req_ver}", local is "${loc_ver}
           sed -i "s/^\(AM_GNU_GETTEXT_VERSION(\[\)[0-9.]\+\(\])\)$/\1${loc_ver}\2/gm" configure.ac
         fi
+        git describe --abbrev=4 --match="v*" HEAD | sed "s/-\([^-]*\)-g\([^-]*\)$/.\1-\2/" >.tarball-version
         ./bootstrap --skip-po
         sed -i "s/-dirty\b//p" configure
 
