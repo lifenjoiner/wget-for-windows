@@ -81,7 +81,11 @@ jobs:
           echo "Reset gettext version: configure.ac requires "${req_ver}", local is "${loc_ver}
           sed -i "s/^\(AM_GNU_GETTEXT_VERSION(\[\)[0-9.]\+\(\])\)$/\1${loc_ver}\2/gm" configure.ac
         fi
-        ./bootstrap --skip-po
+        git -C gnulib init
+        git -C gnulib remote add origin https://github.com/coreutils/gnulib.git
+        git -C gnulib fetch --depth 1 origin $(git submodule status | cut -c 2-41)
+        git -C gnulib reset --hard FETCH_HEAD
+        ./bootstrap --gnulib-srcdir=./gnulib --gen --skip-po
         sed -i "s/-dirty\b//p" configure
 
 # -->
