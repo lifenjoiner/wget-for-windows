@@ -35,8 +35,6 @@ jobs:
         autoconf \
         automake \
         autoconf-archive \
-        git \
-        python3 \
         gcc \
         libidn2-dev \
         libgpgme-dev \
@@ -45,6 +43,11 @@ jobs:
 
     - name: Show setup result
       run: |
+        pwd
+        echo "PATH"
+        echo "$BRoot"
+        echo "$BDir"
+        echo "$CDir"
         echo "bash --version"
         bash --version
         echo "gcc -v"
@@ -55,11 +58,6 @@ jobs:
         python3 -V
         python3 -c "import sys; print(sys.executable)"
         perl -e 'print $^O . "\n"'
-        pwd
-        echo "PATH"
-        echo "$BRoot"
-        echo "$BDir"
-        echo "$CDir"
 
     - uses: actions/checkout@v4
       # Shallow fetch makes version unknown: git describe --abbrev=4 --match="$prefix*" HEAD

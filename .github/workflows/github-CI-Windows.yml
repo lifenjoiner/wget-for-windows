@@ -50,7 +50,7 @@ jobs:
       with:
         msystem: ${{env.mingw}}
         release: false
-        #path-type: inherit
+        path-type: inherit
         # `AX_CODE_COVERAGE` requires autoconf-archive: https://github.com/google/oss-fuzz/pull/5379/files
         # gpgme for metalink, but depends on many others, that's not preferred on windows
         # gettext for NLS, expat for metalink, libidn2 and libunistring for libpsl
@@ -62,8 +62,7 @@ jobs:
           autoconf
           automake
           autoconf-archive
-          git
-          python
+          perl-libwww
           libcares-devel
           mingw-w64-${{env.arch}}-gcc
           mingw-w64-${{env.arch}}-expat
@@ -76,6 +75,12 @@ jobs:
       # MinGW-w64 pre-installed
     - name: Show setup result
       run: |
+        pwd
+        echo "PATH"
+        echo "$PATH"
+        echo "$BRoot"
+        echo "$BDir"
+        echo "$CDir"
         echo "ls /"
         ls /
         echo "bash --version"
@@ -88,12 +93,6 @@ jobs:
         python3 -V
         python3 -c "import sys; print(sys.executable)"
         perl -e 'print $^O . "\n"'
-        pwd
-        echo "PATH"
-        echo "$PATH"
-        echo "$BRoot"
-        echo "$BDir"
-        echo "$CDir"
 
     - name: autocrlf false
       run: git config --global core.autocrlf false
