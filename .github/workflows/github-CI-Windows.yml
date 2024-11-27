@@ -57,6 +57,7 @@ jobs:
         # mingw-w64-${{env.arch}}-libmetalink is removed from MSYS2 repo, compile and install it ourself.
         # pacman group: https://packages.msys2.org/group/
         install: >-
+          pkgconf
           base-devel
           gperf
           autoconf
