@@ -23,7 +23,16 @@ OpenSSL version: with openssl v1.1.1 latest, for legacy OS.
 
 [Lite binaries](https://github.com/lifenjoiner/wget-for-windows/releases) have the most used features, but not all.
 
-Try `wget -V`.
+## Why is the lite version so small?
+
+Check `wget -V` to see the features. `+`: have; `-`: do not have.
+
+In short:
+1. I implemented new wrappers with Windows native API to replace large libraries: OpenSSL, libidn and etc.
+2. Use alternative libraries: win-iconv to replace libiconv.
+3. Do not enable optional or rarely used features/libraries: c-ares, GPG, meatalink and etc.
+
+Also read the CI files.
 
 ## Fork site
 
@@ -55,7 +64,16 @@ OpenSSL 版: 包含 openssl v1.1.1 最后版本，专为老系统的。
 
 [轻便版](https://github.com/lifenjoiner/wget-for-windows/releases) 包含最常用的特性，而不是全部。
 
-可查看 `wget -V`.
+## 为什么 lite 版这么小？
+
+执行 `wget -V` 查看特性启用情况。`+`：有；`-`：无。
+
+总的来说：
+1. 我用 Windows 原生 API 实现了大的函数库的替代：OpenSSL、libidn 等。
+2. 使用替代库：用 win-iconv 替代 libiconv。
+3. 不启用可选或不常用的特性或库：c-ares、GPG、meatalink 等。
+
+还有，看看 CI 文件。
 
 ## 本分支
 
