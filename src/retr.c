@@ -541,7 +541,7 @@ fd_read_body (const char *downloaded_filename, int fd, FILE *out, wgint toread, 
       if (progress)
         progress_update (progress, ret, ptimer_read (timer));
 #ifdef WINDOWS
-      if (toread > 0)
+      if (toread > 0 && opt.show_progress)
         ws_percenttitle (100.0 *
                          (startpos + sum_read) / (startpos + toread));
 #endif

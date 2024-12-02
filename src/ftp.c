@@ -2036,28 +2036,20 @@ ftp_loop_internal (struct url *u, struct url *original_url, struct fileinfo *f,
       /* Get the current time string.  */
       tms = datetime_str (time (NULL));
       /* Print fetch message, if opt.verbose.  */
-#ifdef WINDOWS
-      {
-        char *hurl = url_string (u, URL_AUTH_HIDE_PASSWD);
-#endif
-        if (opt.verbose)
-          {
-            char *hurl = url_string (u, URL_AUTH_HIDE_PASSWD);
-            char tmp[256];
-            strcpy (tmp, "        ");
-            if (count > 1)
-              sprintf (tmp, _("(try:%2d)"), count);
-            logprintf (LOG_VERBOSE, "--%s--  %s\n  %s => %s\n",
-                       tms, hurl, tmp, quote (locf));
-#ifndef WINDOWS
-            xfree (hurl);
-#endif
-          }
+      if (opt.verbose)
+        {
+          char *hurl = url_string (u, URL_AUTH_HIDE_PASSWD);
+          char tmp[256];
+          strcpy (tmp, "        ");
+          if (count > 1)
+            sprintf (tmp, _("(try:%2d)"), count);
+          logprintf (LOG_VERBOSE, "--%s--  %s\n  %s => %s\n",
+                     tms, hurl, tmp, quote (locf));
 #ifdef WINDOWS
           ws_changetitle (hurl);
-          xfree (hurl);
-      }
 #endif
+          xfree (hurl);
+        }
       /* Send getftp the proper length, if fileinfo was provided.  */
       if (f && f->type != FT_SYMLINK)
         len = f->size;
