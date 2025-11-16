@@ -109,7 +109,7 @@ jobs:
         mkdir -p $CDir
         cd $CDir
         pwd
-        export CFLAGS+=" -Wall"
+        export CFLAGS+=" -fanalyzer -Wall -Wextra"
         if [ "${{matrix.ftype}}" = "full" ]; then
           CFLAGS+=" -O2" $BRoot/configure --prefix=/usr --with-ssl=openssl --with-cares --with-metalink
         elif [ "${{matrix.ftype}}" = "lite" ]; then
