@@ -900,6 +900,8 @@ fopen_stat(const char *fname, const char *mode, file_stats_t *fstats)
     fclose (fp);
     return NULL;
   }
+#else
+  (void)fstats;
 #endif
 
   return fp;
@@ -951,6 +953,8 @@ open_stat(const char *fname, int flags, mode_t mode, file_stats_t *fstats)
     close (fd);
     return -1;
   }
+#else
+  (void)fstats;
 #endif
 
   return fd;
@@ -2696,7 +2700,7 @@ get_max_length (const char *path, int length, int name)
   char *p, *d;
 
   /* Make a copy of the path that we can modify. */
-  p = path ? strdupdelim (path, path + length) : strdup ("");
+  p = path ? strdupdelim (path, path + length) : xstrdup ("");
 
   for (;;)
     {
@@ -2707,6 +2711,7 @@ get_max_length (const char *path, int length, int name)
       if (!(ret < 0 && errno == ENOENT))
         break;
 #else
+      (void)name;
       ret = PATH_MAX;
 #endif
 

@@ -261,7 +261,7 @@ iri_to_utf8 (const char *encoding, const char *str, char **new)
 char *
 locale_to_utf8 (const char *str)
 {
-  char *new;
+  char *new = NULL;
 
   /* That shouldn't happen, just in case */
   if (!opt.locale)

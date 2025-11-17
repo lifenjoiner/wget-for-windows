@@ -1163,6 +1163,7 @@ run_use_askpass (char *question, char **answer)
   /* Parent process reads from child. */
   close (com[1]);
   bytes = read (com[0], tmp, sizeof (tmp) - 1);
+  close (com[0]);
   if (bytes <= 0)
     {
       fprintf (stderr,

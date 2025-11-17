@@ -66,7 +66,14 @@ char *idn_encode(const char *encoding, const char *host) {
         hNormaliz = LoadLibrary("normaliz");
     }
     if (hNormaliz != NULL && IdnToAsciiFunc == NULL) {
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
         IdnToAsciiFunc = (IdnToAsciiFuncType)GetProcAddress(hNormaliz, "IdnToAscii");
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
     }
     if (IdnToAsciiFunc == NULL) {
         logprintf(LOG_NOTQUIET, "Loading IdnToAscii from normaliz.dll failed!\n");

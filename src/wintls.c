@@ -567,6 +567,7 @@ static bool set_ciphers(SCHANNEL_CRED *schannel_cred, char *ciphers) {
         }
         if (unset) {
             logprintf(LOG_NOTQUIET, "WinTLS: unsupported cipher at %s\n", ciphers);
+            free(alg_ids);
             return false;
         }
         if (p < p_end) p++;
@@ -652,6 +653,7 @@ static SECURITY_STATUS CreateCredentials(PCredHandle phCreds) {
         // --ciphers overrides everything
         // https://en.wikipedia.org/wiki/Cipher_suite#Supported_algorithms
         opt.tls_ciphers_string = pfs_ciphers;
+        __fallthrough;
     case secure_protocol_auto:
         // min: tlsv1
         schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT | SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
@@ -1009,6 +1011,7 @@ static int wintls_read_peek(int fd, char *buf, int bufsize, void *arg, double ti
         return -1;
     }
 
+    (void)fd;
     return args.retval;
 }
 
@@ -1369,10 +1372,13 @@ bool ssl_connect_wget(int fd /*socket*/, const char *hostname, int *continue_ses
 
     DEBUGP(("WinTLS: IO layer initialized.\n"));
 
+    (void)continue_session;
     return true;
 }
 
 // done by: SCH_CRED_AUTO_CRED_VALIDATION | SCH_CRED_REVOCATION_CHECK_CHAIN
 bool ssl_check_certificate(int fd, const char *host) {
+    (void)fd;
+    (void)host;
     return true;
 }

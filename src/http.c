@@ -5045,26 +5045,29 @@ basic_authentication_encode (const char *user, const char *passwd)
   char buf_t1[256], buf_t2[256];
   char *t1, *t2, *ret;
   size_t len1 = strlen (user) + 1 + strlen (passwd);
+  size_t len2 = BASE64_LENGTH (len1);
+  bool ext_b1 = len1 >= sizeof (buf_t1);
+  bool ext_b2 = len2 >= sizeof (buf_t2);
 
-  if (len1 < sizeof (buf_t1))
-    t1 = buf_t1;
-  else
+  if (ext_b1)
     t1 = xmalloc(len1 + 1);
-
-  if (BASE64_LENGTH (len1) < sizeof (buf_t2))
-    t2 = buf_t2;
   else
+    t1 = buf_t1;
+
+  if (ext_b2)
     t2 = xmalloc (BASE64_LENGTH (len1) + 1);
+  else
+    t2 = buf_t2;
 
   sprintf (t1, "%s:%s", user, passwd);
   wget_base64_encode (t1, len1, t2);
 
   ret = concat_strings ("Basic ", t2, (char *) 0);
 
-  if (t2 != buf_t2)
+  if (ext_b2)
     xfree (t2);
 
-  if (t1 != buf_t1)
+  if (ext_b1)
     xfree (t1);
 
   return ret;

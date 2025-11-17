@@ -1245,7 +1245,7 @@ retrieve_from_file (const char *file, bool html, int *count)
 
   if (url_valid_scheme (url))
     {
-      int dt,url_err;
+      int dt = 0, url_err;
       url_parsed->ori_url = xstrdup (url);
       url_err = url_parse (url_parsed, true, true);
       if (url_err)

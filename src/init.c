@@ -715,7 +715,7 @@ run_wgetrc (const char *file, file_stats_t *flstats)
         case line_ok:
           /* If everything is OK, set the value.  */
           /* Test `comind` to make `gcc -O2` happy. */
-          if (comind < 0 || comind >= countof (commands)
+          if (comind < 0 || comind >= (int) countof (commands)
               || !setval_internal_tilde (comind, com, val))
             {
               fprintf (stderr, _("%s: Error in %s at line %d.\n"),
