@@ -645,15 +645,17 @@ static SECURITY_STATUS CreateCredentials(PCredHandle phCreds) {
         logprintf(LOG_NOTQUIET, "WinTLS: tlsv1.3 is not yet supported!\n");
         break;
     case secure_protocol_pfs:
-        if (opt.tls_ciphers_string) break;
         // https://vincent.bernat.ch/en/blog/2011-ssl-perfect-forward-secrecy
         // SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3
         // Select cipher suites that imply EDH or ECDHE as a key agreement method
         //  https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange
         // --ciphers overrides everything
         // https://en.wikipedia.org/wiki/Cipher_suite#Supported_algorithms
-        opt.tls_ciphers_string = pfs_ciphers;
-        __fallthrough;
+        if (!opt.tls_ciphers_string) {
+            opt.tls_ciphers_string = pfs_ciphers;
+            schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT | SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
+        }
+        break;
     case secure_protocol_auto:
         // min: tlsv1
         schannel_cred.grbitEnabledProtocols = SP_PROT_TLS1_0_CLIENT | SP_PROT_TLS1_1_CLIENT | SP_PROT_TLS1_2_CLIENT;
@@ -672,7 +674,7 @@ static SECURITY_STATUS CreateCredentials(PCredHandle phCreds) {
 
     // --ciphers overrides everything
     if (opt.tls_ciphers_string) {
-        DEBUGP(("WinTLS: set ciphers: %s\n", pfs_ciphers));
+        DEBUGP(("WinTLS: set ciphers: %s\n", opt.tls_ciphers_string));
         if (!set_ciphers(&schannel_cred, opt.tls_ciphers_string)) {
             Status = SEC_E_INTERNAL_ERROR;
             goto CLEANUP;

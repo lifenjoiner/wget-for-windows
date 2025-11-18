@@ -319,7 +319,9 @@ cleanup:
  */
 void
 set_fd_nonblocking(const int fd)
-{}
+{
+  (void)fd;
+}
 
 /* This is the corresponding Windows implementation of the
    fork_to_background() function in utils.c.  */
@@ -451,9 +453,16 @@ set_sleep_mode (void)
   typedef DWORD (WINAPI *func_t) (DWORD);
   func_t set_exec_state;
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
   set_exec_state =
       (func_t) GetProcAddress (GetModuleHandle ("KERNEL32.DLL"),
                                "SetThreadExecutionState");
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
   if (set_exec_state)
     set_exec_state (ES_SYSTEM_REQUIRED | ES_CONTINUOUS);

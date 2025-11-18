@@ -305,7 +305,7 @@ static void
 tagstack_pop (struct tagstack_item **head, struct tagstack_item **tail,
               struct tagstack_item *ts)
 {
-  if (*head == NULL)
+  if (*head == NULL || ts == NULL)
     return;
 
   if (ts == *tail)
@@ -780,21 +780,22 @@ name_allowed (const struct hash_table *ht, const char *b, const char *e)
   char buf[256], *copy;
   size_t len = e - b;
   bool ret;
+  bool ext = len >= sizeof (buf);
 
   if (!ht)
     return true;
 
-  if (len < sizeof (buf))
-    copy = buf;
-  else
+  if (ext)
     copy = xmalloc (len + 1);
+  else
+    copy = buf;
 
   memcpy (copy, b, len);
   copy[len] = 0;
 
   ret = hash_table_get (ht, copy) != NULL;
 
-  if (copy != buf)
+  if (ext)
     xfree (copy);
 
   return ret;

@@ -612,13 +612,17 @@ hsts_store_close (hsts_store_t store)
    that change control flow. But we're testing, who will tell? :D
  */
 #define TEST_URL_RW(s, u, p) do { \
-    if (test_url_rewrite (s, u, p, true)) \
-      return test_url_rewrite (s, u, p, true); \
+    const char *ret = NULL; \
+    ret = test_url_rewrite (s, u, p, true); \
+    if (ret) \
+      return ret; \
   } while (0)
 
 #define TEST_URL_NORW(s, u, p) do { \
-    if (test_url_rewrite (s, u, p, false)) \
-      return test_url_rewrite (s, u, p, false); \
+    const char *ret = NULL; \
+    ret = test_url_rewrite (s, u, p, false); \
+    if (ret) \
+      return ret; \
   } while (0)
 
 static char *
@@ -675,6 +679,7 @@ test_url_rewrite (hsts_store_t s, const char *url, int port, bool rewrite)
   u.scheme = SCHEME_HTTP;
 
   result = hsts_match (s, &u);
+  xfree (u.host);
 
   if (rewrite)
     {
@@ -692,20 +697,15 @@ test_url_rewrite (hsts_store_t s, const char *url, int port, bool rewrite)
       mu_assert("result should've been false", result == false);
     }
 
-  xfree (u.host);
   return NULL;
 }
 
 const char *
-test_hsts_new_entry (void)
+test_hsts_new_entry_return_fast (hsts_store_t s)
 {
   enum hsts_kh_match match = NO_MATCH;
   struct hsts_kh_info *khi;
-  hsts_store_t s;
   bool created;
-
-  s = open_hsts_test_store ();
-  mu_assert("Could not open the HSTS store. This could be due to lack of memory.", s != NULL);
 
   created = hsts_store_entry (s, SCHEME_HTTP, "www.foo.com", 80, 1234, true);
   mu_assert("No entry should have been created.", created == false);
@@ -737,20 +737,29 @@ test_hsts_new_entry (void)
   khi = hsts_find_entry (s, ".www.foo.com", MAKE_EXPLICIT_PORT (SCHEME_HTTPS, 443), &match, NULL);
   mu_assert("Should've been no match", match == SUPERDOMAIN_MATCH);
 
+  return NULL;
+}
+const char *
+test_hsts_new_entry (void)
+{
+  hsts_store_t s;
+  const char *ret = NULL;
+
+  s = open_hsts_test_store ();
+  mu_assert("Could not open the HSTS store. This could be due to lack of memory.", s != NULL);
+
+  ret = test_hsts_new_entry_return_fast (s);
+
   hsts_store_close (s);
   close_hsts_test_store (s);
 
-  return NULL;
+  return ret;
 }
 
 const char*
-test_hsts_url_rewrite_superdomain (void)
+test_hsts_url_rewrite_superdomain_return_fast (hsts_store_t s)
 {
-  hsts_store_t s;
   bool created;
-
-  s = open_hsts_test_store ();
-  mu_assert("Could not open the HSTS store", s != NULL);
 
   created = hsts_store_entry (s, SCHEME_HTTPS, "example.com", 443, 1234, true);
   mu_assert("A new entry should've been created", created == true);
@@ -762,8 +771,36 @@ test_hsts_url_rewrite_superdomain (void)
   TEST_URL_RW (s, "rep.example.com", 80);
   TEST_URL_RW (s, "rep.rep.example.com", 80);
 
+  return NULL;
+}
+
+const char*
+test_hsts_url_rewrite_superdomain (void)
+{
+  hsts_store_t s;
+  const char *ret = NULL;
+
+  s = open_hsts_test_store ();
+  mu_assert("Could not open the HSTS store", s != NULL);
+
+  ret = test_hsts_url_rewrite_superdomain_return_fast (s);
+
   hsts_store_close (s);
   close_hsts_test_store (s);
+
+  return ret;
+}
+
+const char*
+test_hsts_url_rewrite_congruent_return_fast (hsts_store_t s)
+{
+  bool created;
+
+  created = hsts_store_entry (s, SCHEME_HTTPS, "foo.com", 443, 1234, false);
+  mu_assert("A new entry should've been created", created == true);
+
+  TEST_URL_RW (s, "foo.com", 80);
+  TEST_URL_NORW (s, "www.foo.com", 80);
 
   return NULL;
 }
@@ -772,19 +809,29 @@ const char*
 test_hsts_url_rewrite_congruent (void)
 {
   hsts_store_t s;
-  bool created;
+  const char *ret = NULL;
 
   s = open_hsts_test_store ();
   mu_assert("Could not open the HSTS store", s != NULL);
 
-  created = hsts_store_entry (s, SCHEME_HTTPS, "foo.com", 443, 1234, false);
-  mu_assert("A new entry should've been created", created == true);
-
-  TEST_URL_RW (s, "foo.com", 80);
-  TEST_URL_NORW (s, "www.foo.com", 80);
+  ret = test_hsts_url_rewrite_congruent_return_fast (s);
 
   hsts_store_close (s);
   close_hsts_test_store (s);
+
+  return ret;
+}
+
+const char*
+test_hsts_read_database_return_fast (hsts_store_t table)
+{
+  TEST_URL_RW (table, "foo.example.com", 80);
+  TEST_URL_RW (table, "www.foo.example.com", 80);
+  TEST_URL_RW (table, "bar.example.com", 80);
+
+  TEST_URL_NORW(table, "www.bar.example.com", 80);
+
+  TEST_URL_RW (table, "test.example.com", 8080);
 
   return NULL;
 }
@@ -796,6 +843,7 @@ test_hsts_read_database (void)
   char *file = NULL;
   FILE *fp = NULL;
   int64_t created = time(NULL) - 10;
+  const char *ret = NULL;
 
   if (opt.homedir)
     {
@@ -810,14 +858,9 @@ test_hsts_read_database (void)
           fclose (fp);
 
           table = hsts_store_open (file);
+          mu_assert("Could not open the HSTS store", table != NULL);
 
-          TEST_URL_RW (table, "foo.example.com", 80);
-          TEST_URL_RW (table, "www.foo.example.com", 80);
-          TEST_URL_RW (table, "bar.example.com", 80);
-
-          TEST_URL_NORW(table, "www.bar.example.com", 80);
-
-          TEST_URL_RW (table, "test.example.com", 8080);
+          ret = test_hsts_read_database_return_fast (table);
 
           hsts_store_close (table);
           close_hsts_test_store (table);
@@ -826,7 +869,7 @@ test_hsts_read_database (void)
       xfree (file);
     }
 
-  return NULL;
+  return ret;
 }
 #endif /* TESTING */
 #endif /* HAVE_HSTS */

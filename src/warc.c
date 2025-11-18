@@ -704,12 +704,19 @@ windows_uuid_str (char *urn_str, size_t urn_size)
 
       if (hm_rpcrt4)
       {
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
         pfn_UuidCreate =
           (UuidCreate_proc) GetProcAddress (hm_rpcrt4, "UuidCreate");
         pfn_UuidToString =
           (UuidToString_proc) GetProcAddress (hm_rpcrt4, "UuidToStringA");
         pfn_RpcStringFree =
           (RpcStringFree_proc) GetProcAddress (hm_rpcrt4, "RpcStringFreeA");
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
         if (pfn_UuidCreate && pfn_UuidToString && pfn_RpcStringFree)
           rpc_uuid_avail = 1;
         else

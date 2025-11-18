@@ -80,7 +80,14 @@ bool LoadSecurityLibrary(void) {
     }
 
     // Init SSPI
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wcast-function-type"
+#endif
     pInitSecurityInterface = (INIT_SECURITY_INTERFACE)GetProcAddress(g_hSec_dll, "InitSecurityInterfaceA");
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
     if (pInitSecurityInterface == NULL) {
         goto FAIL;
     }
