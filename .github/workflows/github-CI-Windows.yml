@@ -172,7 +172,7 @@ jobs:
         mkdir -p $CDir
         cd $CDir
         pwd
-        export CFLAGS+=" -fanalyzer -Wall -Wextra -DGNULIB_defined_ESOCK"
+        export CFLAGS+=" -fanalyzer -Wextra -Wall -DGNULIB_defined_ESOCK"
         if [ "${{matrix.ftype}}" = "vista-wintls-winhashes-shared-full" ]; then
           CFLAGS+=" -D_WIN32_WINNT=0x0600 -O2" $BRoot/configure --prefix=$BRoot/$BDir --disable-rpath --with-cares \
             --with-winidn --enable-threads=windows
@@ -188,6 +188,13 @@ jobs:
             --disable-pcre2 --with-winidn --enable-threads=windows
         fi
 # <--
+
+      # base32.c has too complicated statements
+    - name: Build libgnu.a without analyzer
+      run: |
+        cd $CDir/lib
+        sed -i "/^CFLAGS =/{ s/ -fanalyzer -Wextra// }" Makefile
+        make
 
       # gnulib_po gettext requires gettext version 0.20 higher env can have!
     - name: Build
