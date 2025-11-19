@@ -111,7 +111,7 @@ jobs:
         pwd
         export CFLAGS+=" -fanalyzer -Wall -Wextra"
         if [ "${{matrix.ftype}}" = "full" ]; then
-          CFLAGS+=" -O2" $BRoot/configure --prefix=/usr --with-ssl=openssl --with-cares --with-metalink
+          CFLAGS+=" -O2 -g" $BRoot/configure --prefix=/usr --with-ssl=openssl --with-cares --with-metalink
         elif [ "${{matrix.ftype}}" = "lite" ]; then
           CFLAGS+=" -Os" LDFLAGS="-s" $BRoot/configure --prefix=/usr --with-ssl=openssl --disable-debug --without-libpsl --without-cares --without-metalink --disable-pcre --disable-pcre2
         fi

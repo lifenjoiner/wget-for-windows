@@ -172,9 +172,9 @@ jobs:
         mkdir -p $CDir
         cd $CDir
         pwd
-        export CFLAGS+=" -fanalyzer -Wextra -Wall -DGNULIB_defined_ESOCK"
+        export CFLAGS+=" -Wall -DGNULIB_defined_ESOCK"
         if [ "${{matrix.ftype}}" = "vista-wintls-winhashes-shared-full" ]; then
-          CFLAGS+=" -D_WIN32_WINNT=0x0600 -O2" $BRoot/configure --prefix=$BRoot/$BDir --disable-rpath --with-cares \
+          CFLAGS+=" -fanalyzer -Wextra -D_WIN32_WINNT=0x0600 -O2 -g" $BRoot/configure --prefix=$BRoot/$BDir --disable-rpath --with-cares \
             --with-winidn --enable-threads=windows
         elif [ "${{matrix.ftype}}" = "vista-wintls-winhashes-static-lite" ]; then
           CFLAGS+=" -D_WIN32_WINNT=0x0600 -Os" LDFLAGS="-static -s" $BRoot/configure --prefix=$BRoot/$BDir \
@@ -191,6 +191,7 @@ jobs:
 
       # base32.c has too complicated statements
     - name: Build libgnu.a without analyzer
+      if: ${{ endsWith(matrix.ftype, '-shared-full') }}
       run: |
         cd $CDir/lib
         sed -i "/^CFLAGS =/{ s/ -fanalyzer -Wextra// }" Makefile
