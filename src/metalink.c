@@ -1472,6 +1472,13 @@ find_key_values (const char *start, const char *end, char **key, char **value)
 
 #ifdef TESTING
 const char *
+mu_assert_func (const char *message, bool test)
+{
+  mu_assert (message, test);
+  return NULL;
+}
+
+const char *
 test_find_key_values (void)
 {
   static const char *header_data = "key1=val1;key2=\"val2\" ;key3=val3; key4=val4"\
@@ -1504,11 +1511,13 @@ test_find_key_values (void)
                                                  header_data + strlen (header_data),
                                                  &key, &value)); pos++)
     {
-      mu_assert ("test_find_key_values: wrong result",
-                 !strcmp (test_array[i].val, value) &&
-                 !strcmp (test_array[i].key, key));
+      const char *ret = mu_assert_func ("test_find_key_values: wrong result",
+                                        !strcmp (test_array[i].val, value) &&
+                                        !strcmp (test_array[i].key, key));
       xfree (key);
       xfree (value);
+      if (ret)
+        return ret;
       i++;
     }
 
@@ -1547,17 +1556,21 @@ test_find_key_value (void)
     {
       bool result;
       char *value;
+      const char *ret;
 
       result = find_key_value (header_data,
                                header_data + strlen(header_data),
                                test_array[i].key, &value);
 
-      mu_assert ("test_find_key_value: wrong result",
-                 result == test_array[i].result &&
-                 ((!test_array[i].result && !value) ||
-                  !strcmp (value, test_array[i].val)));
+      ret = mu_assert_func ("test_find_key_value: wrong result",
+                            result == test_array[i].result &&
+                            ((!test_array[i].result && !value) ||
+                             !strcmp (value, test_array[i].val)));
 
       xfree (value);
+
+      if (ret)
+        return ret;
     }
 
   return NULL;

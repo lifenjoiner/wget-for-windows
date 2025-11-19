@@ -2050,7 +2050,7 @@ only if outputting to a regular file.\n"));
           exit (WGET_EXIT_GENERIC_ERROR);
         }
 
-      if (ares_init (&ares) != ARES_SUCCESS)
+      if (ares_init_options (&ares, NULL, 0) != ARES_SUCCESS)
         {
           fprintf (stderr, _("Failed to init c-ares channel\n"));
           exit (WGET_EXIT_GENERIC_ERROR);

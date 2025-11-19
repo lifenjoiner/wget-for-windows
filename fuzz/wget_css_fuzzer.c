@@ -114,9 +114,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
 	get_urls_css(&ctx, 0, size);
 	free_urlpos(ctx.head);
-	free((void *) ctx.parent_base);
 
 done:
+	free((void *) ctx.parent_base);
 	do_jump = 0;
 
 	RESTORE_STDERR

@@ -245,7 +245,7 @@ struct pool {
         basevar = xrealloc (basevar, ga_newsize * sizeof (type));               \
       else                                                                      \
         {                                                                       \
-          void *ga_new = xmalloc (ga_newsize * sizeof (type));                  \
+          void *ga_new = xcalloc (ga_newsize, sizeof (type));                   \
           memcpy (ga_new, basevar, (sizevar) * sizeof (type));                  \
           (basevar) = ga_new;                                                   \
           resized = true;                                                       \
