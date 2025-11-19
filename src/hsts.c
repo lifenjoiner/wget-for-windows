@@ -574,7 +574,7 @@ hsts_store_save (hsts_store_t store, const char *filename)
           /* We've merged the latest changes so we can now truncate the file
              and dump everything. */
           fseek (fp, 0, SEEK_SET);
-          ftruncate (fd, 0);
+          (void)ftruncate (fd, 0);
 
           /* now dump to the file */
           hsts_store_dump (store, fp);

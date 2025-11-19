@@ -73,7 +73,7 @@ void exit_wget(int status)
 #ifndef RTLD_NEXT
 #define RTLD_NEXT RTLD_GLOBAL
 #endif
-void exit(int status)
+_Noreturn void exit(int status)
 {
 	if (do_jump) {
 		longjmp(jmpbuf, 1);

@@ -521,6 +521,7 @@ test_parse_netrc(void)
 
       acc = parse_netrc_fp ("memory", fp);
       fclose(fp);
+      mu_assert ("test_parse_netrc: failed to parse_netrc_fp()", acc != NULL);
 
       if (strcmp(acc->passwd, t->pw_expected))
         {

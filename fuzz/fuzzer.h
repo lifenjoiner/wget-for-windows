@@ -33,8 +33,10 @@
 	close(fd);
 
 #define RESTORE_STDERR \
-	dup2(bak, STDERR_FILENO); \
-	close(bak);
+	if (bak != -1) { \
+		dup2(bak, STDERR_FILENO); \
+		close(bak); \
+	}
 
 #ifdef __cplusplus
 extern "C"

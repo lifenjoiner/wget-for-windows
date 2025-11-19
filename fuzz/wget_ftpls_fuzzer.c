@@ -74,7 +74,7 @@ void exit_wget(int status)
 #ifndef RTLD_NEXT
 #define RTLD_NEXT RTLD_GLOBAL
 #endif
-void exit(int status)
+_Noreturn void exit(int status)
 {
 	if (do_jump) {
 		longjmp(jmpbuf, 1);
@@ -89,7 +89,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 #ifdef HAVE_FMEMOPEN
 	FILE *fp;
-	struct fileinfo *fi;
+	volatile struct fileinfo *fi;
 
 	if (size > 4096) // same as max_len = ... in .options file
 		return 0;
