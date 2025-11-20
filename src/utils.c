@@ -973,10 +973,11 @@ make_directory (const char *directory)
   char buf[1024];
   char *dir;
   size_t len = strlen (directory);
+  bool ext = len >= sizeof(buf);
 
   /* Make a copy of dir, to be able to write to it.  Otherwise, the
      function is unsafe if called with a read-only char *argument.  */
-  if (len < sizeof(buf))
+  if (!ext)
     {
       memcpy(buf, directory, len + 1);
       dir = buf;
@@ -1006,7 +1007,7 @@ make_directory (const char *directory)
         dir[i] = '/';
     }
 
-  if (dir != buf)
+  if (ext)
     xfree (dir);
 
   return ret;

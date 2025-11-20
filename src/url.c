@@ -1556,6 +1556,7 @@ append_url_pathel (const char *b, const char *e, bool escaped,
   int quoted, outlen;
   int mask;
   int max_length;
+  bool ext = false;
 
   if (!dest)
     return;
@@ -1574,7 +1575,8 @@ append_url_pathel (const char *b, const char *e, bool escaped,
   if (escaped)
     {
       size_t len = e - b;
-      if (len < sizeof (buf))
+      ext = len >= sizeof (buf);
+      if (!ext)
         unescaped = buf;
       else
         unescaped = xmalloc(len + 1);
@@ -1676,7 +1678,7 @@ append_url_pathel (const char *b, const char *e, bool escaped,
   TAIL_INCR (dest, outlen);
   append_null (dest);
 
-  if (unescaped && unescaped != buf)
+  if (ext)
     free (unescaped);
 }
 

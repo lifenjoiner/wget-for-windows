@@ -2250,8 +2250,9 @@ set_file_timestamp (struct http_stat *hs)
     {
       size_t filename_len = strlen (hs->local_file);
       char *filename_plus_orig_suffix;
+      bool ext = filename_len + sizeof (ORIG_SFX) >= sizeof (buf);
 
-      if (filename_len + sizeof (ORIG_SFX) > sizeof (buf))
+      if (ext)
         filename_plus_orig_suffix = xmalloc (filename_len + sizeof (ORIG_SFX));
       else
         filename_plus_orig_suffix = buf;
@@ -2275,6 +2276,10 @@ set_file_timestamp (struct http_stat *hs)
         {
           local_dot_orig_file_exists = true;
           local_filename = filename_plus_orig_suffix;
+        }
+      else if (ext)
+        {
+          xfree (filename_plus_orig_suffix);
         }
     }
 

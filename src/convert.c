@@ -543,11 +543,12 @@ write_backup_file (const char *file, downloaded_file_t downloaded_file_return)
       char buf[1024];
       size_t filename_len = strlen (file);
       char *filename_plus_orig_suffix;
+      bool ext = filename_len >= sizeof (buf) - 5;
 
-      if (filename_len < sizeof (buf) - 5)
-        filename_plus_orig_suffix = buf;
-      else
+      if (ext)
         filename_plus_orig_suffix = xmalloc (filename_len + 5 + 1);
+      else
+        filename_plus_orig_suffix = buf;
 
       /* TODO: hack this to work with css files */
       if (downloaded_file_return == FILE_DOWNLOADED_AND_HTML_EXTENSION_ADDED)
@@ -559,6 +560,7 @@ write_backup_file (const char *file, downloaded_file_t downloaded_file_return)
              at that stage that -E is going to cause us to tack on
              ".html", so we need to compare vs. the original URL plus
              ".orig", not the original URL plus ".html.orig". */
+          assert(filename_len > 4); // for analyzer
           memcpy (filename_plus_orig_suffix, file, filename_len - 4);
           memcpy (filename_plus_orig_suffix + filename_len - 4, "orig", 5);
         }
@@ -574,7 +576,7 @@ write_backup_file (const char *file, downloaded_file_t downloaded_file_return)
         logprintf (LOG_NOTQUIET, _("Cannot back up %s as %s: %s\n"),
                    file, filename_plus_orig_suffix, strerror (errno));
 
-      if (filename_plus_orig_suffix != buf)
+      if (ext)
         xfree (filename_plus_orig_suffix);
 
       /* Remember that we've already written a .orig backup for this file.
@@ -732,6 +734,7 @@ local_quote_string (const char *file, bool no_html_quote)
   char *newname, *to, *res;
   char buf[1024];
   size_t tolen;
+  bool ext;
 
   char *any = strpbrk (file, "?#%; ");
   if (!any)
@@ -740,10 +743,11 @@ local_quote_string (const char *file, bool no_html_quote)
   /* Allocate space assuming the worst-case scenario, each character
      having to be quoted.  */
   tolen = 3 * strlen (file);
-  if (tolen < sizeof (buf))
-    to = newname = buf;
-  else
+  ext = tolen >= sizeof (buf);
+  if (ext)
     to = newname = xmalloc (tolen + 1);
+  else
+    to = newname = buf;
 
   for (from = file; *from; from++)
     switch (*from)
@@ -782,14 +786,10 @@ local_quote_string (const char *file, bool no_html_quote)
       }
   *to = '\0';
 
-  if (newname == buf)
-    return no_html_quote ? strdup (newname) : html_quote_string (newname);
+  res = no_html_quote ? strdup (newname) : html_quote_string (newname);
+  if (ext)
+    xfree (newname);
 
-  if (no_html_quote)
-    return strdup (newname);
-
-  res = html_quote_string (newname);
-  xfree (newname);
   return res;
 }
 
@@ -1180,26 +1180,28 @@ downloaded_files_free (void)
 
    No other entities are recognized or replaced.  */
 char *
-html_quote_string (const char *s)
+html_quote_string (const char *str)
 {
-  const char *b = s;
+  const char *s = str;
   char *p, *res;
   int i;
 
   /* Pass through the string, and count the new size.  */
-  for (i = 0; *s; s++, i++)
+  for (i = 0; *s; s++)
     {
       if (*s == '&')
-        i += 4;                 /* `amp;' */
+        i += 5;                 /* `&amp;' */
       else if (*s == '<' || *s == '>')
-        i += 3;                 /* `lt;' and `gt;' */
+        i += 4;                 /* `&lt;' and `&gt;' */
       else if (*s == '\"')
-        i += 5;                 /* `quot;' */
+        i += 6;                 /* `&quot;' */
       else if (*s == ' ')
-        i += 4;                 /* #32; */
+        i += 5;                 /* &#32; */
+      else
+        i++;
     }
   res = xmalloc (i + 1);
-  s = b;
+  s = str;
   for (p = res; *s; s++)
     {
       switch (*s)
