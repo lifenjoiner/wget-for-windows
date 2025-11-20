@@ -1182,12 +1182,12 @@ downloaded_files_free (void)
 char *
 html_quote_string (const char *str)
 {
-  const char *s = str;
+  const char *s;
   char *p, *res;
-  int i;
+  int i = 0;
 
   /* Pass through the string, and count the new size.  */
-  for (i = 0; *s; s++)
+  for (s = str; *s; s++)
     {
       if (*s == '&')
         i += 5;                 /* `&amp;' */
@@ -1201,8 +1201,8 @@ html_quote_string (const char *str)
         i++;
     }
   res = xmalloc (i + 1);
-  s = str;
-  for (p = res; *s; s++)
+  p = res;
+  for (s = str; *s; s++)
     {
       switch (*s)
         {
