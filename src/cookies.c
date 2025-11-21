@@ -742,11 +742,12 @@ cookie_handle_set_cookie (struct cookie_jar *jar,
   cookies_now = time (NULL);
   char buf[1024], *tmp;
   size_t pathlen = strlen(path);
+  bool ext = pathlen >= sizeof (buf) - 1;
 
   /* Wget's paths don't begin with '/' (blame rfc1808), but cookie
      usage assumes /-prefixed paths.  Until the rest of Wget is fixed,
      simply prepend slash to PATH.  */
-  if (pathlen < sizeof (buf) - 1)
+  if (!ext)
     tmp = buf;
   else
     tmp = xmalloc (pathlen + 2);
@@ -815,14 +816,14 @@ cookie_handle_set_cookie (struct cookie_jar *jar,
     }
 
   store_cookie (jar, cookie);
-  if (tmp != buf)
+  if (ext)
     xfree (tmp);
   return;
 
  out:
   if (cookie)
     delete_cookie (cookie);
-  if (tmp != buf)
+  if (ext)
     xfree (tmp);
 }
 

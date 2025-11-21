@@ -551,7 +551,8 @@ write_backup_file (const char *file, downloaded_file_t downloaded_file_return)
         filename_plus_orig_suffix = buf;
 
       /* TODO: hack this to work with css files */
-      if (downloaded_file_return == FILE_DOWNLOADED_AND_HTML_EXTENSION_ADDED)
+      if (downloaded_file_return == FILE_DOWNLOADED_AND_HTML_EXTENSION_ADDED
+          && filename_len > 4) /* explict, for analyzer */
         {
           /* Just write "orig" over "html".  We need to do it this way
              because when we're checking to see if we've downloaded the
@@ -560,9 +561,9 @@ write_backup_file (const char *file, downloaded_file_t downloaded_file_return)
              at that stage that -E is going to cause us to tack on
              ".html", so we need to compare vs. the original URL plus
              ".orig", not the original URL plus ".html.orig". */
-          assert(filename_len > 4); // for analyzer
-          memcpy (filename_plus_orig_suffix, file, filename_len - 4);
-          memcpy (filename_plus_orig_suffix + filename_len - 4, "orig", 5);
+          long base_len = (long)filename_len - 4; /* for analyzer */
+          memcpy (filename_plus_orig_suffix, file, base_len);
+          memcpy (filename_plus_orig_suffix + base_len, "orig", 5);
         }
       else /* downloaded_file_return == FILE_DOWNLOADED_NORMALLY */
         {
@@ -1163,29 +1164,13 @@ downloaded_files_free (void)
 }
 #endif
 
-/* The function returns the pointer to the malloc-ed quoted version of
-   string s.  It will recognize and quote numeric and special graphic
-   entities, as per RFC1866:
-
-   `&' -> `&amp;'
-   `<' -> `&lt;'
-   `>' -> `&gt;'
-   `"' -> `&quot;'
-   SP  -> `&#32;'
-
-   No other entities are recognized or replaced.  */
-char *
-html_quote_string (const char *str)
+/* Pass through the string, and count the new size.  */
+size_t
+html_quote_string_size (const char *s)
 {
-  const char *s;
-  char *p, *res;
-  int i = 0;
+  size_t i = 0;
 
-  if (!str)
-    return NULL;
-
-  /* Pass through the string, and count the new size.  */
-  for (s = str; *s; s++)
+  for (; *s; s++)
     {
       if (*s == '&')
         i += 5;                 /* `&amp;' */
@@ -1198,13 +1183,29 @@ html_quote_string (const char *str)
       else
         i++;
     }
-  // avoid analyzer assumes false for the 1st loop but true for the 2nd
-  if (i == 0)
-    return NULL;
+  return i;
+}
+
+/* The function returns the pointer to the malloc-ed quoted version of
+   string s.  It will recognize and quote numeric and special graphic
+   entities, as per RFC1866:
+
+   `&' -> `&amp;'
+   `<' -> `&lt;'
+   `>' -> `&gt;'
+   `"' -> `&quot;'
+   SP  -> `&#32;'
+
+   No other entities are recognized or replaced.  */
+char *
+html_quote_string (const char *s)
+{
+  char *p, *res;
+  size_t i = html_quote_string_size (s);
 
   res = xmalloc (i + 1);
   p = res;
-  for (s = str; *s; s++)
+  for (; *s; s++)
     {
       switch (*s)
         {
