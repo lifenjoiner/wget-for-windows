@@ -753,31 +753,26 @@ local_quote_string (const char *file, bool no_html_quote)
     switch (*from)
       {
       case '%':
-        *to++ = '%';
-        *to++ = '2';
-        *to++ = '5';
+        memcpy(to, "%25", 3);
+        to += 3;
         break;
       case '#':
-        *to++ = '%';
-        *to++ = '2';
-        *to++ = '3';
+        memcpy(to, "%23", 3);
+        to += 3;
         break;
       case ';':
-        *to++ = '%';
-        *to++ = '3';
-        *to++ = 'B';
+        memcpy(to, "%3B", 3);
+        to += 3;
         break;
       case ' ':
-        *to++ = '%';
-        *to++ = '2';
-        *to++ = '0';
+        memcpy(to, "%20", 3);
+        to += 3;
         break;
       case '?':
         if (opt.adjust_extension)
           {
-            *to++ = '%';
-            *to++ = '3';
-            *to++ = 'F';
+            memcpy(to, "%3F", 3);
+            to += 3;
             break;
           }
         /* fallthrough */
@@ -1186,6 +1181,9 @@ html_quote_string (const char *str)
   char *p, *res;
   int i = 0;
 
+  if (!str)
+    return NULL;
+
   /* Pass through the string, and count the new size.  */
   for (s = str; *s; s++)
     {
@@ -1200,6 +1198,10 @@ html_quote_string (const char *str)
       else
         i++;
     }
+  // avoid analyzer assumes false for the 1st loop but true for the 2nd
+  if (i == 0)
+    return NULL;
+
   res = xmalloc (i + 1);
   p = res;
   for (s = str; *s; s++)
@@ -1207,32 +1209,24 @@ html_quote_string (const char *str)
       switch (*s)
         {
         case '&':
-          *p++ = '&';
-          *p++ = 'a';
-          *p++ = 'm';
-          *p++ = 'p';
-          *p++ = ';';
+          memcpy(p, "&amp;", 5);
+          p += 5;
           break;
-        case '<': case '>':
-          *p++ = '&';
-          *p++ = (*s == '<' ? 'l' : 'g');
-          *p++ = 't';
-          *p++ = ';';
+        case '<':
+          memcpy(p, "&lt;", 4);
+          p += 4;
+          break;
+        case '>':
+          memcpy(p, "&gt;", 4);
+          p += 4;
           break;
         case '\"':
-          *p++ = '&';
-          *p++ = 'q';
-          *p++ = 'u';
-          *p++ = 'o';
-          *p++ = 't';
-          *p++ = ';';
+          memcpy(p, "&quot;", 6);
+          p += 6;
           break;
         case ' ':
-          *p++ = '&';
-          *p++ = '#';
-          *p++ = '3';
-          *p++ = '2';
-          *p++ = ';';
+          memcpy(p, "&#32;", 5);
+          p += 5;
           break;
         default:
           *p++ = *s;
