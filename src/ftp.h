@@ -83,7 +83,7 @@ uerr_t ftp_lpsv (int, ip_address *, int *);
 uerr_t ftp_eprt (int, int *);
 uerr_t ftp_epsv (int, ip_address *, int *);
 #endif
-uerr_t ftp_type (int, int);
+uerr_t ftp_type (int, char);
 uerr_t ftp_cwd (int, const char *);
 uerr_t ftp_retr (int, const char *);
 uerr_t ftp_rest (int, wgint);

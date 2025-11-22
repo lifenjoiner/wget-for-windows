@@ -942,7 +942,7 @@ ftp_epsv (int csock, ip_address *ip, int *port)
 
 /* Sends the TYPE request to the server.  */
 uerr_t
-ftp_type (int csock, int type)
+ftp_type (int csock, char type)
 {
   char *request, *respline;
   int nwritten;
