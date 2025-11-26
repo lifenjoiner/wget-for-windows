@@ -588,8 +588,7 @@ ftp_prot (int csock, enum prot_level prot)
   /* value must be a single character value */
   char value[2];
 
-  value[0] = prot;
-  value[1] = '\0';
+  snprintf (value, 2, "%c", prot);
 
   request = ftp_request ("PROT", value);
   written = fd_write (csock, request, strlen (request), -1);
@@ -950,8 +949,7 @@ ftp_type (int csock, char type)
   char stype[2];
 
   /* Construct argument.  */
-  stype[0] = type;
-  stype[1] = 0;
+  snprintf (stype, 2, "%c", type);
   /* Send TYPE request.  */
   request = ftp_request ("TYPE", stype);
   nwritten = fd_write (csock, request, strlen (request), -1);
