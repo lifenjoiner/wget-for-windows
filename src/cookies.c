@@ -357,7 +357,7 @@ parse_set_cookie (const char *set_cookie, bool silent)
   struct cookie *cookie = cookie_new ();
   param_token name, value;
 
-  if (!extract_param (&ptr, &name, &value, ';', NULL))
+  if (!extract_param (&ptr, ptr + strlen(ptr), &name, &value, ';', NULL))
     goto error;
   if (!value.b)
     goto error;
@@ -371,7 +371,7 @@ parse_set_cookie (const char *set_cookie, bool silent)
   cookie->attr = strdupdelim (name.b, name.e);
   cookie->value = strdupdelim (value.b, value.e);
 
-  while (extract_param (&ptr, &name, &value, ';', NULL))
+  while (extract_param (&ptr, ptr + strlen(ptr), &name, &value, ';', NULL))
     {
       if (TOKEN_IS (name, "domain"))
         {
