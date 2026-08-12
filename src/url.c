@@ -1965,22 +1965,32 @@ path_simplify (enum url_scheme scheme, char *path)
         regular:
           /* A regular path element.  If H hasn't advanced past T,
              simply skip to the next path element.  Otherwise, copy
-             the path element until the next slash.  */
+             the path element until the next slash. */
           if (t == h)
             {
-              /* Skip the path element, including the slash.  */
+              /* Skip the path element, including the slash. */
               while (h < end && *h != '/')
                 t++, h++;
               if (h < end)
-                t++, h++;
+                {
+                  t++, h++;
+                  /* skip consecutive slashes */
+                  while (h < end && *h == '/')
+                    h++;
+                }
             }
           else
             {
-              /* Copy the path element, including the final slash.  */
+              /* Copy the path element, including the final slash. */
               while (h < end && *h != '/')
                 *t++ = *h++;
               if (h < end)
-                *t++ = *h++;
+                {
+                  *t++ = *h++; /* copy one slash */
+                  /* skip consecutive slashes */
+                  while (h < end && *h == '/')
+                    h++;
+                }
             }
         }
     }
@@ -2424,6 +2434,7 @@ run_test (const char *test, const char *expected_result, enum url_scheme scheme,
     {
       printf ("Failed path_simplify(\"%s\"): expected \"%s\", got \"%s\".\n",
               test, expected_result, test_copy);
+      xfree (test_copy);
       mu_assert ("", 0);
     }
   if (modified != expected_change)
@@ -2457,7 +2468,6 @@ test_path_simplify (void)
     { "../",                    "../",          SCHEME_FTP,  false },
     { "foo",                    "foo",          SCHEME_HTTP, false },
     { "foo/bar",                "foo/bar",      SCHEME_HTTP, false },
-    { "foo///bar",              "foo///bar",    SCHEME_HTTP, false },
     { "foo/.",                  "foo/",         SCHEME_HTTP, true },
     { "foo/./",                 "foo/",         SCHEME_HTTP, true },
     { "foo./",                  "foo./",        SCHEME_HTTP, false },
@@ -2474,7 +2484,11 @@ test_path_simplify (void)
     { "foo/../../..",           "../..",        SCHEME_FTP,  true },
     { "foo/../../bar/../../baz", "../../baz",   SCHEME_FTP,  true },
     { "a/b/../../c",            "c",            SCHEME_HTTP, true },
-    { "./a/../b",               "b",            SCHEME_HTTP, true }
+    { "./a/../b",               "b",            SCHEME_HTTP, true },
+    { "foo///bar",              "foo/bar",      SCHEME_HTTP, true },
+    { "///foo///bar",           "/foo/bar",     SCHEME_HTTP, true },
+    { "foo//bar//",             "foo/bar/",     SCHEME_HTTP, true },
+    { "1/..//4/4/rfc2858.htm",  "/4/4/rfc2858.htm", SCHEME_HTTP, true }
   };
   unsigned i;
 
