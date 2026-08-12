@@ -949,7 +949,7 @@ parse_content_range (const char *hdr, wgint *first_byte_ptr,
     return false;
 
   errno = 0;
-  num = strtol(hdr, &end, 10);
+  num = strtoll(hdr, &end, 10);
   if (errno == ERANGE)
     return false;
   hdr = end;
@@ -959,7 +959,7 @@ parse_content_range (const char *hdr, wgint *first_byte_ptr,
   *first_byte_ptr = num;
 
   errno = 0;
-  num = strtol(hdr, &end, 10);
+  num = strtoll(hdr, &end, 10);
   if (errno == ERANGE)
     return false;
   hdr = end;
@@ -976,7 +976,7 @@ parse_content_range (const char *hdr, wgint *first_byte_ptr,
   else
     {
       errno = 0;
-      num = strtol(hdr, NULL, 10);
+      num = strtoll(hdr, NULL, 10);
       if (errno == ERANGE)
         return false;
     }
