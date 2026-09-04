@@ -59,6 +59,7 @@ DEFAULT_TESTS = \
   Test-k.py                                       \
   Test-missing-scheme-retval.py                   \
   Test-O.py                                       \
+  Test-picture.py                                 \
   Test-pinnedpubkey-der-https.py                  \
   Test-pinnedpubkey-der-no-check-https.py         \
   Test-pinnedpubkey-hash-https.py                 \
