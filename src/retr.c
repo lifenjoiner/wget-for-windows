@@ -1556,7 +1556,7 @@ getproxy (struct url *u)
   if (rewritten_url)
     return rewritten_url;
 
-  return strdup(proxy);
+  return xstrdup(proxy);
 }
 
 /* Returns true if URL would be downloaded through a proxy. */
