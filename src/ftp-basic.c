@@ -1229,7 +1229,7 @@ ftp_syst (int csock, enum stype *server_type, enum ustype *unix_type)
       return FTPSRVERR;
     }
 
-  ftp_last_respline = strdup (respline);
+  ftp_last_respline = xstrdup (respline);
 
   /* Skip the number (215, but 200 (!!!) in case of VMS) */
   strtok (respline, " ");
