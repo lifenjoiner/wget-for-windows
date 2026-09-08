@@ -1006,7 +1006,7 @@ warc_process_cdx_line (char *lineptr, int field_num_original_url,
         val = NULL;
 
       if (val != NULL)
-        *val = strdup (token);
+        *val = xstrdup (token);
 
       token = strtok_r (NULL, CDX_FIELDSEP, &save_ptr);
       field_num++;
@@ -1396,7 +1396,7 @@ warc_write_cdx_record (const char *url, const char *timestamp_str,
   if (mime_type == NULL || strlen(mime_type) == 0)
     mime_type = "-";
   if (redirect_location == NULL || strlen(redirect_location) == 0)
-    tmp_location = strdup ("-");
+    tmp_location = xstrdup ("-");
   else
     tmp_location = url_escape(redirect_location);
 
