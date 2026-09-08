@@ -751,7 +751,7 @@ local_quote_string (const char *file, bool no_html_quote)
 
   char *any = strpbrk (file, "?#%; ");
   if (!any)
-    return no_html_quote ? strdup (file) : html_quote_string (file);
+    return no_html_quote ? xstrdup (file) : html_quote_string (file);
 
   /* Allocate space assuming the worst-case scenario, each character
      having to be quoted.  */
@@ -799,7 +799,7 @@ local_quote_string (const char *file, bool no_html_quote)
   *to = '\0';
 
   if (newname == buf)
-    return no_html_quote ? strdup (newname) : html_quote_string (newname);
+    return no_html_quote ? xstrdup (newname) : html_quote_string (newname);
 
   if (no_html_quote)
     return newname;
