@@ -2769,7 +2769,7 @@ get_max_length (const char *path, int length, int name)
   char *p, *d;
 
   /* Make a copy of the path that we can modify. */
-  p = path ? strdupdelim (path, path + length) : strdup ("");
+  p = path ? strdupdelim (path, path + length) : xstrdup ("");
 
   for (;;)
     {
