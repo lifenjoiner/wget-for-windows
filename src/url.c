@@ -1347,8 +1347,12 @@ tail(struct growable *g)
 static void
 append_null (struct growable *dest)
 {
+  /* GCC analyzer false positive. */
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wanalyzer-null-dereference"
   GROW (dest, 1);
   *tail (dest) = 0;
+  #pragma GCC diagnostic pop
 }
 
 /* Append CH to DEST. */
@@ -1479,6 +1483,7 @@ append_uri_pathel (const char *b, const char *e, bool escaped,
   const char *p;
   char buf[1024];
   char *unescaped = NULL;
+  bool unescaped_allocated = false;
   int quoted, outlen;
   int mask;
   int max_length;
@@ -1500,13 +1505,16 @@ append_uri_pathel (const char *b, const char *e, bool escaped,
   if (escaped)
     {
       size_t len = e - b;
-		if (len < sizeof (buf))
+      if (len < sizeof (buf))
         unescaped = buf;
       else
-        unescaped = xmalloc(len + 1);
+        {
+          unescaped = xmalloc(len + 1);
+          unescaped_allocated = true;
+        }
 
-		memcpy(unescaped, b, len);
-		unescaped[len] = 0;
+      memcpy(unescaped, b, len);
+      unescaped[len] = 0;
 
       url_unescape (unescaped);
       b = unescaped;
@@ -1549,7 +1557,11 @@ append_uri_pathel (const char *b, const char *e, bool escaped,
   // This should not happen, but it's impossible to argue with static analysis that it can't happen
   // (in theory it can). So give static analyzers a hint.
   if (!dest->base)
-    return;
+    {
+      if (unescaped_allocated)
+        xfree (unescaped);
+      return;
+    }
 
   if (!quoted)
     {
@@ -1602,8 +1614,8 @@ append_uri_pathel (const char *b, const char *e, bool escaped,
   TAIL_INCR (dest, outlen);
   append_null (dest);
 
-  if (unescaped && unescaped != buf)
-	  free (unescaped);
+  if (unescaped_allocated)
+    xfree (unescaped);
 }
 
 #ifdef HAVE_ICONV
@@ -1624,6 +1636,10 @@ convert_fname (char *fname)
   if (!to_encoding)
     to_encoding = nl_langinfo (CODESET);
 
+  /* GCC analyzer doesn't understand that iconv_open returns (iconv_t)(-1) on error
+     without allocating a descriptor. Suppress false positive leak warning. */
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
   cd = iconv_open (to_encoding, from_encoding);
   if (cd == (iconv_t) (-1))
     {
@@ -1631,6 +1647,7 @@ convert_fname (char *fname)
                  quote_n (0, from_encoding), quote_n (1, to_encoding));
       return fname;
     }
+  #pragma GCC diagnostic pop
 
   orig_fname = fname;
   inlen = strlen (fname);
@@ -1644,11 +1661,10 @@ convert_fname (char *fname)
           && iconv (cd, NULL, NULL, &s, &outlen) == 0)
         {
           *s = '\0';
-          iconv_close (cd);
           DEBUGP (("Converted file name '%s' (%s) -> '%s' (%s)\n",
                    orig_fname, from_encoding, converted_fname, to_encoding));
           xfree (orig_fname);
-          return converted_fname;
+          break;
         }
 
       /* Incomplete or invalid multibyte sequence */
@@ -1746,25 +1762,16 @@ append_dir_structure (const struct url *u, struct growable *dest)
 char *
 url_file_name (const struct url *u, char *replaced_filename)
 {
-  struct growable fnres;        /* stands for "file name result" */
-  struct growable temp_fnres;
+  struct growable fnres = { NULL, 0, 0 };        /* stands for "file name result" */
+  struct growable temp_fnres = { NULL, 0, 0 };
 
   const char *u_file;
   char *fname, *unique, *fname_len_check;
   const char *index_filename = "index.html"; /* The default index file is index.html */
 
-  fnres.base = NULL;
-  fnres.size = 0;
-  fnres.tail = 0;
-
-  temp_fnres.base = NULL;
-  temp_fnres.size = 0;
-  temp_fnres.tail = 0;
-
   /* If an alternative index file was defined, change index_filename */
   if (opt.default_page)
     index_filename = opt.default_page;
-
 
   /* Start with the directory prefix, if specified. */
   if (opt.dir_prefix)
