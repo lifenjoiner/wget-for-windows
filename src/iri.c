@@ -376,7 +376,7 @@ remote_to_utf8 (const struct iri *iri, const char *str, char **new)
       for (p = (unsigned char *) str; *p; p++)
         if (*p > 127)
           {
-            *new = strdup (str);
+            *new = xstrdup (str);
             return true;
           }
       return false;
