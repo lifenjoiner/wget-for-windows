@@ -134,6 +134,10 @@ do_conversion (const char *tocode, const char *fromcode, char const *in_org, siz
   int invalid = 0;
   char *s, *in, *in_save;
 
+  /* GCC analyzer doesn't understand that iconv_open returns (iconv_t)(-1) on error
+     without allocating a descriptor. Suppress false positive leak warning. */
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wanalyzer-malloc-leak"
   cd = iconv_open (tocode, fromcode);
   if (cd == (iconv_t)(-1))
     {
@@ -142,6 +146,7 @@ do_conversion (const char *tocode, const char *fromcode, char const *in_org, siz
       *out = NULL;
       return false;
     }
+  #pragma GCC diagnostic pop
 
   /* iconv() has to work on an unescaped string */
   in_save = in = xstrndup (in_org, inlen);
