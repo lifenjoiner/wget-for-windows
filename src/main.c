@@ -1156,6 +1156,8 @@ run_use_askpass (char *question, char **answer)
     bytes = p - tmp;
 
   *answer = xmemdup0 (tmp, bytes);
+
+  close (com[0]);
 }
 
 /* set the user name and password*/
