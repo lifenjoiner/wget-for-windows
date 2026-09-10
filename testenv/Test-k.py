@@ -53,7 +53,7 @@ SubSite = WgetFile("site;sub:.html", site)
 LocalIndexPage = WgetFile("index.html", converted)
 
 print(platform.system())
-restrict = "unix" if platform.system() in ["Linux", "Darwin"] else "windows"
+restrict = "unix" if platform.system() in ["GNU", "Linux", "Darwin"] else "windows"
 
 WGET_OPTIONS = f"-k -r -nH --restrict-file-names={restrict}"
 WGET_URLS = [["index.html"]]
