@@ -1080,15 +1080,17 @@ retrieve_url (struct url * orig_parsed, const char *origurl, char **file,
 
       xfree (url);
       url = mynewloc;
+
+      /* Scope sensitive user-provided headers to the initial origin.  An
+         origin consists of scheme, host, and port (RFC 6454).  Compute this
+         before freeing an intermediate URL.  */
+      location_changed = (orig_parsed->scheme != newloc_parsed->scheme
+                          || strcasecmp (orig_parsed->host,
+                                         newloc_parsed->host) != 0
+                          || orig_parsed->port != newloc_parsed->port);
+
       if (orig_parsed != u)
-        {
-          url_free (u);
-        }
-      /* location_changed is true only when redirecting to a different
-         server (different hostname or port), so that Authorization and
-         Cookie headers are preserved for same-server redirects. */
-      location_changed = (strcasecmp (u->host, newloc_parsed->host) != 0
-                          || u->port != newloc_parsed->port);
+        url_free (u);
 
       u = newloc_parsed;
 
