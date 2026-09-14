@@ -31,6 +31,8 @@ as that of the covered work.  */
 #ifndef IRI_H
 #define IRI_H
 
+#include "wget.h"
+
 struct iri {
   char *uri_encoding;      /* Encoding of the uri to fetch */
   char *content_encoding;  /* Encoding of links inside the fetched file */
@@ -40,16 +42,22 @@ struct iri {
 
 #ifdef ENABLE_IRI
 
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *parse_charset (const char *str);
 const char *find_locale (void);
 bool check_encoding_name (const char *encoding);
 const char *locale_to_utf8 (const char *str);
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *idn_encode (const struct iri *i, const char *host);
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *idn_decode (const char *host);
 bool remote_to_utf8 (const struct iri *i, const char *str, char **newstr);
-struct iri *iri_new (void);
-struct iri *iri_dup (const struct iri *);
+ATTRIBUTE_OWNERSHIP_TAKES(malloc, 1)
 void iri_free (struct iri *i);
+ATTRIBUTE_DEALLOC(iri_free, 1)
+struct iri *iri_new (void);
+ATTRIBUTE_DEALLOC(iri_free, 1)
+struct iri *iri_dup (const struct iri *);
 void set_uri_encoding (struct iri *i, const char *charset, bool force);
 void set_content_encoding (struct iri *i, const char *charset);
 

@@ -34,8 +34,10 @@ as that of the covered work.  */
 struct ptimer;                  /* forward declaration; all struct
                                    members are private */
 
-struct ptimer *ptimer_new (void);
+ATTRIBUTE_OWNERSHIP_TAKES(malloc, 1)
 void ptimer_destroy (struct ptimer *);
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC(ptimer_destroy, 1)
+struct ptimer *ptimer_new (void);
 
 void ptimer_reset (struct ptimer *);
 double ptimer_measure (struct ptimer *);

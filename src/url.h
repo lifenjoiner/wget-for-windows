@@ -47,6 +47,8 @@ as that of the covered work.  */
  * file descriptor. */
 #define CHOMP_BUFFER 19
 
+#include "wget.h"
+
 /* The flags that allow clobbering the file (opening with "wb").
    Defined here to avoid repetition later.  #### This will require
    rework.  */
@@ -102,17 +104,28 @@ struct url
 
 /* Function declarations */
 
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *url_escape (const char *);
+
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *url_escape_unsafe_and_reserved (const char *);
+
 void url_unescape (char *);
 void url_unescape_except_reserved (char *);
 
+ATTRIBUTE_OWNERSHIP_TAKES(malloc, 1)
+void url_free (struct url *);
+
+ATTRIBUTE_DEALLOC(url_free, 1)
 struct url *url_parse (const char *, int *, struct iri *iri, bool percent_encode);
+
 const char *url_error (int);
+
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *url_full_path (const struct url *);
+
 void url_set_dir (struct url *, const char *);
 void url_set_file (struct url *, const char *);
-void url_free (struct url *);
 
 enum url_scheme url_scheme (const char *);
 bool url_has_scheme (const char *);
@@ -121,14 +134,20 @@ int scheme_default_port (enum url_scheme);
 void scheme_disable (enum url_scheme);
 const char *scheme_leading_string (enum url_scheme);
 
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *url_string (const struct url *, enum url_auth_mode);
+
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *url_file_name (const struct url *, char *);
 
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *uri_merge (const char *, const char *);
 
 int mkalldirs (const char *);
 
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *maybe_prepend_scheme (const char *);
+
 bool schemes_are_similar_p (enum url_scheme a, enum url_scheme b);
 
 bool are_urls_equal (const char *u1, const char *u2);

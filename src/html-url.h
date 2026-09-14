@@ -48,11 +48,16 @@ struct map_context {
   struct urlpos *head;          /* List of URLs that is being built. */
 };
 
-struct urlpos *get_urls_file (const char *, bool *);
-struct urlpos *get_urls_html (const char *, const char *, bool *, struct iri *);
-struct urlpos *get_urls_html_fm (const char *, const struct file_memory *, const char *, bool *, struct iri *);
-struct urlpos *append_url (const char *, int, int, struct map_context *);
+ATTRIBUTE_OWNERSHIP_TAKES(malloc, 1)
 void free_urlpos (struct urlpos *);
+ATTRIBUTE_DEALLOC(free_urlpos, 1)
+struct urlpos *get_urls_file (const char *, bool *);
+ATTRIBUTE_DEALLOC(free_urlpos, 1)
+struct urlpos *get_urls_html (const char *, const char *, bool *, struct iri *);
+ATTRIBUTE_DEALLOC(free_urlpos, 1)
+struct urlpos *get_urls_html_fm (const char *, const struct file_memory *, const char *, bool *, struct iri *);
+ATTRIBUTE_DEALLOC(free_urlpos, 1)
+struct urlpos *append_url (const char *, int, int, struct map_context *);
 void cleanup_html_url (void);
 
 #endif /* HTML_URL_H */

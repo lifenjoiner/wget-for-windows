@@ -714,6 +714,14 @@ static const char *parse_errors[] = {
   [PE_INVALID_IPV6_ADDRESS] = N_("Invalid IPv6 numeric address")
 };
 
+/* This wrapper suppresses a -Wmismatched-dealloc,
+   which is triggered by calling url_free() inside url_parse(). */
+static struct url *
+url_new(void)
+{
+    return xnew0(struct url);
+}
+
 /* Parse a URL.
 
    Return a new struct url if successful, NULL on error.  In case of
@@ -929,7 +937,7 @@ url_parse (const char *url, int *error, struct iri *iri, bool percent_encode)
         }
     }
 
-  u = xnew0 (struct url);
+  u = url_new ();
   u->scheme = scheme;
   u->host   = strdupdelim (host_b, host_e);
   u->port   = port;

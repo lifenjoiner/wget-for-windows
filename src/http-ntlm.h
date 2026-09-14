@@ -49,5 +49,6 @@ struct ntlmdata {
 bool ntlm_input (struct ntlmdata *, const char *);
 
 /* this is for creating ntlm header output */
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *ntlm_output (struct ntlmdata *, const char *, const char *, bool *);
 #endif
