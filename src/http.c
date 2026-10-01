@@ -5467,6 +5467,15 @@ test_parse_range_header (void)
       { "bytes 42-1233/*", 42, 1233, -1, true },
       { "bytes 0-2147483648/2147483649", 0, 2147483648U, 2147483649U, true },
       { "bytes 2147483648-4294967296/4294967297", 2147483648U, 4294967296ULL, 4294967297ULL, true },
+      /* An entity-length that overflows wgint must be rejected rather
+         than silently wrapped: parse_content_range() parses it with
+         strtoll() and returns false on ERANGE.  Before that fix the
+         value "99999999999999999999" wrapped to a bogus positive
+         number and the function returned true (CVE-2026-58470).  The
+         expected first/last/length match the values the function leaves
+         in the output pointers, which this harness reuses across
+         iterations without resetting. */
+      { "bytes 0-1000/99999999999999999999", 0, 1000, 4294967297ULL, false },
   };
 
   wgint firstbyteptr[sizeof(wgint)];
