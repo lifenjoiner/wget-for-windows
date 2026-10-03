@@ -35,7 +35,7 @@ as that of the covered work.  */
 
 struct url;
 
-uerr_t http_loop (const struct url *, struct url *, char **, char **, const char *,
+uerr_t http_loop (struct url *, struct url *, char **, char **, const char *,
                   int *, struct url *, bool);
 void save_cookies (void);
 void http_cleanup (void);

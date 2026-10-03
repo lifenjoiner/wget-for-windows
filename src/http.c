@@ -3242,7 +3242,7 @@ unredirectable_headerline(const char *line)
    If PROXY is non-NULL, the connection will be made to the proxy
    server, and u->url will be requested.  */
 static uerr_t
-gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
+gethttp (struct url *u, struct url *original_url, struct http_stat *hs,
          int *dt, struct url *proxy, int count, bool location_changed)
 {
   struct request *req = NULL;
@@ -4315,7 +4315,7 @@ check_retry_on_http_error (const int statcode)
 /* The genuine HTTP loop!  This is the part where the retrieval is
    retried, and retried, and retried, and...  */
 uerr_t
-http_loop (const struct url *u, struct url *original_url, char **newloc,
+http_loop (struct url *u, struct url *original_url, char **newloc,
            char **local_file, const char *referer, int *dt, struct url *proxy,
            bool location_changed)
 {
