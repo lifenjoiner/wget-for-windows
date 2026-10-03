@@ -135,19 +135,10 @@ void * hash_buffer(ALG_ID id, const void *buffer, unsigned int len, void *digest
     return hash_final(&ctx, digest);
 }
 
-// the following needs gnulib
-
-#include "af_alg.h"
-
 int hash_stream(ALG_ID id, char *alg, FILE *stream, void *digest, size_t hashlen) {
     CRYPT_CTX ctx;
     char *buffer;
     size_t sum, n;
-
-    switch (afalg_stream(stream, alg, digest, hashlen)) {
-    case 0: return 0;
-    case -EIO: return 1;
-    }
 
     buffer = malloc(BLOCKSIZE + 72);
     if (!buffer) return 1;
