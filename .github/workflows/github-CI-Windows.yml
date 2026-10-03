@@ -50,6 +50,7 @@ jobs:
       uses: msys2/setup-msys2@v2
       with:
         msystem: ${{matrix.sys}}
+        suppress-deprecation-warnings: msystem-mingw32 msystem-mingw64
         release: false
         path-type: inherit
         # `AX_CODE_COVERAGE` requires autoconf-archive: https://github.com/google/oss-fuzz/pull/5379/files
