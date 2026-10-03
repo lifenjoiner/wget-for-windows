@@ -952,7 +952,7 @@ parse_content_range (const char *hdr, wgint *first_byte_ptr,
     return false;
 
   errno = 0;
-  num = strtol(hdr, &end, 10);
+  num = str_to_wgint (hdr, &end, 10);
   if (errno == ERANGE)
     return false;
   hdr = end;
@@ -962,7 +962,7 @@ parse_content_range (const char *hdr, wgint *first_byte_ptr,
   *first_byte_ptr = num;
 
   errno = 0;
-  num = strtol(hdr, &end, 10);
+  num = str_to_wgint (hdr, &end, 10);
   if (errno == ERANGE)
     return false;
   hdr = end;
@@ -979,7 +979,7 @@ parse_content_range (const char *hdr, wgint *first_byte_ptr,
   else
     {
       errno = 0;
-      num = strtol(hdr, NULL, 10);
+      num = str_to_wgint (hdr, NULL, 10);
       if (errno == ERANGE)
         return false;
     }
@@ -5527,17 +5527,17 @@ test_parse_range_header (void)
       { "bytes 2147483648-4294967296/4294967297", 2147483648U, 4294967296ULL, 4294967297ULL, true },
   };
 
-  wgint firstbyteptr[sizeof(wgint)];
-  wgint lastbyteptr[sizeof(wgint)];
-  wgint lengthptr[sizeof(wgint)];
+  wgint firstbyteptr[1];
+  wgint lastbyteptr[1];
+  wgint lengthptr[1];
   bool result;
   for (i = 0; i < countof (test_array); i++)
     {
       result = parse_content_range (test_array[i].rangehdr, firstbyteptr, lastbyteptr, lengthptr);
 #if 0
-      printf ("%ld %ld\n", test_array[i].firstbyte, *firstbyteptr);
-      printf ("%ld %ld\n", test_array[i].lastbyte, *lastbyteptr);
-      printf ("%ld %ld\n", test_array[i].length, *lengthptr);
+      printf ("%lld %lld\n", test_array[i].firstbyte, *firstbyteptr);
+      printf ("%lld %lld\n", test_array[i].lastbyte, *lastbyteptr);
+      printf ("%lld %lld\n", test_array[i].length, *lengthptr);
       printf ("\n");
 #endif
       mu_assert ("test_parse_range_header: False Negative", result == test_array[i].shouldPass);
