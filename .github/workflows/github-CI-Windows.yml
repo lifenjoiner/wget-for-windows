@@ -65,6 +65,7 @@ jobs:
           automake
           autoconf-archive
           perl-libwww
+          texinfo
           libcares-devel
           mingw-w64-${{matrix.env}}-gcc
           mingw-w64-${{matrix.env}}-expat
