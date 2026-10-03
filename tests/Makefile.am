@@ -1,6 +1,6 @@
 # Makefile for `wget' utility
-# Copyright (C) 1995-2011, 2015, 2018-2024 Free Software Foundation,
-# Inc.
+# Copyright (C) 1995-2011, 2015, 2018-2024, 2026 Free Software
+# Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -56,7 +56,8 @@ else
              Test-https-weboftrust.px \
              Test-https-clientcert.px \
              Test-https-crl.px \
-             Test-https-badcerts.px
+             Test-https-badcerts.px \
+             Test-https-key-usage.px
 endif
 
 PX_TESTS = \

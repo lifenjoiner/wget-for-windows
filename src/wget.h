@@ -1,6 +1,6 @@
 /* Miscellaneous declarations.
-   Copyright (C) 1996-2011, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 1996-2011, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -223,7 +223,7 @@ static inline unsigned char _unhex(unsigned char c)
     void *basevar_new = xrealloc (basevar, DR_newsize * sizeof (type)); \
     assert(basevar_new);                                        \
     if (basevar_new != basevar) {                               \
-      memset (basevar_new + sizevar_old * sizeof (type), 0, (DR_newsize - sizevar_old) * sizeof (type)); \
+      memset (((char *) basevar_new) + sizevar_old * sizeof (type), 0, (DR_newsize - sizevar_old) * sizeof (type)); \
       basevar = basevar_new;                                    \
     }                                                           \
   }                                                             \
@@ -260,6 +260,9 @@ static inline unsigned char _unhex(unsigned char c)
 extern const char *exec_name;
 extern const char *program_name;
 extern const char *program_argstring;
+extern int cleaned_up;
+extern void *ares;
+extern struct ptimer *timer;
 
 /* Document type ("dt") flags */
 enum

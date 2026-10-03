@@ -47,6 +47,9 @@ as that of the covered work.  */
 #include "css-url.h"
 #include "iri.h"
 #include "xstrndup.h"
+#ifdef TESTING
+#include "../tests/unit-tests.h"
+#endif
 
 static struct hash_table *dl_file_url_map;
 struct hash_table *dl_url_file_map;
@@ -1236,6 +1239,143 @@ html_quote_string (const char *s)
   *p = '\0';
   return res;
 }
+
+#ifdef TESTING
+
+const char *
+test_construct_relative (void)
+{
+  static const struct {
+    const char *basefile;
+    const char *linkfile;
+    const char *expected;
+  } test_array[] = {
+    { "foo", "bar", "bar" },
+    { "A/foo", "A/bar", "bar" },
+    { "A/foo", "A/B/bar", "B/bar" },
+    { "A/X/foo", "A/Y/bar", "../Y/bar" },
+    { "X/", "Y/bar", "../Y/bar" },
+    { "/foo", "/bar", "bar" },
+    { "/a/b/c", "/a/b/d", "d" },
+    { "/a/b/c", "/a/b/c/d", "c/d" },
+    { "/a/b/c", "/a/b/c/d/e", "c/d/e" },
+    { "/a/b/c", "/x/y/z", "../../x/y/z" },
+    { "a/b", "c/d", "../c/d" },
+    { "./foo", "./bar", "bar" },
+  };
+
+  for (unsigned i = 0; i < countof (test_array); ++i)
+    {
+      char *result = construct_relative (test_array[i].basefile,
+                                         test_array[i].linkfile);
+      mu_assert ("test_construct_relative: wrong result",
+                 strcmp (result, test_array[i].expected) == 0);
+      xfree (result);
+    }
+
+  return NULL;
+}
+
+const char *
+test_match_except_index (void)
+{
+  static const struct {
+    const char *s1;
+    const char *s2;
+    bool expected;
+  } test_array[] = {
+    { "foo/index.html", "foo/", true },
+    { "foo/", "foo/index.html", true },
+    { "foo", "foo/index.html", true },
+    { "foo", "foo/", true },
+    { "foo", "foo", true },
+    { "/foo/index.html", "/foo/", true },
+    { "/foo/", "/foo/index.html", true },
+    { "/foo", "/foo/index.html", true },
+    { "/foo", "/foo/", true },
+    { "foo/bar", "foo/qux", false },
+    { "foo/bar", "bar/foo", false },
+  };
+
+  for (unsigned i = 0; i < countof (test_array); ++i)
+    {
+      bool result = match_except_index (test_array[i].s1, test_array[i].s2);
+      mu_assert ("test_match_except_index: wrong result",
+                 result == test_array[i].expected);
+    }
+
+  return NULL;
+}
+
+const char *
+test_find_fragment (void)
+{
+  static const struct {
+    const char *input;
+    int size;
+    bool has_fragment;
+    const char *fragment;
+  } test_array[] = {
+    { "http://example.com#section", 26, true, "#section" },
+    { "http://example.com", 18, false, NULL },
+    { "http://example.com?a=1#frag", 24, true, "#frag" },
+    { "http://example.com?a=1%26#frag", 28, true, "#frag" },
+    { "http://example.com?a=1&b=2#frag", 30, true, "#frag" },
+    { "a#b", 3, true, "#b" },
+    { "a", 1, false, NULL },
+  };
+  const char *bp, *ep;
+
+  for (unsigned i = 0; i < countof (test_array); ++i)
+    {
+      bool result = find_fragment (test_array[i].input,
+                                   test_array[i].size, &bp, &ep);
+      mu_assert ("test_find_fragment: wrong result",
+                 result == test_array[i].has_fragment);
+      if (test_array[i].has_fragment)
+        {
+          mu_assert ("test_find_fragment: wrong fragment", bp != NULL);
+          mu_assert ("test_find_fragment: fragment mismatch",
+                     strncmp (bp, test_array[i].fragment,
+                              strlen (test_array[i].fragment)) == 0 &&
+                     ep == test_array[i].input + test_array[i].size);
+        }
+    }
+
+  return NULL;
+}
+
+const char *
+test_html_quote_string (void)
+{
+  static const struct {
+    const char *input;
+    const char *expected;
+  } test_array[] = {
+    { "hello", "hello" },
+    { "a&b", "a&amp;b" },
+    { "<tag>", "&lt;tag&gt;" },
+    { "\"quote\"", "&quot;quote&quot;" },
+    { "space here", "space&#32;here" },
+    { "&<>\" ", "&amp;&lt;&gt;&quot;&#32;" },
+    { "no special", "no&#32;special" },
+    { "&&&&", "&amp;&amp;&amp;&amp;" },
+    { "<<>>", "&lt;&lt;&gt;&gt;" },
+    { "" , "" },
+  };
+
+  for (unsigned i = 0; i < countof (test_array); ++i)
+    {
+      char *result = html_quote_string (test_array[i].input);
+      mu_assert ("test_html_quote_string: wrong result",
+                 strcmp (result, test_array[i].expected) == 0);
+      xfree (result);
+    }
+
+  return NULL;
+}
+
+#endif /* TESTING */
 
 /*
  * vim: et ts=2 sw=2

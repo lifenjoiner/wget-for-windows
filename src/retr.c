@@ -1,5 +1,5 @@
 /* File retrieval.
-   Copyright (C) 1996-2011, 2014-2015, 2018-2024 Free Software
+   Copyright (C) 1996-2011, 2014-2015, 2018-2024, 2026 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -295,8 +295,8 @@ fd_read_body (const char *downloaded_filename, int fd, FILE *out, wgint toread, 
       gzbuf = xmalloc (gzbufsize);
       gzstream.zalloc = zalloc;
       gzstream.zfree = zfree;
-      gzstream.opaque = Z_NULL;
-      gzstream.next_in = Z_NULL;
+      gzstream.opaque = (void *) Z_NULL;
+      gzstream.next_in =(void *) Z_NULL;
       gzstream.avail_in = 0;
 
       #define GZIP_DETECT 32 /* gzip format detection */
@@ -372,10 +372,11 @@ fd_read_body (const char *downloaded_filename, int fd, FILE *out, wgint toread, 
               else if (out2 != NULL)
                 fwrite (line, 1, strlen (line), out2);
 
-              remaining_chunk_size = strtol (line, &endl, 16);
+              errno = 0;
+              remaining_chunk_size = str_to_wgint (line, &endl, 16);
               xfree (line);
 
-              if (remaining_chunk_size < 0)
+              if (remaining_chunk_size < 0 || errno == ERANGE)
                 {
                   ret = -1;
                   break;
@@ -873,7 +874,7 @@ retrieve_url (struct url * orig_parsed, char **file,
 {
   uerr_t result;
   char *url;
-  bool location_changed;
+  bool location_changed = false;
   bool iri_fallbacked = 0;
   int dummy;
   char *mynewloc, *proxy;
@@ -961,7 +962,7 @@ retrieve_url (struct url * orig_parsed, char **file,
         }
 #endif
       result = http_loop (u, orig_parsed, &mynewloc, &local_file, refurl, dt,
-                          proxy_url);
+                          proxy_url, location_changed);
     }
   else if (u->scheme == SCHEME_FTP
 #ifdef HAVE_SSL
@@ -997,8 +998,7 @@ retrieve_url (struct url * orig_parsed, char **file,
 
   url_free (proxy_url);
 
-  location_changed = (result == NEWLOCATION || result == NEWLOCATION_KEEP_POST);
-  if (location_changed)
+  if (result == NEWLOCATION || result == NEWLOCATION_KEEP_POST)
     {
       char *construced_newloc;
       struct url *newloc_parsed;
@@ -1058,6 +1058,12 @@ retrieve_url (struct url * orig_parsed, char **file,
 
       if (orig_parsed != u)
         url_free (u);
+      /* location_changed is true only when redirecting to a different
+         server (different hostname or port), so that Authorization and
+         Cookie headers are preserved for same-server redirects. */
+      location_changed = (strcasecmp (u->host, newloc_parsed->host) != 0
+                          || u->port != newloc_parsed->port);
+
       u = newloc_parsed;
 
       /* If we're being redirected from POST, and we received a

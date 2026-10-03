@@ -1,6 +1,6 @@
 /* SSL support via OpenSSL library.
-   Copyright (C) 2000-2012, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 2000-2012, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
    Originally contributed by Christian Fraenkel.
 
 This file is part of GNU Wget.
@@ -223,7 +223,7 @@ ssl_init (void)
       break;
 
     case secure_protocol_sslv3:
-#ifndef OPENSSL_NO_SSL3_METHOD
+#if !defined OPENSSL_NO_SSL3_METHOD && OPENSSL_VERSION_NUMBER < 0x40000000L
       meth = SSLv3_client_method ();
 #endif
       break;
@@ -1074,7 +1074,12 @@ ssl_check_certificate (int fd, const char *host)
   if (opt.check_cert == CHECK_CERT_QUIET && pinsuccess)
     return success;
 
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+  cert = SSL_get1_peer_certificate (conn);
+#else
+  /* Deprecated since 3.0.0 */
   cert = SSL_get_peer_certificate (conn);
+#endif
   if (!cert)
     {
       logprintf (LOG_NOTQUIET, _("%s: No certificate presented by %s.\n"),

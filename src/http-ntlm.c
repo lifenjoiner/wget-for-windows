@@ -1,6 +1,6 @@
 /* NTLM code.
-   Copyright (C) 2005-2011, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 2005-2011, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
    Contributed by Daniel Stenberg.
 
 This file is part of GNU Wget.
@@ -48,6 +48,7 @@ as that of the covered work.  */
 #ifdef HAVE_NETTLE
 # include <nettle/md4.h>
 # include <nettle/des.h>
+# include <nettle/version.h>
 #else
 # include <openssl/des.h>
 # include <openssl/md4.h>
@@ -322,7 +323,11 @@ mkhash(const char *password,
 #ifdef HAVE_NETTLE
     nettle_md4_init(&MD4);
     nettle_md4_update(&MD4, (unsigned) (2 * len), pw4);
+#if NETTLE_VERSION_MAJOR >= 4
+    nettle_md4_digest(&MD4, ntbuffer);
+#else
     nettle_md4_digest(&MD4, MD4_DIGEST_SIZE, ntbuffer);
+#endif
 #else
     /* create NT hashed password */
     MD4_Init(&MD4);

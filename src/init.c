@@ -1,5 +1,5 @@
 /* Reading/parsing the initialization file.
-   Copyright (C) 1996-2012, 2014-2015, 2018-2024 Free Software
+   Copyright (C) 1996-2012, 2014-2015, 2018-2024, 2026 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -467,7 +467,8 @@ defaults (void)
 #endif
 
   /* The default for file name restriction defaults to the OS type. */
-#if defined(WINDOWS) || defined(MSDOS) || defined(__CYGWIN__)
+#if defined(WINDOWS) || defined(MSDOS) || defined(__CYGWIN__) \
+    || defined(__OS2__)
   opt.restrict_files_os = restrict_windows;
 #elif defined(__VMS)
   opt.restrict_files_os = restrict_vms;
@@ -1931,9 +1932,6 @@ decode_string (const char *val, const struct decode_item *items, int itemcount,
   return false;
 }
 
-extern struct ptimer *timer;
-extern int cleaned_up;
-
 /* Free the memory allocated by global variables.  */
 void
 cleanup (void)
@@ -1944,7 +1942,7 @@ cleanup (void)
     return; /* cleanup() must not be called twice */
 
   /* Close WARC file. */
-  if (opt.warc_filename != 0)
+  if (opt.warc_filename != NULL)
     warc_close ();
 
   log_close ();

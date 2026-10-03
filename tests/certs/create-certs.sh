@@ -26,3 +26,9 @@ certtool --generate-certificate --load-privkey client-key.pem --template client-
 
 # create CRL for the server certificate
 certtool --generate-crl --load-ca-privkey test-ca-key.pem --load-ca-certificate test-ca-cert.pem --load-certificate server-cert.pem --outfile revoked-crl.pem --template revoked-template.txt
+
+# Generate non-server certificate (for test-https-key-usage)
+certtool --generate-certificate --load-privkey server-key.pem --template server-bad-ku-template.txt --outfile server-bad-ku-cert.pem --load-ca-certificate test-ca-cert.pem --load-ca-privkey test-ca-key.pem
+
+# Generate non-server certificate (for test-cert-key-usage)
+certtool --generate-certificate --load-privkey server-key.pem --template server-bad-eku-template.txt --outfile server-bad-eku-cert.pem --load-ca-certificate test-ca-cert.pem --load-ca-privkey test-ca-key.pem

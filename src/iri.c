@@ -137,7 +137,6 @@ transcode (const char *tocode, const char *fromcode, char const *in, size_t inle
 {
   iconv_t cd;
   size_t len, done, outlen;
-  int tooshort = 0;
   char *s;
   bool ret = false;
 
@@ -174,7 +173,6 @@ transcode (const char *tocode, const char *fromcode, char const *in, size_t inle
 
       if (errno == E2BIG) /* Output buffer full */
         {
-          tooshort++;
           done = len;
           len = done + inlen * 2;
           char *s_new = xrealloc (s, len + 1);

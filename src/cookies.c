@@ -1,6 +1,6 @@
 /* Support for cookies.
-   Copyright (C) 2001-2011, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 2001-2011, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -780,7 +780,7 @@ cookie_handle_set_cookie (struct cookie_jar *jar,
           logprintf (LOG_NOTQUIET,
                      _("%s\n"),
                      quotearg_style (escape_quoting_style, cookie->domain));
-          cookie->discard_requested = true;
+          goto out;
         }
     }
 

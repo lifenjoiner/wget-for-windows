@@ -1,5 +1,6 @@
 # Makefile for `wget' utility
-# Copyright (C) 2013, 2015, 2018-2024 Free Software Foundation, Inc.
+# Copyright (C) 2013, 2015, 2018-2024, 2026 Free Software Foundation,
+# Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,7 +60,9 @@ DEFAULT_TESTS = \
   Test-recursive-include.py                       \
   Test-recursive-redirect.py                      \
   Test-redirect.py                                \
+  Test-redirect-auth-cookie.py                    \
   Test-redirect-crash.py                          \
+  Test-redirect-same-host-keep-auth-cookie.py     \
   Test--rejected-log.py                           \
   Test-reserved-chars.py                          \
   Test--spider-r.py                               \

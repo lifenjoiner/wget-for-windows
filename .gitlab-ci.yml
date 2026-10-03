@@ -29,33 +29,39 @@ after_script:
 variables:
   BUILD_IMAGES_PROJECT: gnuwget/build-images
   CI_BASE_PATH: $CI_REGISTRY/$BUILD_IMAGES_PROJECT/wget
-  DEBIAN_OLDSTABLE_BUILD: buildenv-debian-oldstable
-  DEBIAN_TESTING_BUILD: buildenv-debian-testing
-  DEBIAN_STABLE_BUILD: buildenv-debian-stable
-  CENTOS_OLDLTS_BUILD: buildenv-centos7
-  FEDORA_BUILD: buildenv-fedora
-  MINGW_BUILD: buildenv-mingw
-  ARCH_BUILD: buildenv-arch
+  BOOTSTRAP_BUILD: buildenv-wget-bootstrap
+  DEBIAN_OLDSTABLE_BUILD: buildenv-wget-debian-oldstable
+  DEBIAN_TESTING_BUILD: buildenv-wget-debian-testing
+  DEBIAN_STABLE_BUILD: buildenv-wget-debian-stable
+  CENTOS9_BUILD: buildenv-wget-centos9
+  FEDORA_BUILD: buildenv-wget-fedora
+  MINGW_BUILD: buildenv-wget-mingw
+  ARCH_BUILD: buildenv-wget-archlinux
+  MINIMAL_BUILD: buildenv-wget-minimal
   GET_SOURCES_ATTEMPTS: "3"
   GIT_DEPTH: "5"
-  CONFIGURE_BASE_FLAGS: --enable-assert --cache-file cache/config.cache
+  CONFIGURE_BASE_FLAGS: --enable-assert --cache-file cache/config.cache --enable-ntlm
   CFLAGS_DEFAULT: -O0 -g -ggdb3
 
 CommitCheck:
   stage: test-from-git
-  image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$DEBIAN_TESTING_BUILD
+  image: alpine:latest
+  before_script:
+    - /bin/true
   script:
-    - ./contrib/commit-check
+    - apk add git
+    - contrib/commit-check
+  after_script:
+    - /bin/true
   allow_failure: true
   cache:
       paths:
       policy: push
 
-
 # Create the tarball in a separate build directory (VPATH).
 Build-Tarball:
     stage: test-from-git
-    image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$DEBIAN_TESTING_BUILD
+    image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$BOOTSTRAP_BUILD
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
         - ./bootstrap
@@ -72,19 +78,38 @@ Build-Tarball:
     except:
         - coverity-scan@gnuwget/wget
     artifacts:
+        when: always
         expire_in: 2 weeks
-        when: on_failure
         paths:
+            - wget-*.gz
             - ./*.log
             - vpath/*.log
             - vpath/fuzz/*.log
             - vpath/tests/*.log
             - vpath/testenv/*.log
+
+# Create the tarball for libmetalink.
+Build-Libmetalink:
+    stage: test-from-git
+    image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$BOOTSTRAP_BUILD
+    script:
+        - export CFLAGS=$CFLAGS_DEFAULT
+        - apt-get update && apt-get install -y libxml2-dev libtool libtool-bin
+        - git clone https://github.com/metalink-dev/libmetalink && cd libmetalink
+        - wget -O m4/libxml2.m4 'https://gitlab.gnome.org/GNOME/libxml2/-/raw/2.9/libxml.m4'
+        - ./buildconf
+        - ./configure
+        - make -j$(nproc)
+        - make -j$(nproc) dist
+        - mv libmetalink-*.gz ..
+    except:
+        - coverity-scan@gnuwget/wget
     artifacts:
+        when: always
         expire_in: 2 weeks
-        when: on_success
         paths:
-            - wget-*.gz
+            - libmetalink-*.gz
+            - ./*.log
 
 Valgrind:
     stage: test-from-tarball
@@ -93,7 +118,7 @@ Valgrind:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - tar xf wget-*.gz
         - cd wget-*/
         - ./configure $CONFIGURE_BASE_FLAGS --cache-file ../cache/config.cache
         - make check-valgrind
@@ -113,12 +138,12 @@ Valgrind:
 
 Minimal:
     stage: test-from-tarball
-    image: $CI_BASE_PATH/debian:testing-minimal
+    image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$MINIMAL_BUILD
     variables:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - tar xf wget-*.gz
         - cd wget-*/
         - ./configure $CONFIGURE_BASE_FLAGS --cache-file ../cache/config.cache
           --disable-nls --without-ssl --enable-ipv6 --without-zlib --without-libiconv-prefix
@@ -141,12 +166,12 @@ Minimal:
 
 Debian-OldStable:
     stage: test-from-tarball
-    image: $CI_BASE_PATH/debian:oldstable
+    image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$DEBIAN_OLDSTABLE_BUILD
     variables:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - tar xf wget-*.gz
         - cd wget-*/
         - ./configure $CONFIGURE_BASE_FLAGS --cache-file ../cache/config.cache
         - make
@@ -167,12 +192,18 @@ Debian-OldStable:
 
 Debian-Stable:
     stage: test-from-tarball
-    image: $CI_BASE_PATH/debian:stable
+    image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$DEBIAN_STABLE_BUILD
     variables:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - apt-get update && apt-get install -y libxml2-dev expat
+        - tar xf libmetalink-*.gz
+        - cd libmetalink-*/
+        - ./configure
+        - make -j$(nproc) && make install && ldconfig
+        - cd ..
+        - tar xf wget-*.gz
         - cd wget-*/
         - ./configure $CONFIGURE_BASE_FLAGS --cache-file ../cache/config.cache
         - make -j$(nproc) check
@@ -180,7 +211,8 @@ Debian-Stable:
         - coverity-scan@gnuwget/wget
     dependencies:
         - Build-Tarball
-    needs: ["Build-Tarball"]
+        - Build-Libmetalink
+    needs: ["Build-Tarball", "Build-Libmetalink"]
     artifacts:
         expire_in: 2 weeks
         when: on_failure
@@ -190,14 +222,14 @@ Debian-Stable:
             - wget-*/tests/*.log
             - wget-*/testenv/*.log
 
-CentOS-OldLTS:
+CentOS9:
     stage: test-from-tarball
-    image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS_OLDLTS_BUILD
+    image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$CENTOS9_BUILD
     variables:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - tar xf wget-*.gz
         - cd wget-*/
         - ./configure $CONFIGURE_BASE_FLAGS --cache-file ../cache/config.cache
         - make -j$(nproc)
@@ -215,8 +247,6 @@ CentOS-OldLTS:
             - wget-*/fuzz/*.log
             - wget-*/tests/*.log
             - wget-*/testenv/*.log
-    # The test suite is currently broken, so a temporary allowance
-    allow_failure: true
 
 TLS/OpenSSL:
     stage: test-from-tarball
@@ -225,7 +255,7 @@ TLS/OpenSSL:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - tar xf wget-*.gz
         - cd wget-*/
         - echo "127.0.0.1 wgettestingserver" >>/etc/hosts
         - cat /etc/hosts
@@ -253,7 +283,7 @@ TLS/GnuTLS:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - tar xf wget-*.gz
         - cd wget-*/
         - echo "127.0.0.1 wgettestingserver" >>/etc/hosts
         - cat /etc/hosts
@@ -281,12 +311,11 @@ Sanitizers:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - tar xf wget-*.gz
         - cd wget-*/
-#       - export CFLAGS="$CFLAGS_DEFAULT -Werror"
-        - export CFLAGS="$CFLAGS_DEFAULT"
+        - export CFLAGS="$CFLAGS_DEFAULT -fno-sanitize=function -fno-omit-frame-pointer -fno-optimize-sibling-calls"
         - export CC="ccache clang"
-        - export UBSAN_OPTIONS=print_stacktrace=1
+        - export UBSAN_OPTIONS=print_stacktrace=1::report_error_type=1
         - export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
 #       - export LSAN_OPTIONS=suppressions="$PWD/tests/clang-asan-suppressions"
         - ./configure $CONFIGURE_BASE_FLAGS --cache-file ../cache/config.cache
@@ -313,7 +342,7 @@ Scan-Build:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - tar xf wget-*.gz
         - cd wget-*/
         - scan-build ./configure $CONFIGURE_BASE_FLAGS --cache-file ../cache/config.cache
         - make -C lib -j$(nproc)
@@ -330,8 +359,6 @@ Scan-Build:
         when: on_failure
         paths:
             - scan-build/
-    # scan-build reports two false positives that we can't suppress
-    allow_failure: true
 
 CoverageReports:
     stage: test-from-tarball
@@ -340,7 +367,7 @@ CoverageReports:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - tar xf wget-*.gz
         - cd wget-*/
         - ./configure $CONFIGURE_BASE_FLAGS --cache-file ../cache/config.cache
         - make -j$(nproc) check-coverage
@@ -348,7 +375,6 @@ CoverageReports:
         - make -C doc html
         - make -j$(nproc) fuzz-coverage
         - mv lcov ../fuzz-coverage
-        - make dist
     dependencies:
         - Build-Tarball
     needs: ["Build-Tarball"]
@@ -361,13 +387,14 @@ CoverageReports:
 #        - master
 
 MinGW64:
+    timeout: 10m
     stage: test-from-tarball
     image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$MINGW_BUILD
     variables:
         GIT_STRATEGY: none
     script:
         - export CFLAGS=$CFLAGS_DEFAULT
-        - tar xvf wget-*.gz
+        - tar xf wget-*.gz
         - cd wget-*/
         - mount -t binfmt_misc binfmt_misc /proc/sys/fs/binfmt_misc
         - echo ':DOSWin:M::MZ::/usr/bin/wine:' > /proc/sys/fs/binfmt_misc/register
@@ -401,7 +428,7 @@ MinGW64:
 # Build from git should work on Arch.
 ArchLinux:
     stage: test-from-git
-    image: $CI_BASE_PATH/archlinux
+    image: $CI_REGISTRY/$BUILD_IMAGES_PROJECT:$ARCH_BUILD
     script:
         - export CFLAGS="$CFLAGS_DEFAULT"
         - ./bootstrap

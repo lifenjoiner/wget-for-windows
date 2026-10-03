@@ -1,6 +1,6 @@
 /* Various utility functions.
-   Copyright (C) 1996-2011, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 1996-2011, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -843,6 +843,83 @@ fopen_excl (const char *fname, int binary)
 #endif /* not O_EXCL */
 }
 
+/* Open an existing regular file without allowing a symlink substitution.
+   The lstat/fstat comparison closes the race between checking the name and
+   opening it; after the descriptor is open, later pathname changes cannot
+   redirect writes through that descriptor. */
+FILE *
+fopen_nofollow (const char *fname, const char *mode)
+{
+#if !(defined(WINDOWS) || defined(__VMS))
+  struct stat name_stats, fd_stats;
+  int flags;
+  int fd;
+  FILE *fp;
+  bool truncate = false;
+
+  if (lstat (fname, &name_stats) < 0)
+    return NULL;
+  if (!S_ISREG (name_stats.st_mode))
+    {
+      errno = ELOOP;
+      return NULL;
+    }
+
+  if (mode[0] == 'a')
+    flags = O_WRONLY | O_APPEND;
+  else if (mode[0] == 'w')
+    {
+      flags = O_WRONLY;
+      truncate = true;
+    }
+  else
+    {
+      errno = EINVAL;
+      return NULL;
+    }
+# ifdef O_BINARY
+  if (strchr (mode, 'b'))
+    flags |= O_BINARY;
+# endif
+# ifdef O_NOFOLLOW
+  flags |= O_NOFOLLOW;
+# endif
+
+  fd = open (fname, flags);
+  if (fd < 0)
+    return NULL;
+  if (fstat (fd, &fd_stats) < 0)
+    {
+      int saved_errno = errno;
+      close (fd);
+      errno = saved_errno;
+      return NULL;
+    }
+  if (!S_ISREG (fd_stats.st_mode)
+      || fd_stats.st_dev != name_stats.st_dev
+      || fd_stats.st_ino != name_stats.st_ino)
+    {
+      close (fd);
+      errno = EAGAIN;
+      return NULL;
+    }
+  if (truncate && ftruncate (fd, 0) < 0)
+    {
+      int saved_errno = errno;
+      close (fd);
+      errno = saved_errno;
+      return NULL;
+    }
+
+  fp = fdopen (fd, mode);
+  if (!fp)
+    close (fd);
+  return fp;
+#else
+  return fopen (fname, mode);
+#endif
+}
+
 /* fopen_stat() assumes that file_exists_p() was called earlier.
    file_stats_t passed to this function was returned from file_exists_p()
    This is to prevent TOCTTOU race condition.
@@ -1610,7 +1687,7 @@ get_grouping_data (const char **sep, const char **grouping)
   if (!initialized)
     {
       /* Get the grouping info from the locale. */
-      struct lconv *lconv = localeconv ();
+      const struct lconv *lconv = localeconv ();
       cached_sep = lconv->thousands_sep;
       cached_grouping = lconv->grouping;
 #if ! USE_NLS_PROGRESS_BAR
@@ -2272,10 +2349,10 @@ xsleep (double seconds)
       /* On some systems, usleep cannot handle values larger than
          1,000,000.  If the period is larger than that, use sleep
          first, then add usleep for subsecond accuracy.  */
-      sleep (seconds);
-      seconds -= (long) seconds;
+      sleep ((unsigned) seconds);
+      seconds -= (unsigned) seconds;
     }
-  usleep (seconds * 1000000);
+  usleep ((useconds_t) (seconds * 1000000));
 #else /* fall back select */
   /* Note that, although Windows supports select, it can't be used to
      implement sleeping because Winsock's select doesn't implement

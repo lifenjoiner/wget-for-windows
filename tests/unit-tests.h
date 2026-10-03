@@ -1,6 +1,6 @@
 /* Unit testing declarations.
-   Copyright (C) 2005-2011, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 2005-2011, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -64,6 +64,10 @@ const char *test_hsts_url_rewrite_congruent(void);
 const char *test_hsts_read_database(void);
 const char *test_parse_netrc(void);
 const char *test_retr_rate(void);
+const char *test_construct_relative(void);
+const char *test_match_except_index(void);
+const char *test_find_fragment(void);
+const char *test_html_quote_string(void);
 
 #endif /* TEST_H */
 

@@ -1,0 +1,158 @@
+#!/usr/bin/env perl
+#
+# Regression test for improper Key Usage / Extended Key Usage validation.
+#
+# wget must reject TLS server certificates whose KU or EKU extensions do not
+# authorise them for server authentication, even when the certificate is
+# otherwise valid (trusted CA, correct hostname, not expired).
+#
+# Three cases are tested:
+#  1. Valid cert                                   => success  (sanity check)
+#  2. Bad EKU (codeSigning instead of serverAuth)  => failure  (exit 5)
+#  3. Bad KU  (cRLSign only, no digitalSignature)  => failure  (exit 5)
+
+use strict;
+use warnings;
+use Socket;
+use WgetFeature qw(https);
+use SSLTest;
+
+###############################################################################
+
+# code, msg, headers, content
+my %urls = (
+    '/somefile.txt' => {
+        code    => "200",
+        msg     => "Dontcare",
+        headers => {
+            "Content-type" => "text/plain",
+        },
+        content => "blabla",
+    },
+);
+
+my $srcdir;
+if (@ARGV) {
+    $srcdir = shift @ARGV;
+} elsif (defined $ENV{srcdir}) {
+    $srcdir = $ENV{srcdir};
+}
+$srcdir = Cwd::abs_path("$srcdir");
+
+# HOSTALIASES env variable allows us to create hosts file alias.
+my $testhostname = "WgetTestingServer";
+$ENV{'HOSTALIASES'} = "$srcdir/certs/wgethosts";
+
+my $addr = gethostbyname($testhostname);
+unless ($addr) {
+    warn "Failed to resolve $testhostname, using $srcdir/certs/wgethosts\n";
+    exit 77;
+}
+unless (inet_ntoa($addr) =~ "127.0.0.1") {
+    warn "Unexpected IP for $testhostname: " . inet_ntoa($addr) . "\n";
+    exit 77;
+}
+
+my $cacrt     = "$srcdir/certs/test-ca-cert.pem";
+my $serverkey = "$srcdir/certs/server-key.pem";
+
+my %no_files   = ();
+my %expect_file = (
+    'somefile.txt' => { content => "blabla" },
+);
+
+###############################################################################
+# Test 1 — Valid certificate: expect success (exit 0).
+# Sanity check confirming that the test CA, server key, and SSL infrastructure
+# work correctly before exercising the failure cases below.
+###############################################################################
+
+my $port    = 33443;
+my $cmdline = $WgetTest::WGETPATH
+    . " --ca-certificate=$cacrt"
+    . " https://$testhostname:$port/somefile.txt";
+my $expected_error_code = 0;
+
+my $t1 = SSLTest->new(
+    cmdline   => $cmdline,
+    input     => \%urls,
+    errcode   => $expected_error_code,
+    existing  => \%no_files,
+    output    => \%expect_file,
+    certfile  => "$srcdir/certs/server-cert.pem",
+    keyfile   => $serverkey,
+    lhostname => $testhostname,
+    sslport   => $port,
+);
+if ($t1->run() != 0) {
+    warn "Baseline HTTPS test failed — check test CA and server cert setup\n";
+    exit -1;
+}
+
+###############################################################################
+# Test 2 — Certificate with bad Extended Key Usage (codeSigning, not serverAuth).
+# wget must refuse the connection and exit with code 5 (SSL auth error).
+###############################################################################
+
+my $bad_eku_cert = "$srcdir/certs/server-bad-eku-cert.pem";
+unless (-f $bad_eku_cert) {
+    warn "Missing $bad_eku_cert — run tests/certs/create-certs.sh first\n";
+    exit 77;
+}
+
+$port    = 34443;
+$cmdline = $WgetTest::WGETPATH
+    . " --ca-certificate=$cacrt"
+    . " https://$testhostname:$port/somefile.txt";
+$expected_error_code = 5;
+
+my $t2 = SSLTest->new(
+    cmdline   => $cmdline,
+    input     => \%urls,
+    errcode   => $expected_error_code,
+    existing  => \%no_files,
+    output    => \%no_files,
+    certfile  => $bad_eku_cert,
+    keyfile   => $serverkey,
+    lhostname => $testhostname,
+    sslport   => $port,
+);
+# run() returns 0 when wget exited with code 5 (correct rejection).
+# run() returns non-zero when wget unexpectedly accepted the certificate.
+if ($t2->run() != 0) {
+    warn "wget accepted a certificate with bad EKU (codeSigning) — CVE not fixed\n";
+    exit -1;
+}
+
+###############################################################################
+# Test 3 — Certificate with bad Key Usage (cRLSign only, no digitalSignature).
+# EKU is correctly set to serverAuth to isolate the KU failure.
+# wget must refuse the connection and exit with code 5 (SSL auth error).
+###############################################################################
+
+my $bad_ku_cert = "$srcdir/certs/server-bad-ku-cert.pem";
+unless (-f $bad_ku_cert) {
+    warn "Missing $bad_ku_cert — run tests/certs/create-certs.sh first\n";
+    exit 77;
+}
+
+$port    = 35443;
+$cmdline = $WgetTest::WGETPATH
+    . " --ca-certificate=$cacrt"
+    . " https://$testhostname:$port/somefile.txt";
+$expected_error_code = 5;
+
+my $t3 = SSLTest->new(
+    cmdline   => $cmdline,
+    input     => \%urls,
+    errcode   => $expected_error_code,
+    existing  => \%no_files,
+    output    => \%no_files,
+    certfile  => $bad_ku_cert,
+    keyfile   => $serverkey,
+    lhostname => $testhostname,
+    sslport   => $port,
+);
+exit $t3->run();
+
+# vim: et ts=4 sw=4

@@ -1,5 +1,5 @@
 /* Metalink module.
-   Copyright (C) 2015, 2018-2024 Free Software Foundation, Inc.
+   Copyright (C) 2015, 2018-2024, 2026 Free Software Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -50,6 +50,7 @@ as that of the covered work.  */
 #include "c-strcase.h"
 #include <errno.h>
 #include <unistd.h> /* For unlink.  */
+#include <ctype.h>
 #include <metalink/metalink_parser.h>
 #ifdef HAVE_GPGME
 #include <gpgme.h>
@@ -1051,7 +1052,6 @@ void
 clean_metalink_string (char **str)
 {
   int c;
-  size_t len;
   char *new, *beg, *end;
 
   if (!str || !*str)
@@ -1059,7 +1059,7 @@ clean_metalink_string (char **str)
 
   beg = *str;
 
-  while ((c = *beg) && (c == '\n' || c == '\r' || c == '\t' || c == ' '))
+  while (isspace(*beg))
     beg++;
 
   end = beg;
@@ -1072,12 +1072,10 @@ clean_metalink_string (char **str)
   /* If we are at the end of the string, search the first legit
      character going backward.  */
   if (*end == '\0')
-    while ((c = *(end - 1)) && (c == '\n' || c == '\r' || c == '\t' || c == ' '))
+    while (end > beg && isspace(*(end - 1)))
       end--;
 
-  len = end - beg;
-
-  new = xmemdup0 (beg, len);
+  new = xmemdup0 (beg, end - beg);
   xfree (*str);
   *str = new;
 }

@@ -1,6 +1,6 @@
 /* Unit testing.
-   Copyright (C) 2005-2011, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 2005-2011, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -37,8 +37,6 @@ as that of the covered work.  */
 
 #include "unit-tests.h"
 
-extern const char *program_argstring;
-
 static int tests_run;
 
 static const char *
@@ -68,11 +66,13 @@ all_tests(void)
 #endif
   mu_run_test (test_parse_netrc);
   mu_run_test (test_retr_rate);
+  mu_run_test (test_construct_relative);
+  mu_run_test (test_match_except_index);
+  mu_run_test (test_find_fragment);
+  mu_run_test (test_html_quote_string);
 
   return NULL;
 }
-
-extern const char *program_name; /* Needed by lib/error.c. */
 
 int
 main (int argc _GL_UNUSED, const char *argv[])
@@ -103,7 +103,7 @@ main (int argc _GL_UNUSED, const char *argv[])
 
   printf ("Tests run: %d\n", tests_run);
 
-  return result != 0;
+  return result != NULL;
 }
 
 /*

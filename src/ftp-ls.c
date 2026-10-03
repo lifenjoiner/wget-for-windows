@@ -1,6 +1,6 @@
 /* Parsing FTP `ls' output.
-   Copyright (C) 1996-2011, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 1996-2011, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -80,6 +80,35 @@ clean_line (char *line, int len)
   for ( ; *line ; line++ ) if (*line == '\t') *line = ' ';
 
   return len;
+}
+
+/* Return true if TARGET is not safe to use as the target of a
+   symbolic link created locally to mirror a symlink reported by an
+   FTP server: an absolute path, or a relative path containing a ".."
+   path component, can point outside of the download directory.  A
+   malicious or compromised FTP server could otherwise use a crafted
+   directory listing to make Wget create a symlink pointing anywhere
+   on the local file system.  */
+static bool
+ftp_ls_unsafe_symlink_target (const char *target)
+{
+  const char *p;
+
+  if (!*target)
+    return true;
+
+  if (*target == '/')
+    return true;
+
+  for (p = target; *p; p++)
+    {
+      if (p[0] == '.' && p[1] == '.'
+          && (p[2] == '\0' || p[2] == '/')
+          && (p == target || p[-1] == '/'))
+        return true;
+    }
+
+  return false;
 }
 
 /* Convert the Un*x-ish style directory listing stored in FILE to a
@@ -291,6 +320,18 @@ ftp_parse_unix_ls (FILE *fp, int ignore_perms)
                       p = strstr (tok, " -> ");
                       if (!p)
                         {
+                          error = 1;
+                          break;
+                        }
+                      /* Reject symlink targets that could escape the
+                         download directory (absolute paths, or paths
+                         containing a ".." component) before storing
+                         them; they are later passed directly to
+                         symlink().  */
+                      if (ftp_ls_unsafe_symlink_target (p + 4))
+                        {
+                          DEBUGP (("Rejecting unsafe symlink target: %s\n",
+                                   p + 4));
                           error = 1;
                           break;
                         }
@@ -1027,8 +1068,14 @@ ftp_parse_ls_fp (FILE *fp, const enum stype system_type)
     case ST_WINNT:
       {
         /* Detect whether the listing is simulating the UNIX format */
-        int   c = fgetc(fp);
-        rewind(fp);
+        int c = fgetc(fp);
+
+        if (fseek(fp, 0L, SEEK_SET) == -1)
+          {
+            logprintf (LOG_NOTQUIET, "failed to rewind: %s\n",
+                       strerror (errno));
+            return NULL;
+          }
 
         /* If the first character of the file is '0'-'9', it's WINNT
            format. */
@@ -1053,26 +1100,14 @@ Unsupported listing type, trying Unix listing parser.\n"));
 /* The function creates an HTML index containing references to given
    directories and files on the appropriate host.  The references are
    FTP.  */
-uerr_t
-ftp_index (const char *file, struct url *u, struct fileinfo *f)
+static uerr_t
+ftp_index_fp (FILE *fp, struct url *u, struct fileinfo *f)
 {
-  FILE *fp;
   char *upwd;
   char *htcldir;                /* HTML-clean dir name */
   char *htclfile;               /* HTML-clean file name */
   char *urlclfile;              /* URL-clean file name */
 
-  if (!output_stream)
-    {
-      fp = fopen (file, "wb");
-      if (!fp)
-        {
-          logprintf (LOG_NOTQUIET, "%s: %s\n", file, strerror (errno));
-          return FOPENERR;
-        }
-    }
-  else
-    fp = output_stream;
   if (u->user)
     {
       char *tmpu, *tmpp;        /* temporary, clean user and passwd */
@@ -1167,9 +1202,34 @@ ftp_index (const char *file, struct url *u, struct fileinfo *f)
   fprintf (fp, "</pre>\n</body>\n</html>\n");
   xfree (htcldir);
   xfree (upwd);
-  if (!output_stream)
-    fclose (fp);
-  else
-    fflush (fp);
+
   return FTPOK;
+}
+
+/* The function creates an HTML index containing references to given
+   directories and files on the appropriate host.  The references are
+   FTP.  */
+uerr_t
+ftp_index (const char *file, struct url *u, struct fileinfo *f)
+{
+  uerr_t ret;
+
+  if (!output_stream)
+    {
+      FILE *fp = fopen (file, "wb");
+      if (!fp)
+        {
+          logprintf (LOG_NOTQUIET, "%s: %s\n", file, strerror (errno));
+          return FOPENERR;
+        }
+      ret = ftp_index_fp (fp, u, f);
+      fclose (fp);
+    }
+  else
+    {
+      ret = ftp_index_fp (output_stream, u, f);
+	  fflush (output_stream);
+    }
+
+  return ret;
 }

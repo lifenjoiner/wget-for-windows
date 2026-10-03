@@ -1,0 +1,19 @@
+# Template for a server certificate with bad EKU (missing TLS WWW client)
+
+organization = "GNU"
+unit = "Wget"
+state = "Sunshine"
+country = Freeland
+cn = "Wget"
+expiration_days = -1
+dns_name="127.0.0.1"
+dns_name="::1"
+dns_name="localhost"
+dns_name = "WgetTestingServer"
+
+# KEY USAGE:
+signing_key
+encryption_key
+
+# WRONG EKU USAGE:
+code_signing_key

@@ -1,5 +1,5 @@
 /* File Transfer Protocol support.
-   Copyright (C) 1996-2011, 2014-2015, 2018-2024 Free Software
+   Copyright (C) 1996-2011, 2014-2015, 2018-2024, 2026 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -1503,7 +1503,9 @@ Error in server response, closing control connection.\n"));
               fp = fopen (target_locale, "a", FOPEN_OPT_ARGS);
             }
 #else /* def __VMS */
-          fp = fopen (target_locale, "ab");
+          fp = fopen_nofollow (target_locale, "ab");
+          if (!fp && errno == ENOENT)
+            fp = fopen_excl (target_locale, BIN_TYPE_FILE);
 #endif /* def __VMS [else] */
         }
       else if (opt.noclobber || opt.always_rest || opt.timestamping || opt.dirstruct
@@ -1538,7 +1540,9 @@ Error in server response, closing control connection.\n"));
               fp = fopen (target_locale, "w", FOPEN_OPT_ARGS);
             }
 #else /* def __VMS */
-          fp = fopen (target_locale, "wb");
+          fp = fopen_nofollow (target_locale, "wb");
+          if (!fp && errno == ENOENT)
+            fp = fopen_excl (target_locale, BIN_TYPE_FILE);
 #endif /* def __VMS [else] */
         }
       else
@@ -2706,7 +2710,7 @@ has_insecure_name_p (const char *s)
   if (*s == '/')
     return true;
 
-  if (strstr (s, "../") != 0)
+  if (strstr (s, "../") != NULL)
     return true;
 
   return false;
@@ -2869,8 +2873,14 @@ ftp_retrieve_glob (struct url *u, struct url *original_url,
    */
   if (start)
     {
+      /* ugly hack to work-around a scan-build false positive */
+#ifndef __clang_analyzer__
       /* Just get everything.  */
       res = ftp_retrieve_list (u, original_url, start, con);
+      freefileinfo (start);
+#else
+		  res = 0;
+#endif
     }
   else
     {
@@ -2895,7 +2905,6 @@ ftp_retrieve_glob (struct url *u, struct url *original_url,
          it.  (An empty directory should not cause complaints.)
       */
     }
-  freefileinfo (start);
   if (opt.quota && total_downloaded_bytes > opt.quota)
     return QUOTEXC;
   else

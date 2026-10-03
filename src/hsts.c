@@ -1,6 +1,6 @@
 /* HTTP Strict Transport Security (HSTS) support.
-   Copyright (C) 1996-2012, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 1996-2012, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -111,6 +111,21 @@ hsts_cmp_func (const void *h1, const void *h2)
 
 /* Private functions. Feel free to make some of these public when needed. */
 
+/* Return the canonical form used for HSTS host keys.  A trailing dot is
+   the DNS root label and does not identify a different host.  */
+
+static char *
+hsts_canonical_host (const char *host)
+{
+  char *result = xstrdup_lower (host);
+  size_t len = strlen (result);
+
+  while (len && result[len - 1] == '.')
+    result[--len] = 0;
+
+  return result;
+}
+
 static struct hsts_kh_info *
 hsts_find_entry (hsts_store_t store,
                  const char *host, int explicit_port,
@@ -123,7 +138,7 @@ hsts_find_entry (hsts_store_t store,
   char *org_ptr = NULL;
 
   k = (struct hsts_kh *) xnew (struct hsts_kh);
-  k->host = xstrdup_lower (host);
+  k->host = hsts_canonical_host (host);
   k->explicit_port = explicit_port;
 
   /* save pointer so that we don't get into trouble later when freeing */
@@ -176,7 +191,7 @@ hsts_new_entry_internal (hsts_store_t store,
   struct hsts_kh_info *khi = xnew0 (struct hsts_kh_info);
   bool success = false;
 
-  kh->host = xstrdup_lower (host);
+  kh->host = hsts_canonical_host (host);
   kh->explicit_port = MAKE_EXPLICIT_PORT (SCHEME_HTTPS, port);
 
   khi->created = created;
@@ -184,7 +199,7 @@ hsts_new_entry_internal (hsts_store_t store,
   khi->include_subdomains = include_subdomains;
 
   /* Check validity */
-  if (check_validity && !hsts_is_host_name_valid (host))
+  if (check_validity && (!*kh->host || !hsts_is_host_name_valid (kh->host)))
     goto bail;
 
   if (check_expired && ((khi->created + khi->max_age) < khi->created))
@@ -375,17 +390,17 @@ hsts_match (hsts_store_t store, struct url *u)
 {
   bool url_changed = false;
   struct hsts_kh_info *entry = NULL;
-  struct hsts_kh *kh = xnew(struct hsts_kh);
+  struct hsts_kh kh = { 0 };
   enum hsts_kh_match match = NO_MATCH;
   int port = MAKE_EXPLICIT_PORT (u->scheme, u->port);
 
   /* avoid doing any computation if we're already in HTTPS */
   if (!hsts_is_scheme_valid (u->scheme))
     {
-      entry = hsts_find_entry (store, u->host, port, &match, kh);
-      if (entry)
+      for (;;)
         {
-          if ((entry->created + entry->max_age) >= time(NULL))
+          entry = hsts_find_entry (store, u->host, port, &match, &kh);
+          if (entry && (entry->created + entry->max_age) >= time(NULL))
             {
               if ((match == CONGRUENT_MATCH) ||
                   (match == SUPERDOMAIN_MATCH && entry->include_subdomains))
@@ -398,17 +413,25 @@ hsts_match (hsts_store_t store, struct url *u)
                   url_changed = true;
                   store->changed = true;
                 }
+              break;
             }
-          else
+          if (entry)
             {
-              hsts_remove_entry (store, kh);
+              hsts_remove_entry (store, &kh);
               store->changed = true;
             }
-        }
-      xfree (kh->host);
-    }
 
-  xfree (kh);
+          xfree (kh.host);
+          kh.host = NULL;
+
+          /* Port-zero entries are host-wide policies.  Nonzero entries
+             exist for tests, but must not prevent a host-wide match. */
+          if (port == 0)
+            break;
+          port = 0;
+        }
+      xfree (kh.host);
+    }
 
   return url_changed;
 }
@@ -444,8 +467,9 @@ hsts_store_entry (hsts_store_t store,
   enum hsts_kh_match match = NO_MATCH;
   struct hsts_kh *kh = xnew(struct hsts_kh);
   struct hsts_kh_info *entry = NULL;
+  char *canonical_host = hsts_canonical_host (host);
 
-  if (hsts_is_host_eligible (scheme, host))
+  if (*canonical_host && hsts_is_host_eligible (scheme, canonical_host))
     {
       port = MAKE_EXPLICIT_PORT (scheme, port);
       entry = hsts_find_entry (store, host, port, &match, kh);
@@ -493,6 +517,7 @@ hsts_store_entry (hsts_store_t store,
     }
 
   xfree (kh);
+  xfree (canonical_host);
 
   return result;
 }
@@ -713,6 +738,13 @@ test_hsts_new_entry_return_fast (hsts_store_t s)
   created = hsts_store_entry (s, SCHEME_HTTPS, "www.foo.com", 443, 1234, true);
   mu_assert("A new entry should have been created", created == true);
 
+  created = hsts_store_entry (s, SCHEME_HTTPS, "dots.foo.com.", 443, 1234, false);
+  mu_assert("A new entry should have been created", created == true);
+
+  khi = hsts_find_entry (s, "dots.foo.com", MAKE_EXPLICIT_PORT (SCHEME_HTTPS, 443), &match, NULL);
+  mu_assert("Should've been a congruent match", match == CONGRUENT_MATCH);
+  mu_assert("No valid HSTS info was returned", khi != NULL);
+
   khi = hsts_find_entry (s, "www.foo.com", MAKE_EXPLICIT_PORT (SCHEME_HTTPS, 443), &match, NULL);
   mu_assert("Should've been a congruent match", match == CONGRUENT_MATCH);
   mu_assert("No valid HSTS info was returned", khi != NULL);
@@ -768,8 +800,12 @@ test_hsts_url_rewrite_superdomain_return_fast (hsts_store_t s)
   mu_assert("A new entry should've been created", created == true);
 
   TEST_URL_RW (s, "example.com", 80);
+  TEST_URL_RW (s, "example.com.", 80);
+  TEST_URL_RW (s, "example.com", 8443);
   TEST_URL_RW (s, "rep.example.com", 80);
   TEST_URL_RW (s, "rep.rep.example.com", 80);
+  TEST_URL_RW (s, "rep.rep.example.com.", 80);
+  TEST_URL_RW (s, "rep.rep.example.com", 8443);
 
   return NULL;
 }
@@ -800,6 +836,8 @@ test_hsts_url_rewrite_congruent_return_fast (hsts_store_t s)
   mu_assert("A new entry should've been created", created == true);
 
   TEST_URL_RW (s, "foo.com", 80);
+  TEST_URL_RW (s, "foo.com.", 80);
+  TEST_URL_RW (s, "foo.com", 8443);
   TEST_URL_NORW (s, "www.foo.com", 80);
 
   return NULL;

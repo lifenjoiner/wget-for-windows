@@ -1,5 +1,5 @@
-/* HTTP support.
-   Copyright (C) 1996-2012, 2014-2015, 2018-2024 Free Software
+		/* HTTP support.
+   Copyright (C) 1996-2012, 2014-2015, 2018-2024, 2026 Free Software
    Foundation, Inc.
 
 This file is part of GNU Wget.
@@ -417,15 +417,24 @@ request_free (struct request **req_ref)
 
 static struct hash_table *basic_authed_hosts;
 
-/* Find out if this host has issued a Basic challenge yet; if so, give
+/* Return a key for the HTTP origin that issued a Basic challenge.
+   Basic credentials must not be reused across a scheme or port boundary. */
+static char *
+basic_auth_key (const struct url *u)
+{
+  return aprintf ("%u:%d:%s", u->scheme, u->port, u->host);
+}
+
+/* Find out if this origin has issued a Basic challenge yet; if so, give
  * it the username, password. A temporary measure until we can get
  * proper authentication in place. */
 
 static bool
-maybe_send_basic_creds (const char *hostname, const char *user,
+maybe_send_basic_creds (const struct url *u, const char *user,
                         const char *passwd, struct request *req)
 {
   bool do_challenge = false;
+  char *key = basic_auth_key (u);
 
   if (opt.auth_without_challenge)
     {
@@ -433,16 +442,17 @@ maybe_send_basic_creds (const char *hostname, const char *user,
       do_challenge = true;
     }
   else if (basic_authed_hosts
-      && hash_table_contains (basic_authed_hosts, hostname))
+      && hash_table_contains (basic_authed_hosts, key))
     {
-      DEBUGP (("Found %s in basic_authed_hosts.\n", quote (hostname)));
+      DEBUGP (("Found %s in basic_authed_hosts.\n", quote (key)));
       do_challenge = true;
     }
   else
     {
-      DEBUGP (("Host %s has not issued a general basic challenge.\n",
-              quote (hostname)));
+      DEBUGP (("Origin %s has not issued a general basic challenge.\n",
+              quote (key)));
     }
+  xfree (key);
   if (do_challenge)
     {
       request_set_header (req, "Authorization",
@@ -453,17 +463,20 @@ maybe_send_basic_creds (const char *hostname, const char *user,
 }
 
 static void
-register_basic_auth_host (const char *hostname)
+register_basic_auth_host (const struct url *u)
 {
+  char *key = basic_auth_key (u);
   if (!basic_authed_hosts)
     {
       basic_authed_hosts = make_nocase_string_hash_table (1);
     }
-  if (!hash_table_contains (basic_authed_hosts, hostname))
+  if (!hash_table_contains (basic_authed_hosts, key))
     {
-      hash_table_put (basic_authed_hosts, xstrdup (hostname), NULL);
-      DEBUGP (("Inserted %s into basic_authed_hosts\n", quote (hostname)));
+      hash_table_put (basic_authed_hosts, key, NULL);
+      DEBUGP (("Inserted %s into basic_authed_hosts\n", quote (key)));
+      return;
     }
+  xfree (key);
 }
 
 /* Send the contents of FILE_NAME to SOCK.  Make sure that exactly
@@ -485,7 +498,7 @@ body_file_send (int sock, const char *file_name, wgint promised_size, FILE *warc
   fp = fopen (file_name, "rb");
   if (!fp)
     return -1;
-  while (!feof (fp) && written < promised_size)
+  while (!feof (fp) && !ferror (fp) && written < promised_size)
     {
       int towrite;
       int length = fread (chunk, 1, sizeof (chunk), fp);
@@ -918,6 +931,7 @@ parse_content_range (const char *hdr, wgint *first_byte_ptr,
                      wgint *last_byte_ptr, wgint *entity_length_ptr)
 {
   wgint num;
+  char *end;
 
   /* Ancient versions of Netscape proxy server, presumably predating
      rfc2068, sent out `Content-Range' without the "bytes"
@@ -936,27 +950,39 @@ parse_content_range (const char *hdr, wgint *first_byte_ptr,
     }
   if (!c_isdigit (*hdr))
     return false;
-  for (num = 0; c_isdigit (*hdr); hdr++)
-    num = 10 * num + (*hdr - '0');
-  if (*hdr != '-' || !c_isdigit (*(hdr + 1)))
+
+  errno = 0;
+  num = strtol(hdr, &end, 10);
+  if (errno == ERANGE)
+    return false;
+  hdr = end;
+
+  if (*hdr++ != '-' || !c_isdigit (*hdr))
     return false;
   *first_byte_ptr = num;
-  ++hdr;
-  for (num = 0; c_isdigit (*hdr); hdr++)
-    num = 10 * num + (*hdr - '0');
-  if (*hdr != '/')
+
+  errno = 0;
+  num = strtol(hdr, &end, 10);
+  if (errno == ERANGE)
+    return false;
+  hdr = end;
+
+  if (*hdr++ != '/')
     return false;
   *last_byte_ptr = num;
-  if (!(c_isdigit (*(hdr + 1)) || *(hdr + 1) == '*'))
+  if (!(c_isdigit (*hdr) || *hdr == '*'))
     return false;
   if (*last_byte_ptr < *first_byte_ptr)
     return false;
-  ++hdr;
   if (*hdr == '*')
     num = -1;
   else
-    for (num = 0; c_isdigit (*hdr); hdr++)
-      num = 10 * num + (*hdr - '0');
+    {
+      errno = 0;
+      num = strtol(hdr, NULL, 10);
+      if (errno == ERANGE)
+        return false;
+    }
   *entity_length_ptr = num;
   if ((*entity_length_ptr <= *last_byte_ptr) && *entity_length_ptr != -1)
     return false;
@@ -1000,10 +1026,11 @@ skip_short_body (int fd, wgint contlen, bool chunked)
               if (line == NULL)
                 break;
 
-              remaining_chunk_size = strtol (line, &endl, 16);
+              errno = 0;
+              remaining_chunk_size = str_to_wgint (line, &endl, 16);
               xfree (line);
 
-              if (remaining_chunk_size < 0)
+              if (remaining_chunk_size < 0 || errno == ERANGE)
                 return false;
 
               if (remaining_chunk_size == 0)
@@ -1462,9 +1489,15 @@ persistent_available_p (const char *host, int port, bool ssl,
   if (port != pconn.port)
     return false;
 
+  /* NTLM authentication is bound to the TCP connection.  Never reuse
+     an authorized connection for another HTTP hostname, even when the
+     names resolve to the same peer address. */
+  if (pconn.authorized && 0 != c_strcasecmp (host, pconn.host))
+    return false;
+
   /* If the host is the same, we're in business.  If not, there is
      still hope -- read below.  */
-  if (0 != strcasecmp (host, pconn.host))
+  if (0 != c_strcasecmp (host, pconn.host))
     {
       /* Check if pconn.socket is talking to HOST under another name.
          This happens often when both sites are virtual hosts
@@ -1975,7 +2008,7 @@ initialize_request (const struct url *u, struct http_stat *hs, int *dt, struct u
     {
       /* If this is a host for which we've already received a Basic
        * challenge, we'll go ahead and send Basic authentication creds. */
-      *basic_auth_finished = maybe_send_basic_creds (u->host, *user, *passwd, req);
+      *basic_auth_finished = maybe_send_basic_creds (u, *user, *passwd, req);
     }
 
   if (inhibit_keep_alive)
@@ -2154,7 +2187,7 @@ establish_connection (const struct url *u, const struct url **conn_ref,
                               aprintf ("%s:%d", u->host, u->port),
                               rel_value);
 
-          write_error = request_send (connreq, sock, 0);
+          write_error = request_send (connreq, sock, NULL);
           request_free (&connreq);
           if (write_error < 0)
             {
@@ -2517,9 +2550,9 @@ check_auth (const struct url *u, char *user, char *passwd, struct response *resp
                 ntlm_seen = true;
               else if (!u->user && BEGINS_WITH (www_authenticate, "Basic"))
                 {
-                  /* Need to register this host as using basic auth,
+                  /* Need to register this origin as using basic auth,
                    * so we automatically send creds next time. */
-                  register_basic_auth_host (u->host);
+                  register_basic_auth_host (u);
                 }
 
               *retry = true;
@@ -2574,7 +2607,9 @@ open_output_stream (struct http_stat *hs, int count, FILE **fp)
           open_id = 21;
           *fp = fopen (hs->local_file, "ab", FOPEN_OPT_ARGS);
 #else /* def __VMS */
-          *fp = fopen (hs->local_file, "ab");
+          *fp = fopen_nofollow (hs->local_file, "ab");
+          if (!*fp && errno == ENOENT)
+            *fp = fopen_excl (hs->local_file, FOPEN_BIN_FLAG);
 #endif /* def __VMS [else] */
         }
       else if (ALLOW_CLOBBER || count > 1)
@@ -2597,11 +2632,15 @@ open_output_stream (struct http_stat *hs, int count, FILE **fp)
 #else /* def __VMS */
           if (hs->temporary)
             {
-              *fp = fdopen (open (hs->local_file, O_BINARY | O_CREAT | O_TRUNC | O_WRONLY, S_IRUSR | S_IWUSR), "wb");
+              *fp = fopen_nofollow (hs->local_file, "wb");
+              if (!*fp && errno == ENOENT)
+                *fp = fopen_excl (hs->local_file, FOPEN_BIN_FLAG);
             }
           else
             {
-              *fp = fopen (hs->local_file, "wb");
+              *fp = fopen_nofollow (hs->local_file, "wb");
+              if (!*fp && errno == ENOENT)
+                *fp = fopen_excl (hs->local_file, FOPEN_BIN_FLAG);
             }
 
 #endif /* def __VMS [else] */
@@ -3180,6 +3219,18 @@ fail:
 }
 #endif /* HAVE_METALINK */
 
+/*
+ * Check if the corresponding header line should not
+ * be sent after a redirect
+ */
+static bool
+unredirectable_headerline(const char *line)
+{
+  return c_strncasecmp(line, "Authorization:", 14) == 0
+	  || c_strncasecmp(line, "Cookie:", 7) == 0
+	  || c_strncasecmp(line, "Proxy-Authorization:", 20) == 0;
+}
+
 /* Retrieve a document through HTTP protocol.  It recognizes status
    code, and correctly handles redirections.  It closes the network
    socket.  If it receives an error from the functions below it, it
@@ -3191,8 +3242,8 @@ fail:
    If PROXY is non-NULL, the connection will be made to the proxy
    server, and u->url will be requested.  */
 static uerr_t
-gethttp (struct url *u, struct url *original_url, struct http_stat *hs,
-         int *dt, struct url *proxy, int count)
+gethttp (const struct url *u, struct url *original_url, struct http_stat *hs,
+         int *dt, struct url *proxy, int count, bool location_changed)
 {
   struct request *req = NULL;
 
@@ -3334,9 +3385,13 @@ gethttp (struct url *u, struct url *original_url, struct http_stat *hs,
   /* Add the user headers. */
   if (opt.user_headers)
     {
-      int i;
-      for (i = 0; opt.user_headers[i]; i++)
-        request_set_user_header (req, opt.user_headers[i]);
+      for (int i = 0; opt.user_headers[i]; i++)
+        {
+          if (location_changed
+              && (opt.trustservernames || unredirectable_headerline(opt.user_headers[i])))
+            continue;
+          request_set_user_header (req, opt.user_headers[i]);
+        }
     }
 
   proxyauth = NULL;
@@ -4260,8 +4315,9 @@ check_retry_on_http_error (const int statcode)
 /* The genuine HTTP loop!  This is the part where the retrieval is
    retried, and retried, and retried, and...  */
 uerr_t
-http_loop (struct url *u, struct url *original_url, char **newloc,
-           char **local_file, const char *referer, int *dt, struct url *proxy)
+http_loop (const struct url *u, struct url *original_url, char **newloc,
+           char **local_file, const char *referer, int *dt, struct url *proxy,
+           bool location_changed)
 {
   int count;
   bool got_head = false;         /* used for time-stamping and filename detection */
@@ -4454,7 +4510,7 @@ http_loop (struct url *u, struct url *original_url, char **newloc,
         *dt &= ~SEND_NOCACHE;
 
       /* Try fetching the document, or at least its head.  */
-      err = gethttp (u, original_url, &hstat, dt, proxy, count);
+      err = gethttp (u, original_url, &hstat, dt, proxy, count, location_changed);
 
       /* Time?  */
       tms = datetime_str (time (NULL));

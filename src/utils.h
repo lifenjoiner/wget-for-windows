@@ -1,6 +1,6 @@
 /* Declarations for utils.c.
-   Copyright (C) 1996-2011, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 1996-2011, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -92,6 +92,7 @@ char *unique_name_passthrough (const char *);
 char *unique_name (const char *);
 FILE *unique_create (const char *, bool, char **);
 FILE *fopen_excl (const char *, int);
+FILE *fopen_nofollow (const char *, const char *);
 FILE *fopen_stat (const char *, const char *, file_stats_t *);
 int   open_stat  (const char *, int, mode_t, file_stats_t *);
 char *file_merge (const char *, const char *);

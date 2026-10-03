@@ -1,6 +1,6 @@
 /* SSL support via GnuTLS library.
-   Copyright (C) 2005-2012, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 2005-2012, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -1080,6 +1080,20 @@ ssl_check_certificate (int fd, const char *host)
           success = false;
           goto crt_deinit;
         }
+
+#if GNUTLS_VERSION_NUMBER >=0x030400
+      if (opt.check_cert != CHECK_CERT_QUIET)
+        {
+          if (gnutls_x509_crt_check_key_purpose (cert, GNUTLS_KP_TLS_WWW_SERVER, 0) == 0)
+            {
+              logprintf( LOG_NOTQUIET,
+                         _("%s: The certificate is not authorized for server authentication.\n"),
+                         severity);
+              success = false;
+            }
+        }
+#endif
+
       if (now < gnutls_x509_crt_get_activation_time (cert))
         {
           logprintf (LOG_NOTQUIET, _("The certificate has not yet been activated\n"));

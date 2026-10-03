@@ -1,6 +1,6 @@
 /* Messages logging.
-   Copyright (C) 1998-2011, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 1998-2011, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -37,10 +37,15 @@ as that of the covered work.  */
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
+#include <signal.h>
 
 #include "utils.h"
 #include "exits.h"
 #include "log.h"
+
+#if defined(SIGHUP) || defined(SIGUSR1)
+extern volatile sig_atomic_t redirect_output_sig;
+#endif
 
 /* 2005-10-25 SMS.
    VMS log files are often VFC record format, not stream, so fputs() can
@@ -975,6 +980,27 @@ static void
 check_redirect_output (void)
 {
 #if !defined(WINDOWS) && !defined(__VMS)
+#if defined(SIGHUP) || defined(SIGUSR1)
+  {
+    int sig = redirect_output_sig;
+    if (sig)
+      {
+        redirect_output_sig = 0;
+        const char *signal_name = "WTF?!";
+#ifdef SIGHUP
+        if (sig == SIGHUP)
+          signal_name = "SIGHUP";
+#endif
+#ifdef SIGUSR1
+        if (sig == SIGUSR1)
+          signal_name = "SIGUSR1";
+#endif
+        redirect_output (true, signal_name);
+        return;
+      }
+  }
+#endif /* defined(SIGHUP) || defined(SIGUSR1) */
+
   /* If it was redirected already to log file by SIGHUP, SIGUSR1 or -o parameter,
    * it was permanent.
    * If there was no SIGHUP or SIGUSR1 and shell is interactive

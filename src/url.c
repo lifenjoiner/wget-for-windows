@@ -1,6 +1,6 @@
 /* URL handling.
-   Copyright (C) 1996-2011, 2015, 2018-2024 Free Software Foundation,
-   Inc.
+   Copyright (C) 1996-2011, 2015, 2018-2024, 2026 Free Software
+   Foundation, Inc.
 
 This file is part of GNU Wget.
 
@@ -596,12 +596,18 @@ parse_credentials (const char *beg, const char *end, char **user, char **passwd)
 
 static bool is_valid_port(const char *p)
 {
-  unsigned port = (unsigned) atoi (p);
-  if (port == 0 || port > 65535)
+  char *end;
+  unsigned long port;
+
+  if (!c_isdigit(*p))
     return false;
 
-  int digits = strspn (p, "0123456789");
-  return digits && (p[digits] == '/' || p[digits] == '\0');
+  errno = 0;
+  port = strtoul(p, &end, 10);
+  if (errno != 0 || end == p || port == 0 || port > 65535)
+    return false;
+
+  return (*end == '/' || *end == '\0');
 }
 
 /* Prepend "http://" to url if scheme is missing, otherwise return NULL. */
@@ -612,6 +618,9 @@ maybe_prepend_scheme (const char *url)
     return NULL;
 
   const char *p = strchr (url, ':');
+  const char *slash = strchr (url, '/');
+  if (p && slash && p > slash)
+    p = NULL;  /* colon is in the path, not a port separator */
   if (p == url)
     return NULL;
 
@@ -1410,19 +1419,21 @@ struct growable {
   DO_REALLOC (G_->base, G_->size, G_->tail + append_size, char);        \
 } while (0)
 
-/* Return the tail position of the string. */
-#define TAIL(r) ((r)->base + (r)->tail)
-
 /* Move the tail position by APPEND_COUNT characters. */
 #define TAIL_INCR(r, append_count) ((r)->tail += append_count)
 
+static inline char *
+tail(struct growable *g)
+{
+  return g->base + g->tail;
+}
 
 /* Append NULL to DEST. */
 static void
 append_null (struct growable *dest)
 {
   GROW (dest, 1);
-  *TAIL (dest) = 0;
+  *tail (dest) = 0;
 }
 
 /* Append CH to DEST. */
@@ -1432,7 +1443,7 @@ append_char (char ch, struct growable *dest)
   if (ch)
     {
       GROW (dest, 1);
-      *TAIL (dest) = ch;
+      *tail (dest) = ch;
       TAIL_INCR (dest, 1);
     }
 
@@ -1448,7 +1459,7 @@ append_string (const char *str, struct growable *dest)
   if (l)
     {
       GROW (dest, l);
-      memcpy (TAIL (dest), str, l);
+      memcpy (tail (dest), str, l);
       TAIL_INCR (dest, l);
     }
 
@@ -1631,11 +1642,11 @@ append_url_pathel (const char *b, const char *e, bool escaped,
     {
       /* If there's nothing to quote, we can simply append the string
          without processing it again.  */
-      memcpy (TAIL (dest), b, outlen);
+      memcpy (tail (dest), b, outlen);
     }
   else
     {
-      char *q = TAIL (dest);
+      char *q = tail (dest);
       int i;
 
       for (i = 0, p = b; p < e; p++)
@@ -1658,7 +1669,7 @@ append_url_pathel (const char *b, const char *e, bool escaped,
               i += 3;
             }
         }
-      assert (q - TAIL (dest) <= outlen);
+      assert (q - tail (dest) <= outlen);
     }
 
   /* Perform inline case transformation if required.  */
@@ -1666,7 +1677,7 @@ append_url_pathel (const char *b, const char *e, bool escaped,
       || opt.restrict_files_case == restrict_uppercase)
     {
       char *q;
-      for (q = TAIL (dest); q < TAIL (dest) + outlen; ++q)
+      for (q = tail (dest); q < tail (dest) + outlen; ++q)
         {
           if (opt.restrict_files_case == restrict_lowercase)
             *q = c_tolower (*q);
