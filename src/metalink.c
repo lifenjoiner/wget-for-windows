@@ -304,17 +304,21 @@ retrieve_from_metalink (const metalink_t* metalink)
                     metalink_file_t **x_mfile_ptr;
                     for (x_mfile_ptr = metaurl_xml->files; *x_mfile_ptr; x_mfile_ptr++)
                       {
-                        metalink_resource_t **x_mres_ptr;
                         metalink_file_t *x_mfile = *x_mfile_ptr;
-                        size_t mres_count = 0;
 
-                        for (x_mres_ptr = x_mfile->resources; *x_mres_ptr; x_mres_ptr++)
-                          mres_count++;
+                        if (x_mfile->resources)
+                          {
+                            metalink_resource_t **x_mres_ptr;
+                            size_t mres_count = 0;
 
-                        stable_sort (x_mfile->resources,
-                                     mres_count,
-                                     sizeof (metalink_resource_t *),
-                                     metalink_res_cmp);
+                            for (x_mres_ptr = x_mfile->resources; *x_mres_ptr; x_mres_ptr++)
+                              mres_count++;
+
+                            stable_sort (x_mfile->resources,
+                                         mres_count,
+                                         sizeof (metalink_resource_t *),
+                                         metalink_res_cmp);
+                          }
                       }
                   }
 
@@ -374,7 +378,7 @@ retrieve_from_metalink (const metalink_t* metalink)
 
       /* Resources are sorted by priority.  */
       for (mres_ptr = mfile->resources;
-           *mres_ptr && mfile->checksums && !skip_mfile; mres_ptr++)
+           mres_ptr && *mres_ptr && mfile->checksums && !skip_mfile; mres_ptr++)
         {
           metalink_resource_t *mres = *mres_ptr;
           metalink_checksum_t **mchksum_ptr, *mchksum;
@@ -866,6 +870,12 @@ gpg_skip_verification:
                 break;
             } /* endif RETR_OK.  */
         } /* Iterate over resources.  */
+
+      if (!mfile->resources)
+        {
+          logprintf (LOG_NOTQUIET, _("No resources found.\n"));
+          retr_err = METALINK_MISSING_RESOURCE;
+        }
 
       if (!mfile->checksums)
         {

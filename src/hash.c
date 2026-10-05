@@ -791,7 +791,7 @@ main (void)
         continue;
       line[--len] = '\0';
       if (!hash_table_contains (ht, line))
-        hash_table_put (ht, strdup (line), "here I am!");
+        hash_table_put (ht, xstrdup (line), "here I am!");
 #if 1
       if (len % 5 == 0)
         {

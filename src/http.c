@@ -67,6 +67,7 @@ as that of the covered work.  */
 #include "c-strcase.h"
 #include "version.h"
 #include "xstrndup.h"
+#include "xmemdup0.h"
 #ifdef HAVE_METALINK
 # include "metalink.h"
 #endif
@@ -1158,24 +1159,24 @@ modify_param_value (param_token *value, int encoding_type )
    non-US-ASCII characters in HTTP header values.  */
 
 bool
-extract_param (const char **source, param_token *name, param_token *value,
+extract_param (const char **beg, const char *end, param_token *name, param_token *value,
                char separator, bool *is_url_encoded)
 {
-  const char *p = *source;
+  const char *p = *beg;
   int param_type;
   if (is_url_encoded)
     *is_url_encoded = false;   /* initializing the out parameter */
 
-  while (c_isspace (*p)) ++p;
+  while (p  < end && c_isspace (*p)) ++p;
   if (!*p)
     {
-      *source = p;
+      *beg = p;
       return false;             /* no error; nothing more to extract */
     }
 
   /* Extract name. */
   name->b = p;
-  while (*p && !c_isspace (*p) && *p != '=' && *p != separator) ++p;
+  while (p < end && *p && !c_isspace (*p) && *p != '=' && *p != separator) ++p;
   name->e = p;
   if (name->b == name->e)
     return false;               /* empty name: error */
@@ -1184,7 +1185,7 @@ extract_param (const char **source, param_token *name, param_token *value,
     {
       xzero (*value);
       if (*p == separator) ++p;
-      *source = p;
+      *beg = p;
       return true;
     }
   if (*p != '=')
@@ -1196,29 +1197,29 @@ extract_param (const char **source, param_token *name, param_token *value,
   if (*p == '"')                /* quoted */
     {
       value->b = ++p;
-      while (*p && *p != '"') ++p;
-      if (!*p)
+      while (p < end && *p && *p != '"') ++p;
+      if (p == end || !*p)
         return false;
       value->e = p++;
       /* Currently at closing quote; find the end of param. */
       while (c_isspace (*p)) ++p;
-      while (*p && *p != separator) ++p;
-      if (*p == separator)
+      while (p < end && *p && *p != separator) ++p;
+      if (p < end && *p == separator)
         ++p;
-      else if (*p)
+      else if (p < end && *p)
         /* garbage after closed quote, e.g. foo="bar"baz */
         return false;
     }
   else                          /* unquoted */
     {
       value->b = p;
-      while (*p && *p != separator) ++p;
+      while (p < end && *p && *p != separator) ++p;
       value->e = p;
       while (value->e != value->b && c_isspace (value->e[-1]))
         --value->e;
-      if (*p == separator) ++p;
+      if (p < end && *p == separator) ++p;
     }
-  *source = p;
+  *beg = p;
 
   param_type = modify_param_name (name);
   if (param_type != NOT_RFC2231)
@@ -1279,7 +1280,7 @@ parse_content_disposition (const char *hdr, char **filename)
 
   char *encodedFilename = NULL;
   char *unencodedFilename = NULL;
-  for ( ; extract_param (&hdr, &name, &value, ';', &is_url_encoded);
+  for ( ; extract_param (&hdr, hdr + strlen(hdr), &name, &value, ';', &is_url_encoded);
         is_url_encoded = false)
     {
       int isFilename = BOUNDED_EQUAL_NO_CASE (name.b, name.e, "filename");
@@ -1342,7 +1343,7 @@ parse_strict_transport_security (const char *header, int64_t *max_age, bool *inc
   if (header)
     {
       /* Process the STS header. Keys should be matched case-insensitively. */
-      for (; extract_param (&header, &name, &value, ';', &is_url_encoded); is_url_encoded = false)
+      for (; extract_param (&header, header + strlen(header), &name, &value, ';', &is_url_encoded); is_url_encoded = false)
         {
           if (BOUNDED_EQUAL_NO_CASE (name.b, name.e, "max-age"))
             {
@@ -2437,7 +2438,7 @@ check_auth (const struct url *u, char *user, char *passwd, struct response *resp
   bool basic_auth_finished = *basic_auth_finished_ref;
   bool auth_finished = *auth_finished_ref;
   bool ntlm_seen = *ntlm_seen_ref;
-  char buf[256], *tmp = NULL;
+  char *digest = NULL, *basic = NULL, *ntlm = NULL;
 
   *retry = false;
 
@@ -2447,9 +2448,7 @@ check_auth (const struct url *u, char *user, char *passwd, struct response *resp
          the value "negotiate", and other(s) with data.  Loop over
          all the occurrences and pick the one we recognize.  */
       int wapos;
-      const char *www_authenticate = NULL;
       const char *wabeg, *waend;
-      const char *digest = NULL, *basic = NULL, *ntlm = NULL;
 
       for (wapos = 0; !ntlm
              && (wapos = resp_header_locate (resp, "WWW-Authenticate", wapos,
@@ -2457,27 +2456,13 @@ check_auth (const struct url *u, char *user, char *passwd, struct response *resp
            ++wapos)
         {
           param_token name, value;
-          size_t len = waend - wabeg;
-
-          if (tmp != buf)
-            xfree (tmp);
-
-          if (len < sizeof (buf))
-            tmp = buf;
-          else
-            tmp = xmalloc (len + 1);
-
-          memcpy (tmp, wabeg, len);
-          tmp[len] = 0;
-
-          www_authenticate = tmp;
 
           for (;!ntlm;)
             {
               /* extract the auth-scheme */
-              while (c_isspace (*www_authenticate)) www_authenticate++;
-              name.e = name.b = www_authenticate;
-              while (*name.e && !c_isspace (*name.e)) name.e++;
+              while (wabeg < waend && c_isspace (*wabeg)) wabeg++;
+              name.e = name.b = wabeg;
+              while (name.e < waend && !c_isspace (*name.e)) name.e++;
 
               if (name.b == name.e)
                 break;
@@ -2488,19 +2473,19 @@ check_auth (const struct url *u, char *user, char *passwd, struct response *resp
                 {
                   if (BEGINS_WITH (name.b, "NTLM"))
                     {
-                      ntlm = name.b;
+                      ntlm = xmemdup0 (name.b, waend - name.b);
                       break; /* this is the most secure challenge, stop here */
                     }
                   else if (!digest && BEGINS_WITH (name.b, "Digest"))
-                    digest = name.b;
+                    digest = xmemdup0 (name.b, waend - name.b);
                   else if (!basic && BEGINS_WITH (name.b, "Basic"))
-                    basic = name.b;
+                    basic = xmemdup0 (name.b, waend - name.b);
                 }
 
               /* now advance over the auth-params */
-              www_authenticate = name.e;
-              DEBUGP (("Auth param list '%s'\n", www_authenticate));
-              while (extract_param (&www_authenticate, &name, &value, ',', NULL) && name.b && value.b)
+              wabeg = name.e;
+              DEBUGP (("Auth param list '%.*s'\n", (int) (waend - wabeg), wabeg));
+              while (extract_param (&wabeg, waend, &name, &value, ',', NULL) && name.b && value.b)
                 {
                   DEBUGP (("Auth param %.*s=%.*s\n",
                            (int) (name.e - name.b), name.b, (int) (value.e - value.b), value.b));
@@ -2517,6 +2502,7 @@ check_auth (const struct url *u, char *user, char *passwd, struct response *resp
       else if (!basic_auth_finished
                || !basic)
         {
+          const char *www_authenticate = NULL;
           char *pth = url_full_path (u);
           const char *value;
           uerr_t *auth_stat;
@@ -2572,8 +2558,9 @@ check_auth (const struct url *u, char *user, char *passwd, struct response *resp
     }
 
  cleanup:
-   if (tmp != buf)
-     xfree (tmp);
+  xfree (digest);
+  xfree (basic);
+  xfree (ntlm);
   *ntlm_seen_ref = ntlm_seen;
   *basic_auth_finished_ref = basic_auth_finished;
   *auth_finished_ref = auth_finished;
@@ -5185,7 +5172,7 @@ digest_authentication_encode (const char *au, const char *user,
   realm = opaque = nonce = algorithm = qop = NULL;
 
   au += 6;                      /* skip over `Digest' */
-  while (extract_param (&au, &name, &value, ',', NULL))
+  while (extract_param (&au, au + strlen(au), &name, &value, ',', NULL))
     {
       size_t i;
       size_t namelen = name.e - name.b;
@@ -5525,6 +5512,15 @@ test_parse_range_header (void)
       { "bytes 42-1233/*", 42, 1233, -1, true },
       { "bytes 0-2147483648/2147483649", 0, 2147483648U, 2147483649U, true },
       { "bytes 2147483648-4294967296/4294967297", 2147483648U, 4294967296ULL, 4294967297ULL, true },
+      /* An entity-length that overflows wgint must be rejected rather
+         than silently wrapped: parse_content_range() parses it with
+         strtoll() and returns false on ERANGE.  Before that fix the
+         value "99999999999999999999" wrapped to a bogus positive
+         number and the function returned true (CVE-2026-58470).  The
+         expected first/last/length match the values the function leaves
+         in the output pointers, which this harness reuses across
+         iterations without resetting. */
+      { "bytes 0-1000/99999999999999999999", 0, 1000, 4294967297ULL, false },
   };
 
   wgint firstbyteptr[1];

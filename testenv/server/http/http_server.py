@@ -1,6 +1,6 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from exc.server_error import ServerError, AuthError, NoBodyServerError
-from socketserver import BaseServer
+from socketserver import TCPServer
 from posixpath import basename, splitext
 from base64 import b64encode
 from random import random
@@ -36,7 +36,10 @@ class HTTPSServer(StoppableHTTPServer):
 
     def __init__(self, address, handler):
         import ssl
-        BaseServer.__init__(self, address, handler)
+        # This also calls self.server_bind() and self.server_activate()
+        # due to bind_and_activate=True default argument so that
+        # self.socket becomes a listening socket:
+        TCPServer.__init__(self, address, handler)
         # step one up because test suite change directory away from $srcdir
         # (don't do that !!!)
         CERTFILE = os.path.abspath(os.path.join('..',
@@ -49,12 +52,7 @@ class HTTPSServer(StoppableHTTPServer):
                                                'server-key.pem'))
         ctx = ssl.SSLContext(protocol=ssl.PROTOCOL_TLS_SERVER)
         ctx.load_cert_chain(CERTFILE, KEYFILE)
-        self.socket = ctx.wrap_socket(
-            sock=socket.socket(self.address_family, self.socket_type),
-            server_side=True
-        )
-        self.server_bind()
-        self.server_activate()
+        self.socket = ctx.wrap_socket(self.socket, server_side=True)
 
 
 class _Handler(BaseHTTPRequestHandler):

@@ -55,6 +55,7 @@ DEFAULT_TESTS = \
   Test-k.py                                       \
   Test-missing-scheme-retval.py                   \
   Test-O.py                                       \
+  Test-picture.py                                 \
   Test-Post.py                                    \
   Test-recursive-basic.py                         \
   Test-recursive-include.py                       \

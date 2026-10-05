@@ -66,14 +66,20 @@ struct file_memory {
 char *time_str (time_t);
 char *datetime_str (time_t);
 
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *xstrdup_lower (const char *);
 
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *strdupdelim (const char *, const char *);
+
 char **sepstring (const char *);
 bool subdir_p (const char *, const char *);
 bool fork_to_background (void);
 
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *aprintf (const char *, ...) GCC_FORMAT_ATTR (1, 2);
+
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *concat_strings (const char *, ...);
 
 typedef struct file_stat_s {
@@ -89,12 +95,17 @@ bool file_non_directory_p (const char *);
 wgint file_size (const char *);
 int make_directory (const char *);
 char *unique_name_passthrough (const char *);
+
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *unique_name (const char *);
+
 FILE *unique_create (const char *, bool, char **);
 FILE *fopen_excl (const char *, int);
 FILE *fopen_nofollow (const char *, const char *);
 FILE *fopen_stat (const char *, const char *, file_stats_t *);
 int   open_stat  (const char *, int, mode_t, file_stats_t *);
+
+ATTRIBUTE_MALLOC ATTRIBUTE_DEALLOC_FREE
 char *file_merge (const char *, const char *);
 
 int fnmatch_nocase (const char *, const char *, int);
@@ -107,12 +118,18 @@ bool has_wildcards_p (const char *);
 
 bool has_html_suffix_p (const char *);
 
-struct file_memory *wget_read_from_file (const char *, bool *);
-struct file_memory *wget_read_file (const char *);
+ATTRIBUTE_OWNERSHIP_TAKES(malloc, 1)
 void wget_read_file_free (struct file_memory *);
+ATTRIBUTE_DEALLOC(wget_read_file_free, 1)
+struct file_memory *wget_read_from_file (const char *, bool *);
+ATTRIBUTE_DEALLOC(wget_read_file_free, 1)
+ struct file_memory *wget_read_file (const char *);
 
+ATTRIBUTE_OWNERSHIP_TAKES(malloc, 1)
 void free_vec (char **);
+ATTRIBUTE_DEALLOC(free_vec, 1)
 char **merge_vecs (char **, char **);
+ATTRIBUTE_DEALLOC(free_vec, 1)
 char **vec_append (char **, const char *);
 
 void string_set_add (struct hash_table *, const char *);

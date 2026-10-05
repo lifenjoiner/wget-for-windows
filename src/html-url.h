@@ -52,11 +52,16 @@ struct map_context {
 };
 
 bool set_map_context_by_url (struct map_context *ctx, struct url *url);
-struct urlpos *get_urls_file (const char *, const char *, bool *);
-struct urlpos *get_urls_html (const char *, struct url *, bool *);
-struct urlpos *get_urls_html_fm (const char *, const struct file_memory *, struct url *, bool *);
-struct urlpos *append_url (const char *, int, int, struct map_context *);
+ATTRIBUTE_OWNERSHIP_TAKES(malloc, 1)
 void free_urlpos (struct urlpos *);
+ATTRIBUTE_DEALLOC(free_urlpos, 1)
+struct urlpos *get_urls_file (const char *, const char *, bool *);
+ATTRIBUTE_DEALLOC(free_urlpos, 1)
+struct urlpos *get_urls_html (const char *, struct url *, bool *);
+ATTRIBUTE_DEALLOC(free_urlpos, 1)
+struct urlpos *get_urls_html_fm (const char *, const struct file_memory *, struct url *, bool *);
+ATTRIBUTE_DEALLOC(free_urlpos, 1)
+struct urlpos *append_url (const char *, int, int, struct map_context *);
 void cleanup_html_url (void);
 
 #endif /* HTML_URL_H */

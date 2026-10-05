@@ -423,6 +423,9 @@ if test -n "$WARN_CFLAGS"; then
     if test $GCC_VERSION -ge 8; then
       WARN_CFLAGS="$WARN_CFLAGS -Wno-cast-function-type"
     fi
+    if test $GCC_VERSION -ge 15; then
+      WARN_CFLAGS="$WARN_CFLAGS -Wno-strict-flex-arrays"
+    fi
     # WARN_CFLAGS="$WARN_CFLAGS -Werror"
 
     # We use a slightly smaller set of warning options for lib/.
@@ -460,7 +463,33 @@ if test -n "$WARN_CFLAGS"; then
     WARN_CFLAGS="$WARN_CFLAGS -Wno-reserved-id-macro -Wno-sign-conversion  -Wno-disabled-macro-expansion"
     WARN_CFLAGS="$WARN_CFLAGS -Wno-documentation -Wno-documentation-unknown-command"
     WARN_CFLAGS="$WARN_CFLAGS -Wno-covered-switch-default -Wno-unused-macros"
-    WARN_CFLAGS="$WARN_CFLAGS -Wno-missing-field-initializers"
+    WARN_CFLAGS="$WARN_CFLAGS -Wno-missing-field-initializers -Wno-unsafe-buffer-usage"
+
+    CLANG_VERSION=$($CC -dumpversion | cut -f1 -d.)
+    AS_IF([test $CLANG_VERSION -ge 11], [
+      WARN_CFLAGS="$WARN_CFLAGS -Wno-implicit-int-float-conversion"
+    ])
+
+    AS_IF([test $CLANG_VERSION -ge 12], [
+      WARN_CFLAGS="$WARN_CFLAGS -Wno-string-concatenation"
+    ])
+
+    AS_IF([test $CLANG_VERSION -ge 13], [
+      WARN_CFLAGS="$WARN_CFLAGS -Wno-reserved-identifier"
+    ])
+
+    AS_IF([test $CLANG_VERSION -ge 14], [
+      WARN_CFLAGS="$WARN_CFLAGS -Wno-declaration-after-statement"
+    ])
+
+    AS_IF([test $CLANG_VERSION -ge 16], [
+      WARN_CFLAGS="$WARN_CFLAGS -Wno-unsafe-buffer-usage -Wno-cast-function-type-strict"
+    ])
+
+    AS_IF([test $CLANG_VERSION -ge 21], [
+      WARN_CFLAGS="$WARN_CFLAGS -Wno-global-constructors -Wno-c++-keyword -Wno-pre-c23-compat"
+      WARN_CFLAGS="$WARN_CFLAGS -Wno-implicit-int-enum-cast -Wno-implicit-void-ptr-cast"
+    ])
 
     # remove all flags from WARN_FLAGS that are already in CFLAGS
     # wget_WORD_REMOVE([WARN_CFLAGS], [$WARN_CFLAGS], [$CFLAGS])

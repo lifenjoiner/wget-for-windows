@@ -1177,6 +1177,8 @@ run_use_askpass (char *question, char **answer)
     bytes = p - tmp;
 
   *answer = xmemdup0 (tmp, bytes);
+
+  close (com[0]);
 }
 
 /* set the user name and password*/
@@ -2243,17 +2245,21 @@ only if outputting to a regular file.\n"));
               metalink_file_t **mfile_ptr;
               for (mfile_ptr = metalink->files; *mfile_ptr; mfile_ptr++)
                 {
-                  metalink_resource_t **mres_ptr;
                   metalink_file_t *mfile = *mfile_ptr;
-                  size_t mres_count = 0;
 
-                  for (mres_ptr = mfile->resources; *mres_ptr; mres_ptr++)
-                    mres_count++;
+                  if (mfile->resources)
+                    {
+                      metalink_resource_t **mres_ptr;
+                      size_t mres_count = 0;
 
-                  stable_sort (mfile->resources,
-                               mres_count,
-                               sizeof (metalink_resource_t *),
-                               metalink_res_cmp);
+                      for (mres_ptr = mfile->resources; *mres_ptr; mres_ptr++)
+                        mres_count++;
+
+                      stable_sort (mfile->resources,
+                                  mres_count,
+                                  sizeof (metalink_resource_t *),
+                                  metalink_res_cmp);
+                    }
                 }
             }
           retr_err = retrieve_from_metalink (metalink);

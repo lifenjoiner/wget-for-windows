@@ -112,6 +112,15 @@ as that of the covered work.  */
 # define UNLIKELY(exp) (exp)
 #endif
 
+#include "attribute.h"
+
+#if defined(__clang_analyzer__) && defined(__clang__)
+# define ATTRIBUTE_OWNERSHIP_TAKES(type, arg) \
+  __attribute__((ownership_takes(type, arg)))
+#else
+# define ATTRIBUTE_OWNERSHIP_TAKES(type, arg)
+#endif
+
 /* Execute the following statement if debugging is both enabled at
    compile-time and requested at run-time; a no-op otherwise.  */
 

@@ -1636,7 +1636,7 @@ append_url_pathel (const char *b, const char *e, bool escaped,
   // This should not happen, but it's impossible to argue with static analysis that it can't happen
   // (in theory it can). So give static analyzers a hint.
   if (!dest->base)
-    return;
+    goto exit;
 
   if (!quoted)
     {
@@ -1689,6 +1689,7 @@ append_url_pathel (const char *b, const char *e, bool escaped,
   TAIL_INCR (dest, outlen);
   append_null (dest);
 
+exit:
   if (ext)
     free (unescaped);
 }
@@ -1773,26 +1774,17 @@ append_dir_structure (const struct url *u, struct growable *dest)
 char *
 url_file_name (const struct url *u, char *replaced_filename)
 {
-  struct growable fnres;        /* stands for "file name result" */
-  struct growable temp_fnres;
+  struct growable fnres = { NULL, 0, 0 };        /* stands for "file name result" */
+  struct growable temp_fnres = { NULL, 0, 0 };
 
   char *url_enc = u->enc_type == ENC_IRI ? "UTF-8" : u->ori_enc;
   const char *u_file;
   char *fname, *unique, *fname_len_check;
   const char *index_filename = "index.html"; /* The default index file is index.html */
 
-  fnres.base = NULL;
-  fnres.size = 0;
-  fnres.tail = 0;
-
-  temp_fnres.base = NULL;
-  temp_fnres.size = 0;
-  temp_fnres.tail = 0;
-
   /* If an alternative index file was defined, change index_filename */
   if (opt.default_page)
     index_filename = opt.default_page;
-
 
   /* Start with the directory prefix, if specified. */
   if (opt.dir_prefix)
@@ -2000,22 +1992,32 @@ path_simplify (enum url_scheme scheme, char *path)
         regular:
           /* A regular path element.  If H hasn't advanced past T,
              simply skip to the next path element.  Otherwise, copy
-             the path element until the next slash.  */
+             the path element until the next slash. */
           if (t == h)
             {
-              /* Skip the path element, including the slash.  */
+              /* Skip the path element, including the slash. */
               while (h < end && *h != '/')
                 t++, h++;
               if (h < end)
-                t++, h++;
+                {
+                  t++, h++;
+                  /* skip consecutive slashes */
+                  while (h < end && *h == '/')
+                    h++;
+                }
             }
           else
             {
-              /* Copy the path element, including the final slash.  */
+              /* Copy the path element, including the final slash. */
               while (h < end && *h != '/')
                 *t++ = *h++;
               if (h < end)
-                *t++ = *h++;
+                {
+                  *t++ = *h++; /* copy one slash */
+                  /* skip consecutive slashes */
+                  while (h < end && *h == '/')
+                    h++;
+                }
             }
         }
     }
@@ -2459,6 +2461,7 @@ run_test (const char *test, const char *expected_result, enum url_scheme scheme,
     {
       printf ("Failed path_simplify(\"%s\"): expected \"%s\", got \"%s\".\n",
               test, expected_result, test_copy);
+      xfree (test_copy);
       mu_assert ("", 0);
     }
   if (modified != expected_change)
@@ -2492,7 +2495,6 @@ test_path_simplify (void)
     { "../",                    "../",          SCHEME_FTP,  false },
     { "foo",                    "foo",          SCHEME_HTTP, false },
     { "foo/bar",                "foo/bar",      SCHEME_HTTP, false },
-    { "foo///bar",              "foo///bar",    SCHEME_HTTP, false },
     { "foo/.",                  "foo/",         SCHEME_HTTP, true },
     { "foo/./",                 "foo/",         SCHEME_HTTP, true },
     { "foo./",                  "foo./",        SCHEME_HTTP, false },
@@ -2509,7 +2511,11 @@ test_path_simplify (void)
     { "foo/../../..",           "../..",        SCHEME_FTP,  true },
     { "foo/../../bar/../../baz", "../../baz",   SCHEME_FTP,  true },
     { "a/b/../../c",            "c",            SCHEME_HTTP, true },
-    { "./a/../b",               "b",            SCHEME_HTTP, true }
+    { "./a/../b",               "b",            SCHEME_HTTP, true },
+    { "foo///bar",              "foo/bar",      SCHEME_HTTP, true },
+    { "///foo///bar",           "/foo/bar",     SCHEME_HTTP, true },
+    { "foo//bar//",             "foo/bar/",     SCHEME_HTTP, true },
+    { "1/..//4/4/rfc2858.htm",  "/4/4/rfc2858.htm", SCHEME_HTTP, true }
   };
   unsigned i;
 
