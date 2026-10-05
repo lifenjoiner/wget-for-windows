@@ -181,10 +181,6 @@ jobs:
         pwd
         export CFLAGS+=" -Wall -DGNULIB_defined_ESOCK"
         if [ "${{matrix.ftype}}" = "vista-wintls-winhashes-shared-full" ]; then
-          # clang --analyze yields conftest.plist file which is not executable
-          if [ "${{matrix.sys}}" != "clang64" ]; then
-            CFLAGS+=" -fanalyzer"
-          fi
           CFLAGS+=" -Wextra -D_WIN32_WINNT=0x0600 -O2 -g" $BRoot/configure --prefix=$BRoot/$BDir --disable-rpath --with-cares \
             --with-winidn --enable-threads=windows --enable-assert
         elif [ "${{matrix.ftype}}" = "vista-wintls-winhashes-static-lite" ]; then
@@ -200,12 +196,11 @@ jobs:
         fi
 # <--
 
-      # base32.c has too complicated statements
+      # avoid scan-build failure
     - name: Build libgnu.a without analyzer
-      if: ${{ endsWith(matrix.ftype, '-shared-full') }}
+      if: ${{ startsWith(matrix.sys, 'clang') }}
       run: |
         cd $CDir/lib
-        sed -i "/^CFLAGS =/{ s/ -fanalyzer -Wextra// }" Makefile
         make
 
       # gnulib_po gettext requires gettext version 0.20 higher env can have!
@@ -213,7 +208,12 @@ jobs:
       run: |
         cd $CDir
         echo -e "all:\n\n" > gnulib_po/Makefile
-        make
+        if [ "${{matrix.sys}}" == "clang64" ]; then
+          pacman -S --needed --noconfirm mingw-w64-${{matrix.env}}-clang-analyzer
+          scan-build -k -v make
+        else
+          make
+        fi
 
     - name: Show compiled wget info
       run: |

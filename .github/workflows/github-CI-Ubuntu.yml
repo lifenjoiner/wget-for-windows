@@ -36,6 +36,7 @@ jobs:
         automake \
         autoconf-archive \
         gcc \
+        clang-tools \
         libidn2-dev \
         libgpgme-dev \
         libwww-perl \
@@ -109,7 +110,7 @@ jobs:
         mkdir -p $CDir
         cd $CDir
         pwd
-        export CFLAGS+=" -fanalyzer -Wall -Wextra"
+        export CFLAGS+=" -Wall -Wextra"
         if [ "${{matrix.ftype}}" = "full" ]; then
           CFLAGS+=" -O2 -g" $BRoot/configure --prefix=/usr --with-ssl=openssl --with-cares --with-metalink --enable-assert
         elif [ "${{matrix.ftype}}" = "lite" ]; then
@@ -122,7 +123,7 @@ jobs:
       run: |
         cd $CDir
         echo -e "all:\n\n" > gnulib_po/Makefile
-        make
+        scan-build -k -v make
 
     - name: Show compiled wget info
       run: |
