@@ -1291,7 +1291,7 @@ retrieve_from_file (const char *file, bool html, int *count)
 
   bool read_again = false;
   do {
-    url_list = (html ? get_urls_html (input_file, url_parsed, false)
+    url_list = (html ? get_urls_html (input_file, url_parsed, NULL)
                 : get_urls_file (input_file, url_parsed->content_enc, &read_again));
 
     status = retrieve_from_url_list(url_list, count);
