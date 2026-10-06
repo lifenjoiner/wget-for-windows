@@ -200,7 +200,7 @@ retrieve_from_metalink (const metalink_t* metalink)
           int _metalink_index = opt.metalink_index;
 
           metalink_metaurl_t **murl_ptr;
-          int abs_count = 0, meta_count = 0;
+          int meta_count = 0;
 
           uerr_t x_retr_err = METALINK_MISSING_RESOURCE;
 
@@ -221,8 +221,6 @@ retrieve_from_metalink (const metalink_t* metalink)
                 char *metafile = NULL;
                 char *metadest = NULL;
                 char *metadir = NULL;
-
-                abs_count++;
 
                 if (strcmp (murl->mediatype, "application/metalink4+xml"))
                   continue;

@@ -547,7 +547,7 @@ static bool set_ciphers(SCHANNEL_CRED *schannel_cred, char *ciphers) {
     bool unset;
     char *p, *p_end;
 
-    alg_ids = (ALG_ID*)calloc(num_ids, sizeof(ALG_ID_MAP));
+    alg_ids = (ALG_ID*)calloc(num_ids, sizeof(ALG_ID));
     if (alg_ids == NULL) {
         logprintf(LOG_NOTQUIET, "WinTLS: calloc failed!\n");
         return false;
@@ -1045,7 +1045,7 @@ static int schannel_send(WINTLS_TRANSPORT_CONTEXT *ctx, char *buf, int len) {
 
     n = pStreamSizes->cbHeader + pStreamSizes->cbMaximumMessage + pStreamSizes->cbTrailer;
 
-    if (!ez_buff_space(&SendBuff, n)) return 0;
+    if (n <= 0 || !ez_buff_space(&SendBuff, n)) return 0;
 
     InitSecBuffer(&Buffers[0], pStreamSizes->cbHeader, SendBuff.data, SECBUFFER_STREAM_HEADER);
     InitSecBuffer(&Buffers[1], len, SendBuff.data + pStreamSizes->cbHeader, SECBUFFER_DATA);
@@ -1088,7 +1088,10 @@ static SECURITY_STATUS decrypt_data(WINTLS_TRANSPORT_CONTEXT *ctx) {
     SECURITY_STATUS Status;
     EZ_BUFF *rcv_buff;
     EZ_BUFF *dec_buff;
-    int i, dec_n;
+    int i;
+#ifdef ENABLE_DEBUG
+    int dec_n;
+#endif
     SecBufferDesc   Message;
     SecBuffer       Buffers[4];
     SecBuffer       *pDataBuffer;
@@ -1132,10 +1135,14 @@ static SECURITY_STATUS decrypt_data(WINTLS_TRANSPORT_CONTEXT *ctx) {
             }
             memcpy(dec_buff->data + dec_buff->used, pDataBuffer->pvBuffer, pDataBuffer->cbBuffer);
             dec_buff->used += pDataBuffer->cbBuffer;
+#ifdef ENABLE_DEBUG
             dec_n = pDataBuffer->cbBuffer;
+#endif
         }
         else {
+#ifdef ENABLE_DEBUG
             dec_n = 0;
+#endif
             ctx->can_recv = false; // <--end-- ???
         }
         if (pExtraBuffer) {
@@ -1154,7 +1161,9 @@ static SECURITY_STATUS decrypt_data(WINTLS_TRANSPORT_CONTEXT *ctx) {
             rcv_buff->used = 0;
         }
         //
+#ifdef ENABLE_DEBUG
         DEBUGP(("WinTLS: Decrypted %d\n", dec_n));
+#endif
         DEBUGP(("WinTLS: rcv_buff total/used/left %d/%d/%d\n", rcv_buff->size, rcv_buff->used, rcv_buff->size - rcv_buff->used));
         DEBUGP(("WinTLS: dec_buff total/used/left %d/%d/%d\n", dec_buff->size, dec_buff->used, dec_buff->size - dec_buff->used));
     } while (Status == SEC_E_OK && rcv_buff->used > 0);

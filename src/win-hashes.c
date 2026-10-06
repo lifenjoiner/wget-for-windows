@@ -140,6 +140,9 @@ int hash_stream(ALG_ID id, char *alg, FILE *stream, void *digest, size_t hashlen
     char *buffer;
     size_t sum, n;
 
+    (void) alg;
+    (void) hashlen;
+
     buffer = malloc(BLOCKSIZE + 72);
     if (!buffer) return 1;
 

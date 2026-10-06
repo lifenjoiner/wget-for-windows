@@ -312,6 +312,7 @@ connect_to_ip (const ip_address *ip, int port, const char *print)
     IF_DEBUG
       if (err < 0)
         DEBUGP (("Failed setting IPV6_V6ONLY: %s", strerror (errno)));
+    (void) err;
   }
 #ifdef WINDOWS
   else if (sa->sa_family == AF_INET6) {
@@ -322,6 +323,7 @@ connect_to_ip (const ip_address *ip, int port, const char *print)
     IF_DEBUG
       if (err < 0)
         DEBUGP (("Failed disabling IPV6_V6ONLY: %s", strerror (errno)));
+    (void) err;
   }
 #endif
 #endif
@@ -707,7 +709,11 @@ select_fd_internal (int fd, double maxtime, int wait_for, bool convert_back _GL_
       exit (WGET_EXIT_GENERIC_ERROR);
     }
   FD_ZERO (&fdset);
+#ifdef WINDOWS
+  FD_SET ((SOCKET) fd, &fdset);
+#else
   FD_SET (fd, &fdset);
+#endif
   if (wait_for & WAIT_FOR_READ)
     rd = &fdset;
   if (wait_for & WAIT_FOR_WRITE)
@@ -772,7 +778,12 @@ test_socket_open (int sock)
    * Maholski's code in the Unix Socket FAQ.  */
 
   FD_ZERO (&check_set);
+#ifdef WINDOWS
+  // gnulib socket()
+  FD_SET ((SOCKET) sock, &check_set);
+#else
   FD_SET (sock, &check_set);
+#endif
 
   /* Wait one microsecond */
   to.tv_sec = 0;

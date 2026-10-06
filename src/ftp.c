@@ -768,7 +768,6 @@ Error in server response, closing control connection.\n"));
           if (opt.encoding_remote && strcasecmp (opt.encoding_remote, opt.locale))
             {
               target_r = convert_fname (target, opt.locale, opt.encoding_remote);
-              xfree (target);
               target = target_r;
             }
 
@@ -829,6 +828,11 @@ Error in server response, closing control connection.\n"));
               DEBUGP (("Prepended initial PWD to relative path:\n"));
               DEBUGP (("   pwd: '%s'\n   old: '%s'\n  new: '%s'\n",
                        con->id, target, ntarget));
+              if (target_r != NULL && ntarget != targetbuf)
+                {
+                  xfree (target_r);
+                  target_r = ntarget;
+                }
               target = ntarget;
             }
 
@@ -866,6 +870,11 @@ Error in server response, closing control connection.\n"));
               *tmpp = '\0';
               DEBUGP (("Changed file name to VMS syntax:\n"));
               DEBUGP (("  Unix: '%s'\n  VMS: '%s'\n", target, ntarget));
+              if (target_r != NULL)
+                {
+                  xfree (target_r);
+                  target_r = ntarget;
+                }
               target = ntarget;
             }
 #endif /* 0 */
@@ -971,6 +980,7 @@ Error in server response, closing control connection.\n"));
                     logputs (LOG_VERBOSE, "\n");
                     logputs (LOG_NOTQUIET, _("\
 Error in server response, closing control connection.\n"));
+cwd_error:
                     xfree (target_r);
                     fd_close (csock);
                     con->csock = -1;
@@ -979,18 +989,12 @@ Error in server response, closing control connection.\n"));
                     logputs (LOG_VERBOSE, "\n");
                     logputs (LOG_NOTQUIET,
                              _("Write failed, closing control connection.\n"));
-                    xfree (target_r);
-                    fd_close (csock);
-                    con->csock = -1;
-                    return err;
+                    goto cwd_error;
                   case FTPNSFOD:
                     logputs (LOG_VERBOSE, "\n");
                     logprintf (LOG_NOTQUIET, _("No such directory %s.\n\n"),
                                quote (u->dir));
-                    xfree (target_r);
-                    fd_close (csock);
-                    con->csock = -1;
-                    return err;
+                    goto cwd_error;
                   case FTPOK:
                     break;
                   default:
@@ -1599,12 +1603,8 @@ Error in server response, closing control connection.\n"));
             logputs (LOG_NOTQUIET, "Server does not want to resume the SSL session. Trying with a new one.\n");
           if (!ssl_connect_wget (dtsock, u->host, NULL))
             {
-              xfree (target_locale);
-              fd_close (csock);
-              fd_close (dtsock);
-              err = CONERROR;
               logputs (LOG_NOTQUIET, "Could not perform SSL handshake.\n");
-              goto exit_error;
+              goto exit_ssl_error;
             }
         }
       else
@@ -1612,11 +1612,15 @@ Error in server response, closing control connection.\n"));
 
       if (!ssl_check_certificate (dtsock, u->host))
         {
+exit_ssl_error:
           xfree (target_locale);
           fd_close (csock);
           fd_close (dtsock);
           err = CONERROR;
-          goto exit_error;
+          /* If fp is a regular file, close and try to remove it */
+          if (fp && (!output_stream || con->cmd & DO_LIST))
+            fclose (fp);
+          return err;
         }
     }
 #endif
@@ -1874,13 +1878,6 @@ Error in server response, closing control connection.\n"));
     xfree (target_locale);
   } while (try_again);
   return RETRFINISHED;
-
-exit_error:
-
-  /* If fp is a regular file, close and try to remove it */
-  if (fp && (!output_stream || con->cmd & DO_LIST))
-    fclose (fp);
-  return err;
 }
 
 /* A one-file FTP loop.  This is the part where FTP retrieval is

@@ -579,6 +579,7 @@ hsts_store_save (hsts_store_t store, const char *filename)
   struct stat st;
   FILE *fp = NULL;
   int fd = 0;
+  int ret;
 
   if (filename && hash_table_count (store->table) > 0)
     {
@@ -599,7 +600,8 @@ hsts_store_save (hsts_store_t store, const char *filename)
           /* We've merged the latest changes so we can now truncate the file
              and dump everything. */
           fseek (fp, 0, SEEK_SET);
-          (void)ftruncate (fd, 0);
+          ret = ftruncate (fd, 0);
+          (void) ret;
 
           /* now dump to the file */
           hsts_store_dump (store, fp);

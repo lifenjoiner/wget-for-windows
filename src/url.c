@@ -539,6 +539,9 @@ url_skip_credentials (const char *url)
    */
   static const char *allowed = "-_.!~*'();:&=+$,";
 
+  if (url == NULL)
+    return url;
+
   for (const char *p = url; *p; p++)
     {
       if (c_isalnum(*p))
