@@ -260,7 +260,7 @@ connect_with_timeout (int fd, const struct sockaddr *addr, socklen_t addrlen,
 int
 connect_to_ip (const ip_address *ip, int port, const char *print)
 {
-  struct sockaddr_storage ss;
+  struct sockaddr_storage ss = {0};
   struct sockaddr *sa = (struct sockaddr *)&ss;
   int sock;
 
@@ -299,6 +299,9 @@ connect_to_ip (const ip_address *ip, int port, const char *print)
   /* Store the sockaddr info to SA.  */
   sockaddr_set_data (sa, ip, port);
 
+  /* Does socket() get EAFNOSUPPORT on Ubuntu (-O2), if ss is initialized?
+     CFLAGS += -fno-strict-aliasing, or this. */
+  DEBUGP (("socket()... "));
   /* Create the socket of the family appropriate for the address.  */
   sock = socket (sa->sa_family, SOCK_STREAM, 0);
   if (sock < 0)
@@ -351,16 +354,18 @@ connect_to_ip (const ip_address *ip, int port, const char *print)
     {
       /* Bind the client side of the socket to the requested
          address.  */
-      struct sockaddr_storage bind_ss;
+      struct sockaddr_storage bind_ss = {0};
       struct sockaddr *bind_sa = (struct sockaddr *)&bind_ss;
       if (resolve_bind_address (bind_sa))
         {
+          DEBUGP (("bind()... "));
           if (bind (sock, bind_sa, sockaddr_size (bind_sa)) < 0)
             goto err;
         }
     }
 
   /* Connect the socket to the remote endpoint.  */
+  DEBUGP (("connect()... "));
   if (connect_with_timeout (sock, sa, sockaddr_size (sa),
                             opt.connect_timeout) < 0)
     goto err;
@@ -467,7 +472,7 @@ int
 bind_local (const ip_address *bind_address, int *port)
 {
   int sock;
-  struct sockaddr_storage ss;
+  struct sockaddr_storage ss = {0};
   struct sockaddr *sa = (struct sockaddr *)&ss;
 
   /* For setting options with setsockopt. */
@@ -485,7 +490,6 @@ bind_local (const ip_address *bind_address, int *port)
                strerror (errno));
 #endif
 
-  xzero (ss);
   sockaddr_set_data (sa, bind_address, *port);
   if (bind (sock, sa, sockaddr_size (sa)) < 0)
     {
