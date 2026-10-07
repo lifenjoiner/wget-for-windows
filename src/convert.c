@@ -1324,7 +1324,7 @@ test_find_fragment (void)
     { "a#b", 3, true, "#b" },
     { "a", 1, false, NULL },
   };
-  const char *bp, *ep;
+  const char *bp = NULL, *ep = NULL;
 
   for (unsigned i = 0; i < countof (test_array); ++i)
     {

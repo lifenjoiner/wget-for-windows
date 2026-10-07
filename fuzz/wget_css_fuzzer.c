@@ -71,6 +71,7 @@ FILE *fopen_wgetrc(const char *pathname, const char *mode)
 
 static int do_jump;
 static jmp_buf jmpbuf;
+
 #ifdef FUZZING
 void exit_wget(int status)
 {
@@ -81,7 +82,7 @@ void exit_wget(int status)
 #ifndef RTLD_NEXT
 #define RTLD_NEXT RTLD_GLOBAL
 #endif
-_Noreturn void exit(int status)
+void exit(int status)
 {
 	if (do_jump) {
 		longjmp(jmpbuf, 1);
