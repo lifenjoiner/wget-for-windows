@@ -85,11 +85,12 @@ void exit(int status)
 }
 #endif
 
+struct fileinfo *fi;
+
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 #ifdef HAVE_FMEMOPEN
 	FILE *fp;
-	struct fileinfo *fi;
 
 	if (size > 4096) // same as max_len = ... in .options file
 		return 0;
